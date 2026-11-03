@@ -29,7 +29,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const r = await sb.auth.signUp({
         email,
         password,
-        options: { data: { username, display_name: username }, emailRedirectTo: location.origin },
+        options: { data: { username, display_name: username }, emailRedirectTo: appUrl() },
       })
       if (r.error) throw new Error(traduzErro(r.error.message))
       return { needsConfirmation: !r.data.session }
@@ -41,7 +41,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     async signInWithGoogle() {
-      const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin } })
+      const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appUrl() } })
       if (r.error) throw new Error(traduzErro(r.error.message))
     },
 
@@ -219,4 +219,9 @@ function traduzErro(msg: string): string {
   if (m.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar (veja sua caixa de entrada).'
   if (m.includes('provider is not enabled')) return 'O login com Google ainda não foi ativado no Supabase.'
   return msg
+}
+
+/** Endereço do app, incluindo a pasta (ex.: holmgds-gui.github.io/descarga-app/). */
+function appUrl() {
+  return location.origin + location.pathname
 }
