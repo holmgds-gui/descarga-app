@@ -507,3 +507,4 @@ button.avatar { cursor: pointer; }
   .link-row { grid-template-columns: 1fr 1fr auto; }
   .auth-card { padding: 24px 18px; }
 }
+.confirm-text { margin: 0; text-align: center; }

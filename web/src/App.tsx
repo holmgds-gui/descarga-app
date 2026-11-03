@@ -3,6 +3,7 @@ import { AuthScreen } from './components/AuthScreen'
 import { Shell } from './components/Shell'
 import { backend } from './lib/backend'
 import { AppProvider } from './state'
+import { local, session } from './lib/storage'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
@@ -14,7 +15,7 @@ export default function App() {
     const params = new URLSearchParams(location.search)
     const code = params.get('convite')
     if (code) {
-      sessionStorage.setItem(INVITE_KEY, code)
+      session.set(INVITE_KEY, code)
       params.delete('convite')
       const q = params.toString()
       history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
@@ -28,13 +29,13 @@ export default function App() {
 
   useEffect(() => {
     if (!userId) return
-    const code = sessionStorage.getItem(INVITE_KEY)
+    const code = session.get(INVITE_KEY)
     if (!code) return
-    sessionStorage.removeItem(INVITE_KEY)
+    session.remove(INVITE_KEY)
     void backend
       .joinServer(code)
-      .then((s) => localStorage.setItem('descarga-ultimo-servidor', s.id))
-      .catch(() => alert('Esse convite é inválido ou expirou.'))
+      .then((s) => local.set('descarga-ultimo-servidor', s.id))
+      .catch(() => console.warn('Convite inválido ou expirado'))
   }, [userId])
 
   if (userId === undefined)

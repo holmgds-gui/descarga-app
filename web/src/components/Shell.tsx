@@ -4,14 +4,16 @@ import { useApp } from '../state'
 import { ChannelSidebar } from './ChannelSidebar'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
+import { Modal } from './Modal'
 import { ProfilePopover } from './ProfileCard'
 import { ServerRail } from './ServerRail'
 import { SettingsModal } from './SettingsModal'
 import type { Channel } from '../lib/types'
+import { local } from '../lib/storage'
 
 export function Shell() {
-  const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg } = useApp()
-  const [membersOpen, setMembersOpen] = useState(() => localStorage.getItem('descarga-membros') !== '0')
+  const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question } = useApp()
+  const [membersOpen, setMembersOpen] = useState(() => local.get('descarga-membros') !== '0')
   const channel = channels.find((c) => c.id === activeChannelId)
 
   const toggleMembers = () => {
@@ -20,7 +22,7 @@ export function Shell() {
       return
     }
     setMembersOpen((v) => {
-      localStorage.setItem('descarga-membros', v ? '0' : '1')
+      local.set('descarga-membros', v ? '0' : '1')
       return !v
     })
   }
@@ -51,6 +53,15 @@ export function Shell() {
       <ProfilePopover />
       <SettingsModal />
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
+      {question && (
+        <Modal title={question.title} onClose={() => question.resolve(false)}
+          footer={<>
+            <button className="btn btn-ghost" onClick={() => question.resolve(false)}>Cancelar</button>
+            <button className={`btn ${question.danger ? 'btn-danger' : 'btn-primary'}`} autoFocus onClick={() => question.resolve(true)}>{question.confirmLabel}</button>
+          </>}>
+          <p className="muted confirm-text">{question.message}</p>
+        </Modal>
+      )}
     </div>
   )
 }

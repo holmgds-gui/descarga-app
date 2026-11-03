@@ -44,7 +44,7 @@ export function ChatHeader({
 }
 
 export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: Channel; membersOpen: boolean; onToggleMembers: () => void }) {
-  const { profiles, ensureProfiles, userId, openProfile, toast } = useApp()
+  const { profiles, ensureProfiles, userId, openProfile, toast, ask } = useApp()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -124,7 +124,8 @@ export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: C
   }
 
   const remove = async (m: Message) => {
-    if (!confirm('Apagar esta mensagem?')) return
+    const ok = await ask({ title: 'Apagar mensagem', message: 'Tem certeza de que quer apagar esta mensagem? Não dá para desfazer.', confirmLabel: 'Apagar', danger: true })
+    if (!ok) return
     await backend.deleteMessage(m.id)
     setMessages((prev) => prev.filter((x) => x.id !== m.id))
   }

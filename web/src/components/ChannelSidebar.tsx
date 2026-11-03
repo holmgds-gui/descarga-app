@@ -9,7 +9,7 @@ import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
 import { CreateChannelModal, InviteModal } from './ServerModals'
 
 export function ChannelSidebar() {
-  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers } = useApp()
+  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const [menuOpen, setMenuOpen] = useState(false)
   const [inviting, setInviting] = useState(false)
@@ -28,7 +28,8 @@ export function ChannelSidebar() {
 
   const leave = async () => {
     if (!server) return
-    if (!confirm(`Sair de "${server.name}"?`)) return
+    const ok = await ask({ title: `Sair de ${server.name}`, message: 'Você vai precisar de um novo convite para voltar.', confirmLabel: 'Sair do servidor', danger: true })
+    if (!ok) return
     await backend.leaveServer(server.id)
     await refreshServers()
     toast('Você saiu do servidor')

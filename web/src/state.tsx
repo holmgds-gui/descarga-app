@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
 import type { Channel, Profile, Server } from './lib/types'
+import { local } from './lib/storage'
 
 export type ThemeName = 'dark' | 'light' | 'midnight'
 export interface Appearance {
@@ -38,6 +39,15 @@ interface AppState {
   setMobilePane: (p: 'nav' | 'chat' | 'members') => void
   toast: (msg: string) => void
   toastMsg: string | null
+  ask: (q: ConfirmQuestion) => Promise<boolean>
+  question: (ConfirmQuestion & { resolve: (v: boolean) => void }) | null
+}
+
+export interface ConfirmQuestion {
+  title: string
+  message: string
+  confirmLabel: string
+  danger?: boolean
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -50,7 +60,7 @@ export function useApp() {
 
 export function loadAppearance(): Appearance {
   try {
-    return { ...DEFAULT_APPEARANCE, ...JSON.parse(localStorage.getItem(APPEARANCE_KEY) ?? '{}') }
+    return { ...DEFAULT_APPEARANCE, ...JSON.parse(local.get(APPEARANCE_KEY) ?? '{}') }
   } catch {
     return DEFAULT_APPEARANCE
   }
@@ -70,7 +80,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [profiles, setProfiles] = useState<Record<string, Profile>>({})
   const [servers, setServers] = useState<Server[]>([])
   const [activeServerId, setActiveServerIdRaw] = useState<string | null>(
-    () => localStorage.getItem('descarga-ultimo-servidor'),
+    () => local.get('descarga-ultimo-servidor'),
   )
   const [channels, setChannels] = useState<Channel[]>([])
   const [activeChannelId, setActiveChannelIdRaw] = useState<string | null>(null)
@@ -80,6 +90,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobilePane, setMobilePane] = useState<'nav' | 'chat' | 'members'>('chat')
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [question, setQuestion] = useState<(ConfirmQuestion & { resolve: (v: boolean) => void }) | null>(null)
   const pending = useRef(new Set<string>())
   const toastTimer = useRef<number | undefined>(undefined)
 
@@ -126,7 +137,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   const setActiveServerId = useCallback((id: string | null) => {
     setActiveServerIdRaw(id)
-    if (id) localStorage.setItem('descarga-ultimo-servidor', id)
+    if (id) local.set('descarga-ultimo-servidor', id)
   }, [])
 
   // ---- canais e membros do servidor ativo ----
@@ -147,7 +158,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       setMemberIds(mids)
       setActiveChannelIdRaw((cur) => {
         if (cur && chs.some((c) => c.id === cur && c.type === 'text')) return cur
-        const last = localStorage.getItem(lastChannelKey(activeServerId))
+        const last = local.get(lastChannelKey(activeServerId))
         if (last && chs.some((c) => c.id === last)) return last
         return chs.find((c) => c.type === 'text')?.id ?? null
       })
@@ -167,7 +178,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const setActiveChannelId = useCallback(
     (id: string) => {
       setActiveChannelIdRaw(id)
-      if (activeServerId) localStorage.setItem(lastChannelKey(activeServerId), id)
+      if (activeServerId) local.set(lastChannelKey(activeServerId), id)
       setMobilePane('chat')
     },
     [activeServerId],
@@ -177,7 +188,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const setAppearance = useCallback((a: Partial<Appearance>) => {
     setAppearanceRaw((prev) => {
       const next = { ...prev, ...a }
-      localStorage.setItem(APPEARANCE_KEY, JSON.stringify(next))
+      local.set(APPEARANCE_KEY, JSON.stringify(next))
       return next
     })
   }, [])
@@ -209,10 +220,15 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       setMobilePane,
       toast,
       toastMsg,
+      ask: (q) =>
+        new Promise<boolean>((resolve) =>
+          setQuestion({ ...q, resolve: (v) => { setQuestion(null); resolve(v) } }),
+        ),
+      question,
     }),
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
       activeChannelId, setActiveChannelId, memberIds, appearance, setAppearance, profileView, settingsOpen,
-      mobilePane, toast, toastMsg],
+      mobilePane, toast, toastMsg, question],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

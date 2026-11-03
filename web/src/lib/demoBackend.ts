@@ -5,6 +5,7 @@
  */
 import type { Backend, Channel, Message, Profile, Server } from './types'
 import { blobToDataUrl, compressImage } from './image'
+import { local, session } from './storage'
 
 interface DemoUser { id: string; email: string; password: string }
 interface Member { server_id: string; user_id: string; joined_at: string }
@@ -79,47 +80,47 @@ function seed(): DB {
 
 export function createDemoBackend(): Backend {
   const bus = new BroadcastChannel('descarga-demo')
-  const local = new EventTarget()
+  const localBus = new EventTarget()
 
   const load = (): DB => {
-    const raw = localStorage.getItem(KEY)
+    const raw = local.get(KEY)
     if (raw) return JSON.parse(raw) as DB
     const db = seed()
-    localStorage.setItem(KEY, JSON.stringify(db))
+    local.set(KEY, JSON.stringify(db))
     return db
   }
   const save = (db: DB) => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(db))
+      local.set(KEY, JSON.stringify(db))
     } catch {
       throw new Error('O armazenamento do modo demonstração encheu. Use imagens menores.')
     }
   }
   const emit = (e: Event) => {
     bus.postMessage(e)
-    local.dispatchEvent(new CustomEvent('e', { detail: e }))
+    localBus.dispatchEvent(new CustomEvent('e', { detail: e }))
   }
   const listen = (fn: (e: Event) => void) => {
     const a = (m: MessageEvent) => fn(m.data as Event)
     const b = (m: globalThis.Event) => fn((m as CustomEvent).detail as Event)
     bus.addEventListener('message', a)
-    local.addEventListener('e', b)
+    localBus.addEventListener('e', b)
     return () => {
       bus.removeEventListener('message', a)
-      local.removeEventListener('e', b)
+      localBus.removeEventListener('e', b)
     }
   }
 
-  const getSession = () => sessionStorage.getItem(SESSION) ?? localStorage.getItem(SESSION)
+  const getSession = () => session.get(SESSION) ?? local.get(SESSION)
   const setSession = (uid: string | null) => {
     if (uid) {
-      sessionStorage.setItem(SESSION, uid)
-      localStorage.setItem(SESSION, uid)
+      session.set(SESSION, uid)
+      local.set(SESSION, uid)
     } else {
-      sessionStorage.removeItem(SESSION)
-      localStorage.removeItem(SESSION)
+      session.remove(SESSION)
+      local.remove(SESSION)
     }
-    local.dispatchEvent(new CustomEvent('e', { detail: { type: 'auth' } }))
+    localBus.dispatchEvent(new CustomEvent('e', { detail: { type: 'auth' } }))
   }
   const me = () => {
     const uid = getSession()
