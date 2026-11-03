@@ -1,5 +1,7 @@
 # Descarga
 
+**No ar:** https://holmgds-gui.github.io/descarga-app/
+
 App de conversa inspirado no Discord: servidores, canais, chat em tempo real, perfil 100% grátis e personalizável — e, nas próximas etapas, voz, vídeo e tela com som.
 
 ## O que já funciona (etapa 1)
@@ -43,7 +45,11 @@ Sem configurar nada, o app abre no **modo demonstração**: tudo fica salvo só 
 3. Cole o Client ID e o Client Secret nesse mesmo lugar do Supabase e ative.
 4. Em **Authentication → URL Configuration**, adicione o endereço do seu site (ex.: `https://descarga.vercel.app`).
 
-## Colocar no ar (Vercel)
+## Publicação
+
+O site é publicado sozinho no GitHub Pages a cada `git push` na `main` (veja `.github/workflows/deploy.yml`).
+
+## Colocar no ar na Vercel (opcional)
 
 1. Crie uma conta em [vercel.com](https://vercel.com) entrando com o GitHub.
 2. **Add New → Project** e escolha o repositório `descarga-app`.
