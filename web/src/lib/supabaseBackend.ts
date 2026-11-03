@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Backend, Channel, ChannelType, Message, Profile, ProfilePatch, Server } from './types'
+import type { Backend, Channel, ChannelType, Message, PresenceEntry, Profile, ProfilePatch, RealtimeRoom, Server } from './types'
 import { compressImage } from './image'
 
 const PAGE = 50
@@ -207,6 +207,98 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         )
         .subscribe()
       return () => void sb.removeChannel(ch)
+    },
+
+    openRoom(topic) {
+      return createSupabaseRoom(sb, topic)
+    },
+
+    pushSupported: true,
+
+    async savePushSubscription(sub) {
+      const me = await uid()
+      if (!me || !sub.endpoint || !sub.keys) return
+      must(
+        await sb.from('push_subscriptions').upsert(
+          { user_id: me, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, user_agent: navigator.userAgent.slice(0, 200) },
+          { onConflict: 'endpoint' },
+        ),
+      )
+    },
+
+    async removePushSubscription(endpoint) {
+      await sb.from('push_subscriptions').delete().eq('endpoint', endpoint)
+    },
+
+    async notify(body) {
+      // aviso extra: se falhar, o app continua normalmente
+      await sb.functions.invoke('notificar', { body: { ...body, appUrl: appUrl() } }).catch(() => undefined)
+    },
+  }
+}
+
+function createSupabaseRoom(sb: SupabaseClient, topic: string): RealtimeRoom {
+  const key = crypto.randomUUID()
+  const bcast = new Set<(e: string, p: Record<string, unknown>) => void>()
+  const pres = new Set<(entries: PresenceEntry[]) => void>()
+  let last: PresenceEntry[] = []
+  let subscribed = false
+  const queue: [string, Record<string, unknown>][] = []
+
+  const ch = sb.channel(topic, {
+    config: { private: true, broadcast: { self: false }, presence: { key } },
+  })
+  ch.on('broadcast', { event: '*' }, (msg) => {
+    for (const cb of bcast) cb(msg.event, (msg.payload ?? {}) as Record<string, unknown>)
+  })
+  ch.on('presence', { event: 'sync' }, () => {
+    const state = ch.presenceState() as Record<string, Record<string, unknown>[]>
+    last = Object.entries(state).flatMap(([k, list]) => list.map((v) => ({ ...v, key: k }) as PresenceEntry))
+    for (const cb of pres) cb(last)
+  })
+
+  const ready = (async () => {
+    await sb.realtime.setAuth()
+    await new Promise<void>((resolve, reject) => {
+      ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          subscribed = true
+          for (const [e, p] of queue.splice(0)) void ch.send({ type: 'broadcast', event: e, payload: p })
+          resolve()
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          reject(new Error('Não foi possível conectar à call. Verifique sua internet.'))
+        }
+      })
+    })
+  })()
+  ready.catch(() => undefined)
+
+  return {
+    ready,
+    send(event, payload) {
+      if (!subscribed) queue.push([event, payload])
+      else void ch.send({ type: 'broadcast', event, payload })
+    },
+    onBroadcast(cb) {
+      bcast.add(cb)
+      return () => bcast.delete(cb)
+    },
+    async track(state) {
+      await ready
+      await ch.track(state)
+    },
+    async untrack() {
+      if (subscribed) await ch.untrack()
+    },
+    onPresence(cb) {
+      pres.add(cb)
+      if (last.length) cb(last)
+      return () => pres.delete(cb)
+    },
+    leave() {
+      bcast.clear()
+      pres.clear()
+      void sb.removeChannel(ch)
     },
   }
 }

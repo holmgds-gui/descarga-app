@@ -4,10 +4,11 @@ import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp, type ThemeName } from '../state'
 import { ProfileCardBody } from './ProfileCard'
+import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 
 const SWATCHES = ['#7B3FE4', '#5226A8', '#B04FD9', '#E0457B', '#F0643C', '#F5A524', '#2DBE7A', '#1FB5E0', '#3D7BF0', '#6B7280']
 
-type Tab = 'perfil' | 'aparencia' | 'conta'
+type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'conta'
 
 export function SettingsModal() {
   const { settingsOpen, setSettingsOpen } = useApp()
@@ -30,6 +31,8 @@ export function SettingsModal() {
           <h4>Configurações de usuário</h4>
           <button className={tab === 'perfil' ? 'active' : ''} onClick={() => setTab('perfil')}>Meu perfil</button>
           <button className={tab === 'aparencia' ? 'active' : ''} onClick={() => setTab('aparencia')}>Aparência</button>
+          <button className={tab === 'voz' ? 'active' : ''} onClick={() => setTab('voz')}>Voz e vídeo</button>
+          <button className={tab === 'notificacoes' ? 'active' : ''} onClick={() => setTab('notificacoes')}>Notificações</button>
           <button className={tab === 'conta' ? 'active' : ''} onClick={() => setTab('conta')}>Conta</button>
           <div className="dropdown-sep" />
           <button className="danger" onClick={() => void backend.signOut()}>Sair <LogOut size={16} /></button>
@@ -39,6 +42,8 @@ export function SettingsModal() {
         <div className="settings-content-inner">
           {tab === 'perfil' && <ProfileEditor />}
           {tab === 'aparencia' && <AppearanceEditor />}
+          {tab === 'voz' && <VoiceSettingsTab />}
+          {tab === 'notificacoes' && <NotificationsTab />}
           {tab === 'conta' && <AccountTab />}
         </div>
         <button className="settings-close" onClick={close} aria-label="Fechar configurações">

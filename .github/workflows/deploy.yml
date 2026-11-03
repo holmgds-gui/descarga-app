@@ -34,6 +34,7 @@ jobs:
           # chaves públicas do Supabase (podem ficar no código; quem protege os dados são as regras do banco)
           VITE_SUPABASE_URL: https://ebumtgqfiygrfaafjctg.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_hWAC4jOOMMHNkwvWoIpsig_YDaS2Uuh
+          VITE_VAPID_PUBLIC_KEY: BI-3u6reSr_bXUYMrO89QwBK4IeDXRm8pfEh2yiSH3aFXenAo03d10j9Ds0AuKjD3oJhrOjmdHwRPJg01s0kbrU
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist

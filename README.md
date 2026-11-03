@@ -16,6 +16,17 @@ App de conversa inspirado no Discord: servidores, canais, chat em tempo real, pe
 - Aparência: tema escuro, claro e meia-noite, cor do app, tamanho do texto, modo compacto
 - Funciona no PC e no celular (layout adaptado)
 
+## O que já funciona (etapa 2)
+
+- Calls de voz direto entre os aparelhos (grátis, até 6 pessoas), sem servidor de mídia
+- Câmera e compartilhamento de tela com som, em 720p, 1080p ou 1080p/60fps
+- Redução de ruído, "apertar para falar" (tecla configurável) e volume separado para cada pessoa
+- Indicador de quem está falando, lista de quem está em cada call na barra lateral
+- Som de água ao entrar e de descarga ao sair (gerados pelo próprio app)
+- Menções com `@usuario` (com sugestões ao digitar) e destaque das mensagens para você
+- Notificações com o app fechado: menções, respostas e quando alguém entra numa call
+- App instalável (PWA): no celular, "Adicionar à Tela de Início"
+
 ## Rodar no seu computador
 
 Precisa do [Node.js](https://nodejs.org) 20 ou mais novo.
@@ -61,7 +72,6 @@ O site é publicado sozinho no GitHub Pages a cada `git push` na `main` (veja `.
 
 | Etapa | O que entra |
 |---|---|
-| 2 | Voz, vídeo, compartilhar tela com som (1080p/60fps), notificações com o app fechado |
 | 3 | Cargos e permissões, amigos e DMs em grupo, tópicos, fóruns, enquetes, reações e emojis próprios, eventos, bots e webhooks, arquivos e áudios, transcrição/tradução, assistir junto, quadro branco, confirmação de leitura |
 | 4 | App de PC (Tauri) |
 | 5 | App de celular (Android e iPhone) |
@@ -74,4 +84,5 @@ web/                 o app (React + TypeScript + Vite)
   src/components/    telas e componentes
   public/            logo e ícones
 supabase/migrations/ banco de dados, segurança e tempo real
+supabase/functions/  função que envia as notificações
 ```

@@ -4,6 +4,7 @@ import { Shell } from './components/Shell'
 import { backend } from './lib/backend'
 import { AppProvider } from './state'
 import { local, session } from './lib/storage'
+import { refreshPushSubscription } from './lib/push'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
@@ -14,9 +15,16 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const code = params.get('convite')
-    if (code) {
-      session.set(INVITE_KEY, code)
-      params.delete('convite')
+    if (code) session.set(INVITE_KEY, code)
+    // links das notificações: ?servidor=...&canal=...
+    const srv = params.get('servidor')
+    const ch = params.get('canal')
+    if (srv) {
+      local.set('descarga-ultimo-servidor', srv)
+      if (ch) local.set(`descarga-ultimo-canal-${srv}`, ch)
+    }
+    if (code || srv) {
+      ;['convite', 'servidor', 'canal'].forEach((k) => params.delete(k))
       const q = params.toString()
       history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
     }
@@ -26,6 +34,10 @@ export default function App() {
     void backend.currentUserId().then(setUserId)
     return backend.onAuthChange(setUserId)
   }, [])
+
+  useEffect(() => {
+    if (userId) void refreshPushSubscription()
+  }, [userId])
 
   useEffect(() => {
     if (!userId) return

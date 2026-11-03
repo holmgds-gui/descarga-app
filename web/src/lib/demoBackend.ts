@@ -3,7 +3,7 @@
  * Serve para ver e testar o Descarga antes de configurar o Supabase.
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
-import type { Backend, Channel, Message, Profile, Server } from './types'
+import type { Backend, Channel, Message, PresenceEntry, Profile, RealtimeRoom, Server } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
 
@@ -345,6 +345,92 @@ export function createDemoBackend(): Backend {
         else if (e.type === 'msg-update' && e.payload.channel_id === channelId) h.onUpdate(e.payload)
         else if (e.type === 'msg-delete') h.onDelete(e.payload)
       })
+    },
+
+    openRoom(topic) {
+      return createDemoRoom(topic)
+    },
+
+    pushSupported: false,
+    async savePushSubscription() {},
+    async removePushSubscription() {},
+    async notify() {},
+  }
+}
+
+/** Sala de tempo real entre abas do mesmo navegador (para testar calls no modo demonstração). */
+function createDemoRoom(topic: string): RealtimeRoom {
+  const key = crypto.randomUUID()
+  const bc = new BroadcastChannel(`descarga-sala-${topic}`)
+  const bcast = new Set<(e: string, p: Record<string, unknown>) => void>()
+  const pres = new Set<(entries: PresenceEntry[]) => void>()
+  const others = new Map<string, { state: Record<string, unknown>; seen: number }>()
+  let mine: Record<string, unknown> | null = null
+  type Wire =
+    | { kind: 'bc'; event: string; payload: Record<string, unknown> }
+    | { kind: 'presence'; key: string; state: Record<string, unknown> | null }
+    | { kind: 'hello' }
+
+  const entries = (): PresenceEntry[] => [
+    ...(mine ? [{ ...mine, key }] : []),
+    ...[...others.entries()].map(([k, v]) => ({ ...v.state, key: k })),
+  ]
+  const emitPresence = () => {
+    const list = entries()
+    for (const cb of pres) cb(list)
+  }
+  const announce = () => mine && bc.postMessage({ kind: 'presence', key, state: mine } satisfies Wire)
+
+  bc.onmessage = (m) => {
+    const w = m.data as Wire
+    if (w.kind === 'bc') for (const cb of bcast) cb(w.event, w.payload)
+    else if (w.kind === 'hello') announce()
+    else if (w.kind === 'presence') {
+      if (w.state) {
+        const prev = others.get(w.key)
+        others.set(w.key, { state: w.state, seen: Date.now() })
+        if (!prev || JSON.stringify(prev.state) !== JSON.stringify(w.state)) emitPresence()
+      } else if (others.delete(w.key)) emitPresence()
+    }
+  }
+  const beat = window.setInterval(() => {
+    announce()
+    let changed = false
+    for (const [k, v] of others) if (Date.now() - v.seen > 6000) { others.delete(k); changed = true }
+    if (changed) emitPresence()
+  }, 2000)
+  bc.postMessage({ kind: 'hello' } satisfies Wire)
+
+  return {
+    ready: Promise.resolve(),
+    send(event, payload) {
+      bc.postMessage({ kind: 'bc', event, payload } satisfies Wire)
+    },
+    onBroadcast(cb) {
+      bcast.add(cb)
+      return () => bcast.delete(cb)
+    },
+    async track(state) {
+      mine = state
+      announce()
+      emitPresence()
+    },
+    async untrack() {
+      mine = null
+      bc.postMessage({ kind: 'presence', key, state: null } satisfies Wire)
+      emitPresence()
+    },
+    onPresence(cb) {
+      pres.add(cb)
+      cb(entries())
+      return () => pres.delete(cb)
+    },
+    leave() {
+      if (mine) bc.postMessage({ kind: 'presence', key, state: null } satisfies Wire)
+      window.clearInterval(beat)
+      bc.close()
+      bcast.clear()
+      pres.clear()
     },
   }
 }

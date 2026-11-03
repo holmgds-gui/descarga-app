@@ -15,7 +15,7 @@ export function renderMessage(text: string): ReactNode {
 }
 
 const TOKEN =
-  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\n]+\*)|(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g
+  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\n]+\*)|(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])|((?<![\w.@])@[a-z0-9_.]{2,32})/g
 
 function renderInline(text: string): ReactNode[] {
   const out: ReactNode[] = []
@@ -36,6 +36,7 @@ function renderInline(text: string): ReactNode[] {
           {t}
         </a>,
       )
+    else if (m[7]) out.push(<span key={k++} className="mention">{t}</span>)
     last = idx + t.length
   }
   if (last < text.length) out.push(text.slice(last))

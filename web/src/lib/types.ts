@@ -92,4 +92,24 @@ export interface Backend {
   editMessage(id: string, content: string): Promise<void>
   deleteMessage(id: string): Promise<void>
   subscribeMessages(channelId: string, h: MessageHandlers): () => void
+
+  /** Sala de tempo real (presença + mensagens rápidas) usada pelas calls. */
+  openRoom(topic: string): RealtimeRoom
+  /** Notificações com o app fechado (só na versão online). */
+  pushSupported: boolean
+  savePushSubscription(sub: PushSubscriptionJSON): Promise<void>
+  removePushSubscription(endpoint: string): Promise<void>
+  notify(body: { type: 'message'; messageId: string } | { type: 'call'; channelId: string }): Promise<void>
+}
+
+export type PresenceEntry = Record<string, unknown> & { key: string }
+
+export interface RealtimeRoom {
+  ready: Promise<void>
+  send(event: string, payload: Record<string, unknown>): void
+  onBroadcast(cb: (event: string, payload: Record<string, unknown>) => void): () => void
+  track(state: Record<string, unknown>): Promise<void>
+  untrack(): Promise<void>
+  onPresence(cb: (entries: PresenceEntry[]) => void): () => void
+  leave(): void
 }

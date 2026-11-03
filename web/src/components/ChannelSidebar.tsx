@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ChevronDown, ChevronRight, Hash, Headphones, LogOut, Mic, Plus, Settings, UserPlus, Volume2, X,
+  ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Plus, Settings,
+  UserPlus, Video, Volume2, X,
 } from 'lucide-react'
+import { voice } from '../lib/voice/engine'
+import { useVoice, useVoicePresence } from '../lib/voice/hooks'
+import { VoiceConnectedPanel } from './VoiceConnectedPanel'
 import { backend } from '../lib/backend'
 import type { Channel, Status } from '../lib/types'
 import { useApp } from '../state'
@@ -9,13 +13,24 @@ import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
 import { CreateChannelModal, InviteModal } from './ServerModals'
 
 export function ChannelSidebar() {
-  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask } = useApp()
+  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask, openProfile } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const [menuOpen, setMenuOpen] = useState(false)
   const [inviting, setInviting] = useState(false)
   const [creating, setCreating] = useState<{ category: string; type: Channel['type'] } | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const isOwner = server?.owner_id === userId
+  const inVoice = useVoicePresence(server?.id ?? null)
+  const call = useVoice()
+  const { profiles, ensureProfiles } = useApp()
+  useEffect(() => {
+    if (inVoice.length) ensureProfiles(inVoice.map((m) => m.userId))
+  }, [inVoice, ensureProfiles])
+
+  const openChannel = (c: Channel) => {
+    setActiveChannelId(c.id)
+    if (c.type === 'voice' && server && call.channelId !== c.id) void voice.join(c.id, server.id, userId)
+  }
 
   const groups = useMemo(() => {
     const map = new Map<string, Channel[]>()
@@ -80,10 +95,10 @@ export function ChannelSidebar() {
                 {list
                   .filter((c) => !collapsed[category] || c.id === activeChannelId)
                   .map((c) => (
+                    <div key={c.id}>
                     <button
-                      key={c.id}
-                      className={`channel-item ${c.id === activeChannelId ? 'active' : ''}`}
-                      onClick={() => setActiveChannelId(c.id)}
+                      className={`channel-item ${c.id === activeChannelId ? 'active' : ''} ${call.channelId === c.id ? 'in-call' : ''}`}
+                      onClick={() => openChannel(c)}
                     >
                       {c.type === 'text' ? <Hash size={20} /> : <Volume2 size={20} />}
                       <span className="truncate">{c.name}</span>
@@ -94,6 +109,25 @@ export function ChannelSidebar() {
                         </span>
                       )}
                     </button>
+                    {c.type === 'voice' && (
+                      <div className="voice-members">
+                        {inVoice.filter((m) => m.channelId === c.id).map((m) => (
+                          <button key={m.sessionId} className="voice-member"
+                            onClick={(e) => openProfile(m.userId, e.currentTarget.getBoundingClientRect())}>
+                            <span className={`speak-ring ${call.speaking[m.sessionId] ? 'on' : ''}`}>
+                              <Avatar profile={profiles[m.userId]} size={24} />
+                            </span>
+                            <span className="truncate">{displayName(profiles[m.userId])}</span>
+                            <span className="voice-member-icons">
+                              {m.screen && <span className="live-badge">AO VIVO</span>}
+                              {m.camera && <Video size={14} />}
+                              {m.deafened ? <HeadphoneOff size={14} className="danger-icon" /> : m.muted && <MicOff size={14} className="danger-icon" />}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </div>
                   ))}
               </div>
             ))}
@@ -111,6 +145,7 @@ export function ChannelSidebar() {
           </div>
         </>
       )}
+      <VoiceConnectedPanel />
       <UserPanel />
     </aside>
   )
@@ -138,7 +173,7 @@ function UserPanel() {
     upsertProfile(await backend.updateProfile({ custom_status: custom.trim() }))
     toast('Status atualizado')
   }
-  const soon = () => toast('Microfone e áudio chegam na etapa 2 (chamadas)')
+  const call = useVoice()
 
   return (
     <div className="user-panel" ref={ref}>
@@ -149,8 +184,14 @@ function UserPanel() {
           <span className="truncate">{me?.custom_status || (me ? STATUS_LABEL[me.status] : '')}</span>
         </span>
       </button>
-      <button className="icon-btn" aria-label="Microfone" data-tip="Microfone" onClick={soon}><Mic size={18} /></button>
-      <button className="icon-btn" aria-label="Áudio" data-tip="Áudio" onClick={soon}><Headphones size={18} /></button>
+      <button className={`icon-btn ${call.muted || call.deafened ? 'danger-on' : ''}`} aria-label={call.muted ? 'Ativar microfone' : 'Silenciar microfone'}
+        data-tip={call.muted ? 'Ativar microfone' : 'Silenciar'} onClick={() => voice.toggleMute()}>
+        {call.muted || call.deafened ? <MicOff size={18} /> : <Mic size={18} />}
+      </button>
+      <button className={`icon-btn ${call.deafened ? 'danger-on' : ''}`} aria-label={call.deafened ? 'Ativar áudio' : 'Desativar áudio'}
+        data-tip={call.deafened ? 'Ativar áudio' : 'Desativar áudio'} onClick={() => voice.toggleDeafen()}>
+        {call.deafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
+      </button>
       <button className="icon-btn" aria-label="Configurações" data-tip="Configurações" onClick={() => setSettingsOpen(true)}><Settings size={18} /></button>
 
       {open && me && (
