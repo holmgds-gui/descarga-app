@@ -25,7 +25,7 @@ create table if not exists public.profiles (
 
 -- cria o perfil automaticamente quando alguém se cadastra
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = '' as $$
 declare
   base text;
   candidate text;
@@ -97,12 +97,12 @@ create index if not exists messages_channel_created on public.messages(channel_i
 
 -- ---------- FUNÇÕES AUXILIARES ----------
 create or replace function public.is_member(s uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.server_members where server_id = s and user_id = auth.uid());
 $$;
 
 create or replace function public.shares_server(other uuid)
-returns boolean language sql stable security definer set search_path = public as $$
+returns boolean language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from public.server_members a
     join public.server_members b on a.server_id = b.server_id
@@ -112,7 +112,7 @@ $$;
 
 -- quando um servidor é criado: dono vira membro + canais padrão
 create or replace function public.handle_new_server()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   insert into public.server_members (server_id, user_id) values (new.id, new.owner_id);
   insert into public.channels (server_id, name, type, category, position) values
@@ -129,10 +129,11 @@ create trigger on_server_created
 
 -- entrar num servidor pelo código de convite
 create or replace function public.join_server(code text)
-returns public.servers language plpgsql security definer set search_path = public as $$
+returns public.servers language plpgsql security definer set search_path = '' as $$
 declare s public.servers;
 begin
   select * into s from public.servers where invite_code = code;
+  if auth.uid() is null then raise exception 'Faça login primeiro'; end if;
   if s.id is null then raise exception 'Convite inválido'; end if;
   insert into public.server_members (server_id, user_id) values (s.id, auth.uid())
   on conflict do nothing;
@@ -189,6 +190,26 @@ create policy "editar a própria mensagem" on public.messages for update
 create policy "apagar a própria mensagem" on public.messages for delete
   using (author_id = auth.uid());
 
+-- ---------- PERMISSÕES POR COLUNA ----------
+-- quem edita só consegue mudar os campos certos (não dá para trocar id, dono, autor, canal…)
+revoke update on public.profiles from anon, authenticated;
+grant update (username, display_name, avatar_url, banner_url, accent_color, bio, pronouns,
+  birthday, city, links, status, custom_status) on public.profiles to authenticated;
+revoke update on public.messages from anon, authenticated;
+grant update (content, edited_at) on public.messages to authenticated;
+revoke update on public.servers from anon, authenticated;
+grant update (name, icon_url) on public.servers to authenticated;
+
+-- funções internas: só o banco chama; join_server só para quem está logado
+revoke execute on function public.handle_new_user()   from public, anon, authenticated;
+revoke execute on function public.handle_new_server() from public, anon, authenticated;
+revoke execute on function public.join_server(text)   from public, anon;
+grant  execute on function public.join_server(text)   to authenticated;
+revoke execute on function public.is_member(uuid)     from public, anon;
+grant  execute on function public.is_member(uuid)     to authenticated;
+revoke execute on function public.shares_server(uuid) from public, anon;
+grant  execute on function public.shares_server(uuid) to authenticated;
+
 -- ---------- TEMPO REAL ----------
 alter table public.messages replica identity full;
 alter publication supabase_realtime add table public.messages, public.channels, public.server_members, public.profiles;
@@ -198,8 +219,7 @@ insert into storage.buckets (id, name, public, file_size_limit)
 values ('media', 'media', true, 10485760)
 on conflict (id) do nothing;
 
-create policy "qualquer um vê mídia" on storage.objects for select
-  using (bucket_id = 'media');
+-- o bucket é público: as imagens abrem pelo link, mas ninguém consegue listar os arquivos
 create policy "enviar na própria pasta" on storage.objects for insert
   with check (bucket_id = 'media' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "trocar na própria pasta" on storage.objects for update

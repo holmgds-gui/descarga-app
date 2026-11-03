@@ -66,7 +66,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const blob = await compressImage(file, kind)
       const ext = blob.type === 'image/gif' ? 'gif' : 'webp'
       const path = `${me}/${kind}-${Date.now()}.${ext}`
-      must(await sb.storage.from('media').upload(path, blob, { contentType: blob.type, upsert: true }))
+      must(await sb.storage.from('media').upload(path, blob, { contentType: blob.type, upsert: false }))
       return sb.storage.from('media').getPublicUrl(path).data.publicUrl
     },
 
