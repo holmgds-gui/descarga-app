@@ -1,7 +1,8 @@
 import { locale, t } from './i18n'
 import { Fragment, type ReactNode } from 'react'
+import { useApp } from '../state'
 
-/** Formatação simples e segura: **negrito**, *itálico*, __sublinhado__, ~~riscado~~, `código`, ```bloco``` e links. */
+/** Formatação simples e segura: **negrito**, *itálico*, __sublinhado__, ~~riscado~~, `código`, ```bloco```, links e emojis do servidor. */
 export function renderMessage(text: string): ReactNode {
   const blocks = text.split(/```/)
   return blocks.map((part, i) =>
@@ -16,7 +17,7 @@ export function renderMessage(text: string): ReactNode {
 }
 
 const TOKEN =
-  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\n]+\*)|(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])|((?<![\w.@])@[a-z0-9_.]{2,32})/g
+  /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(__[^_\n]+__)|(~~[^~\n]+~~)|(\*[^*\n]+\*)|(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])|((?<![\w.@])@[a-z0-9_.]{2,32})|(<:[a-z0-9_]{2,32}:[0-9a-f-]{8,36}>)/g
 
 function renderInline(text: string): ReactNode[] {
   const out: ReactNode[] = []
@@ -38,10 +39,27 @@ function renderInline(text: string): ReactNode[] {
         </a>,
       )
     else if (m[7]) out.push(<span key={k++} className="mention">{t}</span>)
+    else if (m[8]) out.push(<CustomEmoji key={k++} token={t} />)
     last = idx + t.length
   }
   if (last < text.length) out.push(text.slice(last))
   return out
+}
+
+/** emoji próprio de servidor (<:nome:id>); quem não está no servidor vê :nome: */
+export function CustomEmoji({ token, size }: { token: string; size?: number }) {
+  const { emojiById } = useApp()
+  const [, name, id] = token.match(/^<:([a-z0-9_]{2,32}):([0-9a-f-]{8,36})>$/) ?? []
+  const e = id ? emojiById.get(id) : undefined
+  if (!e) return <span className="emoji-missing">:{name}:</span>
+  return <img className="custom-emoji" src={e.url} alt={`:${e.name}:`} title={`:${e.name}:`} draggable={false}
+    style={size ? { width: size, height: size } : undefined} />
+}
+
+/** mostra um emoji comum ou um do servidor */
+export function EmojiGlyph({ value, size }: { value: string; size?: number }) {
+  if (value.startsWith('<:')) return <CustomEmoji token={value} size={size} />
+  return <span className="emoji-glyph" style={size ? { fontSize: size } : undefined}>{value}</span>
 }
 
 // formatadores no idioma atual (recriados quando o idioma muda)

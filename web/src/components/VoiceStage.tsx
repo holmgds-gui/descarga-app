@@ -31,10 +31,12 @@ interface Tile {
   mine: boolean
 }
 
-export function VoiceStage({ channel }: { channel: Channel }) {
+export function VoiceStage({ channel, embedded = false }: { channel: Channel; embedded?: boolean }) {
   const call = useVoice()
   const { profiles, userId, ensureProfiles } = useApp()
-  const present = useVoicePresence(channel.server_id).filter((m) => m.channelId === channel.id)
+  // nas conversas diretas, a sala de presença é a própria conversa
+  const roomId = channel.server_id ?? channel.id
+  const present = useVoicePresence(roomId).filter((m) => m.channelId === channel.id)
   const joined = call.channelId === channel.id && call.status !== 'idle'
   const [focus, setFocus] = useState<string | null>(null)
   const [qualityOpen, setQualityOpen] = useState(false)
@@ -60,7 +62,7 @@ export function VoiceStage({ channel }: { channel: Channel }) {
             <p className="muted">{tr('Ninguém está na call ainda.')}</p>
           )}
           <button className="btn btn-success btn-lg" disabled={call.status === 'connecting' || present.length >= MAX_IN_CALL}
-            onClick={() => void voice.join(channel.id, channel.server_id, userId)}>
+            onClick={() => void voice.join(channel.id, roomId, userId)}>
             <PhoneCall size={18} /> {present.length >= MAX_IN_CALL ? tr('Call cheia') : tr('Entrar na call')}
           </button>
           <p className="muted small">{tr('Chamadas direto entre os aparelhos • até {n} pessoas • grátis', { n: MAX_IN_CALL })}</p>
@@ -170,9 +172,11 @@ export function VoiceStage({ channel }: { channel: Channel }) {
   const ptt = call.settings.inputMode === 'ptt'
 
   return (
-    <section className="chat voice-stage">
-      <ChatHeader icon={<Volume2 size={22} />} title={channel.name}
-        topic={tr('{n} de {max} na call', { n: call.members.length, max: MAX_IN_CALL })} />
+    <section className={`chat voice-stage ${embedded ? 'embedded' : ''}`}>
+      {!embedded && (
+        <ChatHeader icon={<Volume2 size={22} />} title={channel.name}
+          topic={tr('{n} de {max} na call', { n: call.members.length, max: MAX_IN_CALL })} />
+      )}
       <div className={`stage ${focusTile ? 'has-focus' : ''}`}>
         {focusTile && <div className="stage-focus">{renderTile(focusTile, true)}</div>}
         <div className={`stage-grid ${focusTile ? 'strip' : ''} n${Math.min(rest.length, 6)}`}>

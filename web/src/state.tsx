@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
-import type { Channel, Profile, Server } from './lib/types'
+import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji } from './lib/types'
 import { local } from './lib/storage'
 import { customTheme, themeById } from './lib/themes'
 
@@ -31,6 +31,22 @@ interface AppState {
   activeChannelId: string | null
   setActiveChannelId: (id: string) => void
   memberIds: string[]
+  // ---- amigos e conversas diretas ----
+  friendships: Friendship[]
+  refreshFriends: () => Promise<void>
+  dms: DmChannel[]
+  refreshDms: () => Promise<void>
+  /** conversa direta aberta no Início (null = página de amigos) */
+  activeDmId: string | null
+  setActiveDmId: (id: string | null) => void
+  /** abre (ou cria) a conversa com essas pessoas e mostra na tela */
+  openDmWith: (userIds: string[], groupTitle?: string | null) => Promise<void>
+  unreadDms: Set<string>
+  hideDm: (id: string) => void
+  hiddenDms: Record<string, string>
+  // ---- emojis dos servidores ----
+  emojis: ServerEmoji[]
+  emojiById: Map<string, ServerEmoji>
   appearance: Appearance
   setAppearance: (a: Partial<Appearance>) => void
   openProfile: (userId: string, anchor?: DOMRect) => void
@@ -90,13 +106,37 @@ export function applyAppearance(a: Appearance) {
 }
 
 const lastChannelKey = (serverId: string) => `descarga-ultimo-canal-${serverId}`
+export const SERVER_KEY = 'descarga-ultimo-servidor'
+export const DM_KEY = 'descarga-ultima-dm'
+/** valor guardado quando a pessoa está no Início */
+export const HOME = '@inicio'
+const SEEN_KEY = 'descarga-dm-visto'
+const HIDDEN_KEY = 'descarga-dm-escondidas'
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    return { ...fallback, ...JSON.parse(local.get(key) ?? '{}') }
+  } catch {
+    return fallback
+  }
+}
 
 export function AppProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({})
   const [servers, setServers] = useState<Server[]>([])
-  const [activeServerId, setActiveServerIdRaw] = useState<string | null>(
-    () => local.get('descarga-ultimo-servidor'),
-  )
+  const [activeServerId, setActiveServerIdRaw] = useState<string | null>(() => {
+    const v = local.get(SERVER_KEY)
+    return v === HOME ? null : v
+  })
+  // na primeira vez (nada guardado) abre o primeiro servidor, se tiver
+  const firstLoad = useRef(local.get(SERVER_KEY) === null)
+  const [friendships, setFriendships] = useState<Friendship[]>([])
+  const [dms, setDms] = useState<DmChannel[]>([])
+  const [dmsLoaded, setDmsLoaded] = useState(false)
+  const [activeDmId, setActiveDmIdRaw] = useState<string | null>(() => local.get(DM_KEY))
+  const [seen, setSeen] = useState<Record<string, string>>(() => readJson(SEEN_KEY, {}))
+  const [hiddenDms, setHidden] = useState<Record<string, string>>(() => readJson(HIDDEN_KEY, {}))
+  const [emojis, setEmojis] = useState<ServerEmoji[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [activeChannelId, setActiveChannelIdRaw] = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>([])
@@ -142,7 +182,16 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const refreshServers = useCallback(async () => {
     const list = await backend.listServers()
     setServers(list)
-    setActiveServerIdRaw((cur) => (cur && list.some((s) => s.id === cur) ? cur : (list[0]?.id ?? null)))
+    setActiveServerIdRaw((cur) => {
+      if (cur === null) {
+        const pick = firstLoad.current ? (list[0]?.id ?? null) : null
+        firstLoad.current = false
+        return pick
+      }
+      firstLoad.current = false
+      // saiu do servidor (ou ele foi apagado): volta para o Início
+      return list.some((s) => s.id === cur) ? cur : null
+    })
   }, [])
 
   useEffect(() => {
@@ -152,8 +201,122 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   const setActiveServerId = useCallback((id: string | null) => {
     setActiveServerIdRaw(id)
-    if (id) local.set('descarga-ultimo-servidor', id)
+    firstLoad.current = false
+    local.set(SERVER_KEY, id ?? HOME)
   }, [])
+
+  // ---- amigos ----
+  const refreshFriends = useCallback(async () => {
+    setFriendships(await backend.listFriendships())
+  }, [])
+  useEffect(() => {
+    void refreshFriends()
+    return backend.onFriendshipsChange(() => void refreshFriends())
+  }, [refreshFriends])
+
+  // ---- conversas diretas ----
+  const refreshDms = useCallback(async () => {
+    try {
+      setDms(await backend.listDms())
+    } finally {
+      setDmsLoaded(true)
+    }
+  }, [])
+  useEffect(() => {
+    void refreshDms()
+    return backend.onDmsChange(() => void refreshDms())
+  }, [refreshDms])
+
+  const setActiveDmId = useCallback((id: string | null) => {
+    setActiveDmIdRaw(id)
+    if (id) local.set(DM_KEY, id)
+    else local.remove(DM_KEY)
+    setActiveServerIdRaw(null)
+    firstLoad.current = false
+    local.set(SERVER_KEY, HOME)
+    setMobilePane('chat')
+    if (id)
+      setHidden((h) => {
+        if (!h[id]) return h
+        const next = { ...h }
+        delete next[id]
+        local.set(HIDDEN_KEY, JSON.stringify(next))
+        return next
+      })
+  }, [])
+
+  // a conversa aberta some (saiu do grupo): volta para os amigos
+  useEffect(() => {
+    if (dmsLoaded && activeDmId && !dms.some((d) => d.id === activeDmId)) {
+      setActiveDmIdRaw(null)
+      local.remove(DM_KEY)
+    }
+  }, [dms, dmsLoaded, activeDmId])
+
+  // a conversa aberta conta como lida
+  const viewingDm = activeServerId === null ? activeDmId : null
+  useEffect(() => {
+    if (!viewingDm) return
+    const d = dms.find((x) => x.id === viewingDm)
+    const at = d?.last_message_at ?? d?.created_at
+    if (!at) return
+    setSeen((prev) => {
+      if (prev[viewingDm] && prev[viewingDm] >= at) return prev
+      const next = { ...prev, [viewingDm]: at }
+      local.set(SEEN_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [viewingDm, dms])
+
+  const unreadDms = useMemo(() => {
+    const out = new Set<string>()
+    for (const d of dms) {
+      if (d.id === viewingDm || !d.last_message_at) continue
+      const mark = seen[d.id] ?? d.reads[userId] ?? null
+      if (!mark || d.last_message_at > mark) out.add(d.id)
+    }
+    return out
+  }, [dms, seen, viewingDm, userId])
+
+  const hideDm = useCallback((id: string) => {
+    setHidden((h) => {
+      const next = { ...h, [id]: new Date().toISOString() }
+      local.set(HIDDEN_KEY, JSON.stringify(next))
+      return next
+    })
+    setActiveDmIdRaw((cur) => (cur === id ? null : cur))
+  }, [])
+
+  const openDmWith = useCallback(
+    async (userIds: string[], groupTitle?: string | null) => {
+      const id = await backend.openDm(userIds, groupTitle)
+      await refreshDms()
+      setActiveDmId(id)
+    },
+    [refreshDms, setActiveDmId],
+  )
+
+  // perfis de amigos e de quem está nas conversas
+  useEffect(() => {
+    const ids = [
+      ...friendships.flatMap((f) => [f.requester, f.addressee]),
+      ...dms.flatMap((d) => d.member_ids),
+    ]
+    if (ids.length) ensureProfiles(ids)
+  }, [friendships, dms, ensureProfiles])
+
+  // ---- emojis próprios dos servidores ----
+  useEffect(() => {
+    if (!servers.length) {
+      setEmojis([])
+      return
+    }
+    const ids = servers.map((s) => s.id)
+    const load = () => void backend.listServerEmojis(ids).then(setEmojis).catch(() => undefined)
+    load()
+    return backend.onEmojisChange(load)
+  }, [servers])
+  const emojiById = useMemo(() => new Map(emojis.map((e) => [e.id, e])), [emojis])
 
   // ---- canais e membros do servidor ativo ----
   useEffect(() => {
@@ -224,6 +387,18 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       activeChannelId,
       setActiveChannelId,
       memberIds,
+      friendships,
+      refreshFriends,
+      dms,
+      refreshDms,
+      activeDmId,
+      setActiveDmId,
+      openDmWith,
+      unreadDms,
+      hideDm,
+      hiddenDms,
+      emojis,
+      emojiById,
       appearance,
       setAppearance,
       openProfile: (uid, anchor) => setProfileView({ userId: uid, anchor }),
@@ -242,7 +417,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       question,
     }),
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
-      activeChannelId, setActiveChannelId, memberIds, appearance, setAppearance, profileView, settingsOpen,
+      activeChannelId, setActiveChannelId, memberIds, friendships, refreshFriends, dms, refreshDms, activeDmId,
+      setActiveDmId, openDmWith, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
       mobilePane, toast, toastMsg, question],
   )
 

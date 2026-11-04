@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react'
-import { Camera, Copy, Hash, Volume2 } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Camera, Copy, Hash, ImagePlus, Trash2, Volume2 } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { ChannelType, Server } from '../lib/types'
+import type { ChannelType, Server, ServerEmoji } from '../lib/types'
 import { useApp } from '../state'
 import { Modal } from './Modal'
 import { t } from '../lib/i18n'
@@ -206,6 +206,97 @@ export function CreateChannelModal({
           <button className="btn btn-primary">{t('Criar canal')}</button>
         </div>
       </form>
+    </Modal>
+  )
+}
+
+const MAX_EMOJIS = 50
+
+/** Emojis próprios do servidor (o dono adiciona e apaga). */
+export function EmojiManagerModal({ server, onClose }: { server: Server; onClose: () => void }) {
+  const { toast, ask } = useApp()
+  const [list, setList] = useState<ServerEmoji[]>([])
+  const [name, setName] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const load = () => void backend.listServerEmojis([server.id]).then(setList).catch(() => undefined)
+    load()
+    return backend.onEmojisChange(load)
+  }, [server.id])
+
+  const pick = (f: File | undefined) => {
+    if (!f) return
+    if (!f.type.startsWith('image/')) return setError(t('Escolha um arquivo de imagem.'))
+    setError(null)
+    setFile(f)
+    setPreview(URL.createObjectURL(f))
+    if (!name) setName(f.name.replace(/\.[^.]+$/, '').toLowerCase().normalize('NFD').replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32))
+  }
+
+  const clean = name.toLowerCase().replace(/[^a-z0-9_]/g, '')
+  const valid = /^[a-z0-9_]{2,32}$/.test(clean)
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!file || !valid) return
+    setBusy(true)
+    setError(null)
+    try {
+      const em = await backend.addServerEmoji(server.id, clean, file)
+      setList((prev) => [...prev.filter((x) => x.id !== em.id), em].sort((a, b) => a.name.localeCompare(b.name)))
+      setName('')
+      setFile(null)
+      setPreview(null)
+      toast(t('Emoji :{nome}: adicionado', { nome: clean }))
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (em: ServerEmoji) => {
+    const ok = await ask({ title: t('Apagar emoji'), message: t('Apagar o emoji :{nome}:? Ele some das mensagens antigas também.', { nome: em.name }), confirmLabel: t('Apagar'), danger: true })
+    if (!ok) return
+    try {
+      await backend.deleteServerEmoji(em.id)
+      setList((prev) => prev.filter((x) => x.id !== em.id))
+    } catch (err) {
+      toast((err as Error).message)
+    }
+  }
+
+  return (
+    <Modal title={t('Emojis do servidor')} subtitle={t('Quem está no servidor pode usar estes emojis em qualquer conversa. Até {n} emojis.', { n: MAX_EMOJIS })} onClose={onClose} wide>
+      <form className="emoji-upload" onSubmit={add}>
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
+        <button type="button" className="emoji-upload-pick" onClick={() => fileRef.current?.click()} aria-label={t('Escolher imagem do emoji')}>
+          {preview ? <img src={preview} alt="" /> : <ImagePlus size={26} />}
+        </button>
+        <label className="flex-1">
+          {t('Nome do emoji')}
+          <input value={name} maxLength={32} onChange={(e) => setName(e.target.value)} placeholder="ex.: descarga_feliz" />
+          <span className="muted small">{t('Só letras sem acento, números e _ (de 2 a 32).')}</span>
+        </label>
+        <button className="btn btn-primary" disabled={!file || !valid || busy || list.length >= MAX_EMOJIS}>{t('Enviar emoji')}</button>
+      </form>
+      {error && <p className="error-text small" role="alert">{error}</p>}
+      <h3 className="field-label">{t('{n} de {max} emojis', { n: list.length, max: MAX_EMOJIS })}</h3>
+      <div className="emoji-admin-list">
+        {!list.length && <p className="muted small">{t('Nenhum emoji ainda. Envie uma imagem quadrada (PNG, GIF ou WebP) para começar.')}</p>}
+        {list.map((em) => (
+          <div key={em.id} className="emoji-admin-row">
+            <img src={em.url} alt="" />
+            <span className="truncate">:{em.name}:</span>
+            <button className="icon-btn tiny danger" aria-label={t('Apagar :{nome}:', { nome: em.name })} onClick={() => void remove(em)}><Trash2 size={16} /></button>
+          </div>
+        ))}
+      </div>
     </Modal>
   )
 }

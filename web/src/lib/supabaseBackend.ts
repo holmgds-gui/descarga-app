@@ -1,5 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Backend, Channel, ChannelType, Message, PresenceEntry, Profile, ProfilePatch, RealtimeRoom, Server } from './types'
+import type {
+  Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
+  ServerEmoji,
+} from './types'
 import { compressImage } from './image'
 import { getLang, t } from './i18n'
 
@@ -205,12 +208,12 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       return rows.reverse()
     },
 
-    async sendMessage(channelId, content, replyTo) {
+    async sendMessage(channelId, content, replyTo, attachments = []) {
       const me = await uid()
       return must(
         await sb
           .from('messages')
-          .insert({ channel_id: channelId, author_id: me, content, reply_to: replyTo })
+          .insert({ channel_id: channelId, author_id: me, content, reply_to: replyTo, attachments })
           .select()
           .single(),
       ) as Message
@@ -245,6 +248,173 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         )
         .subscribe()
       return () => void sb.removeChannel(ch)
+    },
+
+    // ---------- amigos ----------
+    async listFriendships() {
+      return must(await sb.from('friendships').select('*').order('created_at', { ascending: false })) as Friendship[]
+    },
+
+    async sendFriendRequest(username) {
+      const r = await sb.rpc('send_friend_request', { uname: username.replace(/^@/, '') })
+      if (r.error) throw new Error(friendError(r.error.message))
+    },
+
+    async acceptFriend(id) {
+      must(await sb.from('friendships').update({ status: 'accepted' }).eq('id', id))
+    },
+
+    async removeFriendship(id) {
+      must(await sb.from('friendships').delete().eq('id', id))
+    },
+
+    onFriendshipsChange(cb) {
+      const ch = sb
+        .channel('friendships-' + crypto.randomUUID())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => cb())
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    // ---------- mensagens diretas ----------
+    async listDms() {
+      const me = await uid()
+      const mine = must(
+        await sb.from('channel_members').select('channel_id, channels(*)').eq('user_id', me!),
+      ) as unknown as { channel_id: string; channels: Channel & Partial<DmChannel> }[]
+      const ids = mine.map((m) => m.channel_id)
+      if (!ids.length) return []
+      const members = must(
+        await sb.from('channel_members').select('channel_id, user_id, last_read_at, joined_at').in('channel_id', ids),
+      ) as { channel_id: string; user_id: string; last_read_at: string | null; joined_at: string }[]
+      return mine
+        .filter((m) => m.channels)
+        .map((m) => {
+          const list = members.filter((x) => x.channel_id === m.channel_id).sort((a, b) => a.joined_at.localeCompare(b.joined_at))
+          return {
+            ...(m.channels as DmChannel),
+            member_ids: list.map((x) => x.user_id),
+            reads: Object.fromEntries(list.map((x) => [x.user_id, x.last_read_at])),
+          }
+        })
+        .sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at))
+    },
+
+    async openDm(userIds, groupTitle = null) {
+      const r = await sb.rpc('open_dm', { user_ids: userIds, group_title: groupTitle })
+      if (r.error) throw new Error(friendError(r.error.message))
+      return (r.data as Channel).id
+    },
+
+    async addToGroup(channelId, userIds) {
+      const r = await sb.rpc('add_to_group', { c: channelId, user_ids: userIds })
+      if (r.error) throw new Error(friendError(r.error.message))
+    },
+
+    async renameGroup(channelId, title) {
+      must(await sb.from('channels').update({ title: title.trim() || null }).eq('id', channelId))
+    },
+
+    async leaveDm(channelId) {
+      const me = await uid()
+      must(await sb.from('channel_members').delete().eq('channel_id', channelId).eq('user_id', me!))
+    },
+
+    async markRead(channelId) {
+      await sb.rpc('mark_read', { c: channelId })
+    },
+
+    onDmsChange(cb) {
+      const ch = sb
+        .channel('dms-' + crypto.randomUUID())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => cb())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'channels', filter: 'type=eq.dm' }, () => cb())
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    // ---------- reações e emojis ----------
+    async listReactions(channelId, messageIds) {
+      if (!messageIds.length) return []
+      return must(
+        await sb.from('message_reactions').select('message_id, user_id, emoji, channel_id').eq('channel_id', channelId).in('message_id', messageIds),
+      ) as Reaction[]
+    },
+
+    async addReaction(messageId, channelId, emoji) {
+      const me = await uid()
+      const r = await sb.from('message_reactions').insert({ message_id: messageId, channel_id: channelId, emoji, user_id: me })
+      if (r.error && r.error.code !== '23505') throw new Error(r.error.message)
+    },
+
+    async removeReaction(messageId, emoji) {
+      const me = await uid()
+      must(await sb.from('message_reactions').delete().eq('message_id', messageId).eq('emoji', emoji).eq('user_id', me!))
+    },
+
+    subscribeReactions(channelId, h) {
+      const ch = sb
+        .channel(`reactions-${channelId}-${crypto.randomUUID()}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_reactions', filter: `channel_id=eq.${channelId}` },
+          (p) => h.onAdd(p.new as Reaction))
+        // o Supabase não filtra DELETE por coluna; quem recebe confere o canal
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_reactions' }, (p) => {
+          const r = p.old as Reaction
+          if (r.channel_id === channelId) h.onRemove(r)
+        })
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    async listServerEmojis(serverIds) {
+      if (!serverIds.length) return []
+      return must(await sb.from('server_emojis').select('id, server_id, name, url').in('server_id', serverIds).order('name')) as ServerEmoji[]
+    },
+
+    async addServerEmoji(serverId, name, file) {
+      const me = await uid()
+      const blob = await compressImage(file, 'emoji')
+      const ext = blob.type === 'image/gif' ? 'gif' : 'webp'
+      const path = `${me}/emoji-${Date.now()}.${ext}`
+      must(await sb.storage.from('media').upload(path, blob, { contentType: blob.type, upsert: false }))
+      const url = sb.storage.from('media').getPublicUrl(path).data.publicUrl
+      const r = await sb.from('server_emojis').insert({ server_id: serverId, name, url, created_by: me }).select('id, server_id, name, url').single()
+      if (r.error?.code === '23505') throw new Error(t('Já existe um emoji com esse nome neste servidor.'))
+      return must(r) as ServerEmoji
+    },
+
+    async deleteServerEmoji(id) {
+      must(await sb.from('server_emojis').delete().eq('id', id))
+    },
+
+    onEmojisChange(cb) {
+      const ch = sb
+        .channel('emojis-' + crypto.randomUUID())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'server_emojis' }, () => cb())
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    // ---------- arquivos ----------
+    maxUploadBytes: 50 * 1024 * 1024,
+
+    async uploadAttachment(channelId, file, meta) {
+      const me = await uid()
+      if (file.size > 50 * 1024 * 1024) throw new Error(t('O arquivo passa de 50 MB.'))
+      const safe = (meta.name || 'arquivo').normalize('NFD').replace(/[^\w.-]+/g, '_').slice(-80)
+      const path = `${channelId}/${me}/${crypto.randomUUID()}-${safe}`
+      const type = meta.type || file.type || 'application/octet-stream'
+      const r = await sb.storage.from('anexos').upload(path, file, { contentType: type, upsert: false })
+      if (r.error) throw new Error(/exceeded|too large|payload/i.test(r.error.message) ? t('O arquivo passa de 50 MB.') : r.error.message)
+      return { ...meta, path, size: file.size, type }
+    },
+
+    async attachmentUrls(paths) {
+      if (!paths.length) return {}
+      const r = await sb.storage.from('anexos').createSignedUrls(paths, 60 * 60 * 6)
+      const out: Record<string, string> = {}
+      for (const x of r.data ?? []) if (x.signedUrl && x.path) out[x.path] = x.signedUrl
+      return out
     },
 
     openRoom(topic) {
@@ -339,6 +509,17 @@ function createSupabaseRoom(sb: SupabaseClient, topic: string): RealtimeRoom {
       void sb.removeChannel(ch)
     },
   }
+}
+
+function friendError(msg: string) {
+  if (msg.includes('nao_encontrado')) return t('Não achamos ninguém com esse nome de usuário.')
+  if (msg.includes('voce_mesmo')) return t('Você não pode adicionar a si mesmo.')
+  if (msg.includes('ja_amigos')) return t('Vocês já são amigos.')
+  if (msg.includes('ja_enviado')) return t('Você já mandou um pedido para essa pessoa.')
+  if (msg.includes('grupo_grande')) return t('Um grupo pode ter no máximo 10 pessoas.')
+  if (msg.includes('sem_permissao')) return t('Você só pode conversar com amigos ou pessoas dos seus servidores.')
+  if (msg.includes('sem_pessoas')) return t('Escolha pelo menos uma pessoa.')
+  return traduzErro(msg)
 }
 
 const DEFAULT_ICE: RTCIceServer[] = [

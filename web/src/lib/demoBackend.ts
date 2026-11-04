@@ -3,21 +3,31 @@
  * Serve para ver e testar o Descarga antes de configurar o Supabase.
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
-import type { Backend, Channel, Message, PresenceEntry, Profile, RealtimeRoom, Server } from './types'
+import type {
+  Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji,
+} from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
 import { t } from './i18n'
 
 interface DemoUser { id: string; email: string; password: string }
 interface Member { server_id: string; user_id: string; joined_at: string }
+interface DmMember { channel_id: string; user_id: string; joined_at: string; last_read_at: string | null }
+type DemoChannel = Channel & Partial<Pick<DmChannel, 'is_group' | 'title' | 'owner_id' | 'last_message_at'>>
 interface DB {
   users: DemoUser[]
   profiles: Profile[]
   servers: Server[]
   members: Member[]
-  channels: Channel[]
+  channels: DemoChannel[]
   messages: Message[]
+  friendships: Friendship[]
+  dmMembers: DmMember[]
+  reactions: Reaction[]
+  emojis: ServerEmoji[]
 }
+const FILE_PREFIX = 'descarga-demo-arquivo-'
+const DEMO_MAX_FILE = 1024 * 1024
 
 const KEY = 'descarga-demo-db'
 const SESSION = 'descarga-demo-session'
@@ -29,6 +39,8 @@ type Event =
   | { type: 'msg-delete'; payload: string }
   | { type: 'servers' | 'channels' | 'auth' }
   | { type: 'profile'; payload: Profile }
+  | { type: 'friends' | 'dms' | 'emojis' }
+  | { type: 'reaction-add' | 'reaction-remove'; payload: Reaction }
 
 const now = () => new Date().toISOString()
 const id = () => crypto.randomUUID()
@@ -38,7 +50,7 @@ function blankProfile(uid: string, username: string): Profile {
   return {
     id: uid, username, display_name: username, avatar_url: null, banner_url: null,
     accent_color: '#7B3FE4', bio: '', pronouns: '', birthday: null, city: '', links: [],
-    status: 'online', custom_status: '', created_at: now(),
+    status: 'online', custom_status: '', read_receipts: true, created_at: now(),
   }
 }
 
@@ -62,7 +74,7 @@ function seed(): DB {
   const geral = ch('geral', 'text', 'Canais de texto', 0, 'Conversa livre — sejam bem-vindos!')
   const novidades = ch('novidades', 'text', 'Canais de texto', 1, 'O que está chegando no Descarga')
   const msg = (channel: Channel, content: string, minAgo: number): Message => ({
-    id: id(), channel_id: channel.id, author_id: BOT_ID, content, reply_to: null, edited_at: null, created_at: at(minAgo),
+    id: id(), channel_id: channel.id, author_id: BOT_ID, content, reply_to: null, edited_at: null, created_at: at(minAgo), attachments: [],
   })
   return {
     users: [],
@@ -74,8 +86,12 @@ function seed(): DB {
       msg(geral, 'Olá! Este é o **modo demonstração** do Descarga. Tudo fica salvo só neste navegador.', 30),
       msg(geral, 'Dica: abra outra aba, crie outra conta e converse com você mesmo para testar o tempo real.', 29),
       msg(geral, 'Clique no seu avatar lá embaixo ⚙️ para personalizar o perfil: cor, foto, banner, bio, links…', 28),
-      msg(novidades, 'Etapa 1 ✅ servidores, canais, chat e perfil\nEtapa 2 🔜 voz, vídeo, tela com som e notificações\nEtapa 3 🔜 cargos, fóruns, eventos, DMs e extras', 20),
+      msg(novidades, 'Etapa 1 ✅ servidores, canais, chat e perfil\nEtapa 2 ✅ voz, vídeo, tela com som e notificações\nEtapa 3 🔜 amigos, DMs, reações, arquivos, cargos e extras', 20),
     ],
+    friendships: [],
+    dmMembers: [],
+    reactions: [],
+    emojis: [],
   }
 }
 
@@ -85,7 +101,17 @@ export function createDemoBackend(): Backend {
 
   const load = (): DB => {
     const raw = local.get(KEY)
-    if (raw) return JSON.parse(raw) as DB
+    if (raw) {
+      const db = JSON.parse(raw) as DB
+      // bancos de demonstração antigos não tinham estas listas
+      db.friendships ??= []
+      db.dmMembers ??= []
+      db.reactions ??= []
+      db.emojis ??= []
+      for (const m of db.messages) m.attachments ??= []
+      for (const p of db.profiles) p.read_receipts ??= true
+      return db
+    }
     const db = seed()
     local.set(KEY, JSON.stringify(db))
     return db
@@ -102,7 +128,20 @@ export function createDemoBackend(): Backend {
     localBus.dispatchEvent(new CustomEvent('e', { detail: e }))
   }
   const listen = (fn: (e: Event) => void) => {
-    const a = (m: MessageEvent) => fn(m.data as Event)
+    // a mensagem de outra aba pode chegar antes de o localStorage dela aparecer aqui:
+    // espera o aviso de "storage" (ou um instante) antes de reler os dados
+    const a = (m: MessageEvent) => {
+      let done = false
+      const run = () => {
+        if (done) return
+        done = true
+        window.removeEventListener('storage', onStorage)
+        fn(m.data as Event)
+      }
+      const onStorage = (s: StorageEvent) => s.key === KEY && run()
+      window.addEventListener('storage', onStorage)
+      window.setTimeout(run, 150)
+    }
     const b = (m: globalThis.Event) => fn((m as CustomEvent).detail as Event)
     bus.addEventListener('message', a)
     localBus.addEventListener('e', b)
@@ -311,14 +350,17 @@ export function createDemoBackend(): Backend {
       return all.slice(-50)
     },
 
-    async sendMessage(channelId, content, replyTo) {
+    async sendMessage(channelId, content, replyTo, attachments = []) {
       const db = load()
       const m: Message = {
-        id: id(), channel_id: channelId, author_id: me(), content, reply_to: replyTo, edited_at: null, created_at: now(),
+        id: id(), channel_id: channelId, author_id: me(), content, reply_to: replyTo, edited_at: null, created_at: now(), attachments,
       }
       db.messages.push(m)
+      const ch = db.channels.find((c) => c.id === channelId)
+      if (ch?.type === 'dm') ch.last_message_at = m.created_at
       save(db)
       emit({ type: 'msg-insert', payload: m })
+      if (ch?.type === 'dm') emit({ type: 'dms' })
       return m
     },
 
@@ -350,6 +392,195 @@ export function createDemoBackend(): Backend {
 
     openRoom(topic) {
       return createDemoRoom(topic)
+    },
+
+    // ---------- amigos ----------
+    async listFriendships() {
+      const uid = me()
+      return load().friendships.filter((f) => f.requester === uid || f.addressee === uid)
+    },
+    async sendFriendRequest(username) {
+      const db = load()
+      const uid = me()
+      const other = db.profiles.find((p) => p.username === username.trim().toLowerCase().replace(/^@/, ''))
+      if (!other) throw new Error(t('Não achamos ninguém com esse nome de usuário.'))
+      if (other.id === uid) throw new Error(t('Você não pode adicionar a si mesmo.'))
+      const f = db.friendships.find((x) => (x.requester === uid && x.addressee === other.id) || (x.addressee === uid && x.requester === other.id))
+      if (f?.status === 'accepted') throw new Error(t('Vocês já são amigos.'))
+      if (f && f.requester === uid) throw new Error(t('Você já mandou um pedido para essa pessoa.'))
+      if (f) f.status = 'accepted'
+      else db.friendships.push({ id: id(), requester: uid, addressee: other.id, status: 'pending', created_at: now() })
+      save(db)
+      emit({ type: 'friends' })
+    },
+    async acceptFriend(fid) {
+      const db = load()
+      const f = db.friendships.find((x) => x.id === fid && x.addressee === me())
+      if (f) f.status = 'accepted'
+      save(db)
+      emit({ type: 'friends' })
+    },
+    async removeFriendship(fid) {
+      const db = load()
+      const uid = me()
+      db.friendships = db.friendships.filter((x) => !(x.id === fid && (x.requester === uid || x.addressee === uid)))
+      save(db)
+      emit({ type: 'friends' })
+    },
+    onFriendshipsChange(cb) {
+      return listen((e) => e.type === 'friends' && cb())
+    },
+
+    // ---------- mensagens diretas ----------
+    async listDms() {
+      const db = load()
+      const uid = me()
+      const mine = new Set(db.dmMembers.filter((m) => m.user_id === uid).map((m) => m.channel_id))
+      return db.channels
+        .filter((c) => c.type === 'dm' && mine.has(c.id))
+        .map((c) => {
+          const list = db.dmMembers.filter((m) => m.channel_id === c.id)
+          return {
+            ...c, type: 'dm', is_group: !!c.is_group, title: c.title ?? null, owner_id: c.owner_id ?? null,
+            last_message_at: c.last_message_at ?? null, member_ids: list.map((m) => m.user_id),
+            reads: Object.fromEntries(list.map((m) => [m.user_id, m.last_read_at])),
+          } as DmChannel
+        })
+        .sort((a, b) => (b.last_message_at ?? b.created_at).localeCompare(a.last_message_at ?? a.created_at))
+    },
+    async openDm(userIds, groupTitle = null) {
+      const db = load()
+      const uid = me()
+      const others = [...new Set(userIds)].filter((x) => x !== uid)
+      if (!others.length) throw new Error(t('Escolha pelo menos uma pessoa.'))
+      if (others.length > 9) throw new Error(t('Um grupo pode ter no máximo 10 pessoas.'))
+      if (others.length === 1 && groupTitle == null) {
+        const existing = db.channels.find((c) => c.type === 'dm' && !c.is_group &&
+          db.dmMembers.some((m) => m.channel_id === c.id && m.user_id === uid) &&
+          db.dmMembers.some((m) => m.channel_id === c.id && m.user_id === others[0]))
+        if (existing) return existing.id
+      }
+      const isGroup = !(others.length === 1 && groupTitle == null)
+      const c: DemoChannel = {
+        id: id(), server_id: null, name: isGroup ? 'grupo' : 'dm', type: 'dm', category: '', topic: '', position: 0,
+        created_at: now(), is_group: isGroup, title: groupTitle?.trim() || null, owner_id: uid, last_message_at: null,
+      }
+      db.channels.push(c)
+      for (const u of [uid, ...others]) db.dmMembers.push({ channel_id: c.id, user_id: u, joined_at: now(), last_read_at: null })
+      save(db)
+      emit({ type: 'dms' })
+      return c.id
+    },
+    async addToGroup(channelId, userIds) {
+      const db = load()
+      const count = db.dmMembers.filter((m) => m.channel_id === channelId).length
+      if (count + userIds.length > 10) throw new Error(t('Um grupo pode ter no máximo 10 pessoas.'))
+      for (const u of userIds)
+        if (!db.dmMembers.some((m) => m.channel_id === channelId && m.user_id === u))
+          db.dmMembers.push({ channel_id: channelId, user_id: u, joined_at: now(), last_read_at: null })
+      save(db)
+      emit({ type: 'dms' })
+    },
+    async renameGroup(channelId, title) {
+      const db = load()
+      const c = db.channels.find((x) => x.id === channelId)
+      if (c) c.title = title.trim() || null
+      save(db)
+      emit({ type: 'dms' })
+    },
+    async leaveDm(channelId) {
+      const db = load()
+      const uid = me()
+      db.dmMembers = db.dmMembers.filter((m) => !(m.channel_id === channelId && m.user_id === uid))
+      save(db)
+      emit({ type: 'dms' })
+    },
+    async markRead(channelId) {
+      const db = load()
+      const uid = me()
+      if (!db.profiles.find((p) => p.id === uid)?.read_receipts) return
+      const m = db.dmMembers.find((x) => x.channel_id === channelId && x.user_id === uid)
+      if (!m) return
+      m.last_read_at = now()
+      save(db)
+      emit({ type: 'dms' })
+    },
+    onDmsChange(cb) {
+      return listen((e) => e.type === 'dms' && cb())
+    },
+
+    // ---------- reações e emojis ----------
+    async listReactions(channelId, messageIds) {
+      const ids = new Set(messageIds)
+      return load().reactions.filter((r) => r.channel_id === channelId && ids.has(r.message_id))
+    },
+    async addReaction(messageId, channelId, emoji) {
+      const db = load()
+      const r: Reaction = { message_id: messageId, channel_id: channelId, emoji, user_id: me() }
+      if (db.reactions.some((x) => x.message_id === messageId && x.user_id === r.user_id && x.emoji === emoji)) return
+      db.reactions.push(r)
+      save(db)
+      emit({ type: 'reaction-add', payload: r })
+    },
+    async removeReaction(messageId, emoji) {
+      const db = load()
+      const uid = me()
+      const r = db.reactions.find((x) => x.message_id === messageId && x.user_id === uid && x.emoji === emoji)
+      if (!r) return
+      db.reactions = db.reactions.filter((x) => x !== r)
+      save(db)
+      emit({ type: 'reaction-remove', payload: r })
+    },
+    subscribeReactions(channelId, h) {
+      return listen((e) => {
+        if (e.type === 'reaction-add' && e.payload.channel_id === channelId) h.onAdd(e.payload)
+        if (e.type === 'reaction-remove' && e.payload.channel_id === channelId) h.onRemove(e.payload)
+      })
+    },
+    async listServerEmojis(serverIds) {
+      const ids = new Set(serverIds)
+      return load().emojis.filter((e) => ids.has(e.server_id))
+    },
+    async addServerEmoji(serverId, name, file) {
+      const db = load()
+      if (db.emojis.some((e) => e.server_id === serverId && e.name === name)) throw new Error(t('Já existe um emoji com esse nome neste servidor.'))
+      const url = await blobToDataUrl(await compressImage(file, 'emoji'))
+      const e: ServerEmoji = { id: id(), server_id: serverId, name, url }
+      db.emojis.push(e)
+      save(db)
+      emit({ type: 'emojis' })
+      return e
+    },
+    async deleteServerEmoji(eid) {
+      const db = load()
+      db.emojis = db.emojis.filter((e) => e.id !== eid)
+      save(db)
+      emit({ type: 'emojis' })
+    },
+    onEmojisChange(cb) {
+      return listen((e) => e.type === 'emojis' && cb())
+    },
+
+    // ---------- arquivos (no modo demonstração, até 1 MB e só neste navegador) ----------
+    maxUploadBytes: DEMO_MAX_FILE,
+    async uploadAttachment(channelId, file, meta) {
+      if (file.size > DEMO_MAX_FILE) throw new Error(t('No modo demonstração, os arquivos podem ter até 1 MB.'))
+      const path = `${channelId}/${me()}/${id()}-${meta.name}`
+      const type = meta.type || file.type || 'application/octet-stream'
+      try {
+        local.set(FILE_PREFIX + path, await blobToDataUrl(file))
+      } catch {
+        throw new Error(t('O armazenamento do modo demonstração encheu. Use imagens menores.'))
+      }
+      return { ...meta, path, size: file.size, type } as Attachment
+    },
+    async attachmentUrls(paths) {
+      const out: Record<string, string> = {}
+      for (const p of paths) {
+        const v = local.get(FILE_PREFIX + p)
+        if (v) out[p] = v
+      }
+      return out
     },
 
     async authOptions() {

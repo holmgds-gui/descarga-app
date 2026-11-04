@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FriendsPage } from './Home'
 import { voice } from '../lib/voice/engine'
 import { useVoice } from '../lib/voice/hooks'
 import { useApp } from '../state'
@@ -14,7 +15,7 @@ import { local } from '../lib/storage'
 import { t } from '../lib/i18n'
 
 export function Shell() {
-  const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast } = useApp()
+  const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId } = useApp()
   const { error: voiceError } = useVoice()
   useEffect(() => {
     if (voiceError) {
@@ -24,6 +25,7 @@ export function Shell() {
   }, [voiceError, toast])
   const [membersOpen, setMembersOpen] = useState(() => local.get('descarga-membros') !== '0')
   const channel = channels.find((c) => c.id === activeChannelId)
+  const dm = !activeServerId && activeDmId ? dms.find((d) => d.id === activeDmId) : undefined
 
   const toggleMembers = () => {
     if (window.innerWidth < 1000) {
@@ -44,7 +46,11 @@ export function Shell() {
       </div>
       <div className="main-pane" onClick={() => mobilePane === 'nav' && setMobilePane('chat')}>
         {!activeServerId ? (
-          <Home />
+          dm ? (
+            <ChatView key={dm.id} channel={dm} dm={dm} membersOpen={membersOpen} onToggleMembers={toggleMembers} />
+          ) : (
+            <FriendsPage />
+          )
         ) : !channel ? (
           <EmptyServer />
         ) : channel.type === 'voice' ? (
@@ -56,6 +62,11 @@ export function Shell() {
       {activeServerId && channel?.type === 'text' && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
           <MemberList />
+        </div>
+      )}
+      {dm?.is_group && (membersOpen || mobilePane === 'members') && (
+        <div className="members-pane">
+          <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
         </div>
       )}
       {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
@@ -75,20 +86,6 @@ export function Shell() {
   )
 }
 
-function Home() {
-  const { me } = useApp()
-  return (
-    <section className="chat">
-      <ChatHeader icon={<img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={24} height={24} />} title={t('Início')} />
-      <div className="empty-state">
-        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={180} height={180} />
-        <h2>{t('E aí, {nome}!', { nome: me?.display_name || me?.username || '' })}</h2>
-        <p className="muted">{t('Escolha um servidor à esquerda, ou crie o seu no botão +.')}</p>
-        <p className="muted small">{t('Amigos e mensagens diretas chegam na etapa 3.')}</p>
-      </div>
-    </section>
-  )
-}
 
 function EmptyServer() {
   return (

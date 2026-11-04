@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Plus, Settings,
-  UserPlus, Video, Volume2, X,
+  Smile, UserPlus, Video, Volume2, X,
 } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
@@ -10,7 +10,8 @@ import { backend } from '../lib/backend'
 import type { Channel, Status } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
-import { CreateChannelModal, InviteModal } from './ServerModals'
+import { CreateChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
+import { HomeSidebar } from './Home'
 import { t } from '../lib/i18n'
 
 export function ChannelSidebar() {
@@ -18,7 +19,8 @@ export function ChannelSidebar() {
   const server = servers.find((s) => s.id === activeServerId)
   const [menuOpen, setMenuOpen] = useState(false)
   const [inviting, setInviting] = useState(false)
-  const [creating, setCreating] = useState<{ category: string; type: Channel['type'] } | null>(null)
+  const [creating, setCreating] = useState<{ category: string; type: 'text' | 'voice' } | null>(null)
+  const [emojiOpen, setEmojiOpen] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const isOwner = server?.owner_id === userId
   const inVoice = useVoicePresence(server?.id ?? null)
@@ -70,6 +72,11 @@ export function ChannelSidebar() {
                     {t('Criar canal')} <Plus size={16} />
                   </button>
                 )}
+                {isOwner && (
+                  <button className="dropdown-item" onClick={() => { setEmojiOpen(true); setMenuOpen(false) }}>
+                    {t('Emojis do servidor')} <Smile size={16} />
+                  </button>
+                )}
                 {!isOwner && (
                   <button className="dropdown-item danger" onClick={() => { setMenuOpen(false); void leave() }}>
                     {t('Sair do servidor')} <LogOut size={16} />
@@ -88,7 +95,7 @@ export function ChannelSidebar() {
                   </button>
                   {isOwner && (
                     <button className="icon-btn tiny" aria-label={t('Criar canal em {categoria}', { categoria: t(category) })} data-tip={t('Criar canal')}
-                      onClick={() => setCreating({ category, type: list[0]?.type ?? 'text' })}>
+                      onClick={() => setCreating({ category, type: list[0]?.type === 'voice' ? 'voice' : 'text' })}>
                       <Plus size={16} />
                     </button>
                   )}
@@ -134,17 +141,13 @@ export function ChannelSidebar() {
             ))}
           </div>
           {inviting && <InviteModal server={server} onClose={() => setInviting(false)} />}
+          {emojiOpen && <EmojiManagerModal server={server} onClose={() => setEmojiOpen(false)} />}
           {creating && (
             <CreateChannelModal serverId={server.id} defaultType={creating.type} defaultCategory={creating.category} onClose={() => setCreating(null)} />
           )}
         </>
       ) : (
-        <>
-          <div className="sidebar-header static">{t('Início')}</div>
-          <div className="channel-list">
-            <p className="muted small pad">{t('Amigos e mensagens diretas chegam na etapa 3. Por enquanto, escolha um servidor à esquerda.')}</p>
-          </div>
-        </>
+        <HomeSidebar />
       )}
       <VoiceConnectedPanel />
       <UserPanel />

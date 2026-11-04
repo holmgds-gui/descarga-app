@@ -1,5 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Cake, ExternalLink, MapPin, Pencil } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Cake, Check, Clock, ExternalLink, MapPin, MessageCircle, Pencil, UserPlus } from 'lucide-react'
+import { backend } from '../lib/backend'
+import { friendState } from './dm'
 import { formatBirthday, formatLongDate } from '../lib/format'
 import type { Profile } from '../lib/types'
 import { useApp } from '../state'
@@ -7,7 +9,7 @@ import { Avatar, STATUS_LABEL, displayName } from './Avatar'
 import { t } from '../lib/i18n'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
-export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?: () => void }) {
+export function ProfileCardBody({ profile, onEdit, actions }: { profile: Profile; onEdit?: () => void; actions?: ReactNode }) {
   const accent = profile.accent_color
   return (
     <div className="profile-card" style={{ ['--card-accent' as string]: accent }}>
@@ -33,6 +35,7 @@ export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?
         <p className="profile-status-line">
           {profile.custom_status || STATUS_LABEL[profile.status]}
         </p>
+        {actions}
 
         {profile.bio && (
           <section>
@@ -117,8 +120,54 @@ export function ProfilePopover() {
         <ProfileCardBody
           profile={profile}
           onEdit={profile.id === userId ? () => { closeProfile(); setSettingsOpen(true) } : undefined}
+          actions={profile.id !== userId ? <ProfileActions profile={profile} /> : undefined}
         />
       </div>
+    </div>
+  )
+}
+
+/** Botões do cartão de outra pessoa: mandar mensagem e amizade. */
+function ProfileActions({ profile }: { profile: Profile }) {
+  const { friendships, userId, openDmWith, closeProfile, toast, refreshFriends } = useApp()
+  const [busy, setBusy] = useState(false)
+  const state = friendState(friendships, userId, profile.id)
+  const run = async (fn: () => Promise<void>, msg?: string) => {
+    setBusy(true)
+    try {
+      await fn()
+      await refreshFriends()
+      if (msg) toast(msg)
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="profile-actions">
+      <button className="btn btn-primary btn-sm" disabled={busy}
+        onClick={() => void openDmWith([profile.id]).then(closeProfile).catch((err) => toast((err as Error).message))}>
+        <MessageCircle size={16} /> {t('Enviar mensagem')}
+      </button>
+      {state.kind === 'none' && (
+        <button className="btn btn-ghost btn-sm" disabled={busy}
+          onClick={() => void run(() => backend.sendFriendRequest(profile.username), t('Pedido de amizade enviado'))}>
+          <UserPlus size={16} /> {t('Adicionar amigo')}
+        </button>
+      )}
+      {state.kind === 'incoming' && (
+        <button className="btn btn-success btn-sm" disabled={busy}
+          onClick={() => void run(() => backend.acceptFriend(state.id), t('Agora vocês são amigos!'))}>
+          <Check size={16} /> {t('Aceitar pedido')}
+        </button>
+      )}
+      {state.kind === 'outgoing' && (
+        <span className="profile-chip"><Clock size={14} /> {t('Pedido enviado')}</span>
+      )}
+      {state.kind === 'friends' && (
+        <span className="profile-chip ok"><Check size={14} /> {t('Amigos')}</span>
+      )}
     </div>
   )
 }

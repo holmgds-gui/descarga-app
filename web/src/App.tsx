@@ -7,6 +7,7 @@ import { local, session } from './lib/storage'
 import { refreshPushSubscription } from './lib/push'
 import { isRecoveryLink } from './lib/authUrl'
 import { useLang } from './lib/i18n'
+import { DM_KEY, HOME, SERVER_KEY } from './state'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
@@ -25,15 +26,20 @@ export default function App() {
     const params = new URLSearchParams(location.search)
     const code = params.get('convite')
     if (code) session.set(INVITE_KEY, code)
-    // links das notificações: ?servidor=...&canal=...
+    // links das notificações: ?servidor=...&canal=... ou ?dm=...
     const srv = params.get('servidor')
     const ch = params.get('canal')
+    const dm = params.get('dm')
     if (srv) {
-      local.set('descarga-ultimo-servidor', srv)
+      local.set(SERVER_KEY, srv)
       if (ch) local.set(`descarga-ultimo-canal-${srv}`, ch)
     }
-    if (code || srv) {
-      ;['convite', 'servidor', 'canal'].forEach((k) => params.delete(k))
+    if (dm) {
+      local.set(SERVER_KEY, HOME)
+      local.set(DM_KEY, dm)
+    }
+    if (code || srv || dm) {
+      ;['convite', 'servidor', 'canal', 'dm'].forEach((k) => params.delete(k))
       const q = params.toString()
       history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
     }
@@ -55,7 +61,7 @@ export default function App() {
     session.remove(INVITE_KEY)
     void backend
       .joinServer(code)
-      .then((s) => local.set('descarga-ultimo-servidor', s.id))
+      .then((s) => local.set(SERVER_KEY, s.id))
       .catch(() => console.warn('Convite inválido ou expirado'))
   }, [userId])
 

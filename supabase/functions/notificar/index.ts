@@ -1,5 +1,6 @@
 // Descarga — envia notificações (menções, respostas e calls) para os aparelhos inscritos.
-// O app chama esta função depois de mandar uma mensagem com @ ou resposta, e quando alguém entra numa call.
+// O app chama esta função depois de mandar uma mensagem com @ ou resposta (ou qualquer mensagem numa conversa
+// direta), e quando alguém entra numa call.
 import webpush from 'npm:web-push@3.6.7'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -48,13 +49,37 @@ Deno.serve(async (req) => {
   if (body.type === 'message' && body.messageId) {
     const { data: msg } = await admin
       .from('messages')
-      .select('id, content, author_id, reply_to, channel_id, channels(name, server_id, servers(name))')
+      .select('id, content, author_id, reply_to, channel_id, attachments, channels(name, type, title, is_group, server_id)')
       .eq('id', body.messageId)
       .single()
     if (!msg || msg.author_id !== user.id) return json({ error: 'mensagem não encontrada' }, 404)
     // deno-lint-ignore no-explicit-any
     const ch = msg.channels as any
-    const serverId: string = ch.server_id
+    const serverId: string | null = ch.server_id
+    // deno-lint-ignore no-explicit-any
+    const files = (msg.attachments ?? []) as any[]
+    const preview = (lang: Lang) => {
+      if (msg.content) return msg.content.length > 140 ? msg.content.slice(0, 137) + '…' : msg.content
+      if (files.some((f) => f.voice)) return lang === 'en' ? '🎤 Voice message' : '🎤 Mensagem de voz'
+      if (files.some((f) => f.kind === 'image')) return lang === 'en' ? '🖼️ Image' : '🖼️ Imagem'
+      return lang === 'en' ? '📎 File' : '📎 Arquivo'
+    }
+
+    if (ch.type === 'dm') {
+      // conversa direta: avisa todo mundo da conversa
+      const { data: members } = await admin.from('channel_members').select('user_id').eq('channel_id', msg.channel_id)
+      const ids = (members ?? []).map((m) => m.user_id as string)
+      if (!ids.includes(user.id)) return json({ error: 'sem acesso' }, 403)
+      recipients = ids
+      const group = ch.is_group ? (ch.title || null) : null
+      payloadFor = (lang) => ({
+        title: ch.is_group ? `${myName} • ${group ?? (lang === 'en' ? 'Group' : 'Grupo')}` : myName,
+        body: preview(lang),
+        tag: `msg-${msg.channel_id}`,
+        url: `${appUrl}?dm=${msg.channel_id}`,
+        icon: me?.avatar_url ?? undefined,
+      })
+    } else {
 
     const { data: members } = await admin.from('server_members').select('user_id').eq('server_id', serverId)
     const memberIds = new Set((members ?? []).map((m) => m.user_id as string))
@@ -68,34 +93,46 @@ Deno.serve(async (req) => {
       const { data: parent } = await admin.from('messages').select('author_id').eq('id', msg.reply_to).single()
       if (parent && memberIds.has(parent.author_id)) recipients.push(parent.author_id)
     }
-    const text = msg.content.length > 140 ? msg.content.slice(0, 137) + '…' : msg.content
     payloadFor = (lang) => ({
       title: lang === 'en' ? `${myName} in #${ch.name}` : `${myName} em #${ch.name}`,
-      body: text,
+      body: preview(lang),
       tag: `msg-${msg.channel_id}`,
       url: `${appUrl}?servidor=${serverId}&canal=${msg.channel_id}`,
       icon: me?.avatar_url ?? undefined,
     })
+    }
   } else if (body.type === 'call' && body.channelId) {
     const { data: ch } = await admin
       .from('channels')
-      .select('id, name, type, server_id, servers(name)')
+      .select('id, name, type, server_id, is_group, title, servers(name)')
       .eq('id', body.channelId)
       .single()
-    if (!ch || ch.type !== 'voice') return json({ error: 'canal não encontrado' }, 404)
-    const { data: isMember } = await admin
-      .from('server_members').select('user_id').eq('server_id', ch.server_id).eq('user_id', user.id).maybeSingle()
-    if (!isMember) return json({ error: 'sem acesso' }, 403)
+    if (!ch || (ch.type !== 'voice' && ch.type !== 'dm')) return json({ error: 'canal não encontrado' }, 404)
+    const isDm = ch.type === 'dm'
+    let ids: string[]
+    if (isDm) {
+      const { data: members } = await admin.from('channel_members').select('user_id').eq('channel_id', ch.id)
+      ids = (members ?? []).map((m) => m.user_id as string)
+    } else {
+      const { data: members } = await admin.from('server_members').select('user_id').eq('server_id', ch.server_id)
+      ids = (members ?? []).map((m) => m.user_id as string)
+    }
+    if (!ids.includes(user.id)) return json({ error: 'sem acesso' }, 403)
 
     const { data: last } = await admin.from('call_notify_log').select('last_at').eq('channel_id', ch.id).maybeSingle()
     if (last && Date.now() - new Date(last.last_at).getTime() < CALL_COOLDOWN_MS) return json({ sent: 0, skipped: 'recente' })
     await admin.from('call_notify_log').upsert({ channel_id: ch.id, last_at: new Date().toISOString() })
 
-    const { data: members } = await admin.from('server_members').select('user_id').eq('server_id', ch.server_id)
-    recipients = (members ?? []).map((m) => m.user_id as string)
+    recipients = ids
     // deno-lint-ignore no-explicit-any
     const serverName = (ch.servers as any)?.name ?? ''
-    payloadFor = (lang) => ({
+    payloadFor = (lang) => isDm ? ({
+      title: lang === 'en' ? `${myName} is calling you 📞` : `${myName} está te ligando 📞`,
+      body: ch.is_group ? (ch.title || (lang === 'en' ? 'Group call' : 'Call em grupo')) : (lang === 'en' ? 'Tap to join' : 'Toque para entrar'),
+      tag: `call-${ch.id}`,
+      url: `${appUrl}?dm=${ch.id}`,
+      icon: me?.avatar_url ?? undefined,
+    }) : ({
       title: lang === 'en' ? `${myName} joined the call 🔊` : `${myName} entrou na call 🔊`,
       body: `${ch.name} • ${serverName}`,
       tag: `call-${ch.id}`,

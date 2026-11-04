@@ -341,7 +341,36 @@ function AccountTab() {
         <p><strong>{tr('Usuário:')}</strong> {me?.username}</p>
         <p><strong>{tr('Servidor:')}</strong> {backend.mode === 'demo' ? tr('Modo demonstração (dados só neste navegador)') : tr('Supabase (na nuvem)')}</p>
       </div>
+      <PrivacySettings />
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>
     </>
+  )
+}
+
+function PrivacySettings() {
+  const { me, upsertProfile, toast } = useApp()
+  const [busy, setBusy] = useState(false)
+  if (!me) return null
+  const toggle = async (v: boolean) => {
+    setBusy(true)
+    try {
+      upsertProfile(await backend.updateProfile({ read_receipts: v }))
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="settings-form privacy-box">
+      <h3 className="field-label">{tr('Privacidade')}</h3>
+      <label className="toggle-row">
+        <span>
+          <strong>{tr('Confirmação de leitura')}</strong>
+          <span className="muted small">{tr('Mostra "Visto" nas conversas diretas. Se desligar, ninguém vê quando você leu, e você também não vê dos outros.')}</span>
+        </span>
+        <input type="checkbox" className="toggle" disabled={busy} checked={me.read_receipts !== false} onChange={(e) => void toggle(e.target.checked)} />
+      </label>
+    </div>
   )
 }
