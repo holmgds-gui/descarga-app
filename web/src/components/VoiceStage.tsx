@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   HeadphoneOff, Headphones, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
-  RefreshCw, Volume2, VolumeX, WifiOff,
+  RefreshCw, Server, Volume2, VolumeX, Wifi, WifiOff,
 } from 'lucide-react'
 import { MAX_IN_CALL, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
@@ -121,6 +121,12 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           <span className="truncate">{t.kind === 'screen' ? tr('Tela de {nome}', { nome: displayName(p) }) : displayName(p)}</span>
           {t.kind === 'person' && (t.member.deafened ? <HeadphoneOff size={14} /> : t.member.muted && <MicOff size={14} />)}
           {broken && <span className="tile-conn"><WifiOff size={14} /></span>}
+          {!t.mine && t.kind === 'person' && conn === 'connected' && call.media[t.member.sessionId]?.route && (
+            <span className={`route-badge ${call.media[t.member.sessionId]?.route}`}
+              data-tip={call.media[t.member.sessionId]?.route === 'relay' ? tr('Conectado pelo servidor de apoio') : tr('Conectado direto')}>
+              {call.media[t.member.sessionId]?.route === 'relay' ? <Server size={12} /> : <Wifi size={12} />}
+            </span>
+          )}
         </div>
         {(broken || pending) && t.kind === 'person' && (
           <div className={`tile-status ${broken ? 'bad' : ''}`} onClick={(e) => e.stopPropagation()}>

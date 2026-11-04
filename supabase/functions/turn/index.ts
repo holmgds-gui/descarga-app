@@ -1,6 +1,9 @@
-// Descarga — entrega servidores de apoio (TURN da Cloudflare) para as calls.
+// Descarga — entrega o servidor de apoio (TURN) para as calls, só para quem está logado.
 // A conexão direta continua sendo a primeira opção; o TURN só é usado quando ela falha.
-// Segredos: CF_TURN_API_TOKEN (segredo da função). O ID da chave fica em CF_TURN_KEY_ID ou na tabela app_secrets.
+// Configuração:
+//   app_secrets.turn_urls      → endereços, separados por vírgula (ex.: relay1.expressturn.com:3478)
+//   app_secrets.turn_username  → usuário do painel do provedor
+//   segredo TURN_PASSWORD      → senha do painel (segredo da função, ninguém do app lê direto)
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const cors = {
@@ -21,30 +24,19 @@ Deno.serve(async (req) => {
   const { data: auth } = await admin.auth.getUser(token)
   if (!auth?.user) return json({ error: 'faça login' }, 401)
 
-  const apiToken = Deno.env.get('CF_TURN_API_TOKEN')
-  let keyId = Deno.env.get('CF_TURN_KEY_ID')
-  if (!keyId) {
-    const { data } = await admin.from('app_secrets').select('value').eq('name', 'cf_turn_key_id').maybeSingle()
-    keyId = data?.value
+  const { data: rows } = await admin.from('app_secrets').select('name, value').in('name', ['turn_urls', 'turn_username'])
+  const cfg = Object.fromEntries((rows ?? []).map((r) => [r.name, r.value]))
+  const password = Deno.env.get('TURN_PASSWORD')
+  if (!cfg.turn_urls || !cfg.turn_username || !password) return json({ iceServers: [], configured: false })
+
+  // cada endereço vira as variações UDP, TCP e (se houver porta 443/5349) TLS
+  const urls: string[] = []
+  for (const raw of String(cfg.turn_urls).split(',').map((s) => s.trim()).filter(Boolean)) {
+    const host = raw.replace(/^turns?:/, '').replace(/\?.*$/, '')
+    const port = host.includes(':') ? host.split(':').pop() : '3478'
+    const base = host.includes(':') ? host : `${host}:3478`
+    if (port === '443' || port === '5349') urls.push(`turns:${base}?transport=tcp`)
+    else urls.push(`turn:${base}?transport=udp`, `turn:${base}?transport=tcp`)
   }
-  if (!apiToken || !keyId) return json({ iceServers: [], configured: false })
-
-  const res = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ttl: 6 * 60 * 60 }),
-  })
-  if (!res.ok) return json({ iceServers: [], configured: true, error: `cloudflare ${res.status}` })
-
-  const body = await res.json()
-  const raw = Array.isArray(body.iceServers) ? body.iceServers : [body.iceServers]
-  // navegadores costumam bloquear a porta 53; tira essas opções para não atrasar a conexão
-  const iceServers = raw
-    .filter(Boolean)
-    .map((s: { urls: string | string[]; username?: string; credential?: string }) => ({
-      ...s,
-      urls: (Array.isArray(s.urls) ? s.urls : [s.urls]).filter((u) => !/:53(\?|$)/.test(u)),
-    }))
-    .filter((s: { urls: string[] }) => s.urls.length)
-  return json({ iceServers, configured: true })
+  return json({ iceServers: [{ urls, username: cfg.turn_username, credential: password }], configured: true })
 })

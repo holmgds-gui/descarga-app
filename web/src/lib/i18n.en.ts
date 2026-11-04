@@ -186,6 +186,8 @@ export const EN: Record<string, string> = {
   'Tela de {nome}': "{nome}'s screen",
   'Sem conexão de áudio com essa pessoa': 'No audio connection with this person',
   'Tentar de novo': 'Try again',
+  'Conectado pelo servidor de apoio': 'Connected through the relay server',
+  'Conectado direto': 'Connected directly',
   'Volume de {nome}': "{nome}'s volume",
   'Volume': 'Volume',
   'Tela cheia': 'Full screen',

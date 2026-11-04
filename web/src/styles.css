@@ -666,3 +666,5 @@ button.avatar { cursor: pointer; }
 .lang-switch button { font-size: .8em; font-weight: 700; color: var(--text-3); padding: 4px 10px; border-radius: 99px; }
 .lang-switch button:hover { color: var(--text); }
 .lang-switch button.on { color: var(--text); background: var(--bg-active); }
+.route-badge { display: inline-flex; align-items: center; padding: 2px; border-radius: 4px; color: var(--success); }
+.route-badge.relay { color: #8FDDF2; }

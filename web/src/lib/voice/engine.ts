@@ -38,6 +38,8 @@ export interface RemoteMedia {
   camera: MediaStream | null
   screen: MediaStream | null
   connection: RTCPeerConnectionState
+  /** por onde a conexão passou: direto entre aparelhos ou pelo servidor de apoio */
+  route: 'direct' | 'relay' | null
 }
 
 export interface VoiceSnapshot {
@@ -70,6 +72,7 @@ interface Peer {
   senders: Map<string, RTCRtpSender>
   audio: Map<string, { el: HTMLAudioElement; source: MediaStreamAudioSourceNode; analyser: AnalyserNode }>
   watchdog: number | undefined
+  route: 'direct' | 'relay' | null
   camera: MediaStream | null
   screen: MediaStream | null
 }
@@ -270,7 +273,7 @@ class VoiceEngine {
     const pc = new RTCPeerConnection({ iceServers: this.ice })
     const peer: Peer = {
       sessionId: remote, pc, polite: this.snap.sessionId > remote, makingOffer: false, ignoreOffer: false,
-      kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined,
+      kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined, route: null,
     }
     this.peers.set(remote, peer)
 
@@ -367,9 +370,35 @@ class VoiceEngine {
     this.set({
       media: {
         ...this.snap.media,
-        [peer.sessionId]: { camera: live(peer.camera), screen: live(peer.screen), connection: peer.pc.connectionState },
+        [peer.sessionId]: { camera: live(peer.camera), screen: live(peer.screen), connection: peer.pc.connectionState, route: peer.route },
       },
     })
+    if (peer.pc.connectionState === 'connected') void this.detectRoute(peer)
+  }
+
+  /** Descobre se a conexão com essa pessoa está indo direto ou pelo servidor de apoio. */
+  private async detectRoute(peer: Peer) {
+    try {
+      const stats = await peer.pc.getStats()
+      let pairId: string | undefined
+      stats.forEach((r) => {
+        if (r.type === 'transport' && r.selectedCandidatePairId) pairId = r.selectedCandidatePairId
+      })
+      let pair: RTCIceCandidatePairStats | undefined
+      stats.forEach((r) => {
+        if (r.type === 'candidate-pair' && (r.id === pairId || (!pairId && r.state === 'succeeded' && r.nominated))) pair = r
+      })
+      if (!pair) return
+      const local = stats.get(pair.localCandidateId)
+      const remote = stats.get(pair.remoteCandidateId)
+      const route = local?.candidateType === 'relay' || remote?.candidateType === 'relay' ? 'relay' : 'direct'
+      if (route !== peer.route) {
+        peer.route = route
+        this.updateMedia(peer)
+      }
+    } catch {
+      /* alguns navegadores não informam */
+    }
   }
 
   /**
