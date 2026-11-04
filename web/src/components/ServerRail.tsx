@@ -5,12 +5,13 @@ import { ServerCreateModal } from './ServerModals'
 import { t } from '../lib/i18n'
 
 export function ServerRail() {
-  const { servers, activeServerId, setActiveServerId } = useApp()
+  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId } = useApp()
+  const homeBadge = unreadDms.size + friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const [creating, setCreating] = useState(false)
 
   return (
     <nav className="server-rail" aria-label={t('Servidores')}>
-      <RailItem label={t('Início')} active={activeServerId === null} onClick={() => setActiveServerId(null)}>
+      <RailItem label={t('Início')} active={activeServerId === null} onClick={() => setActiveServerId(null)} badge={homeBadge}>
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="rail-home" />
       </RailItem>
       <div className="rail-sep" />
@@ -46,12 +47,14 @@ function RailItem({
   onClick,
   children,
   variant,
+  badge = 0,
 }: {
   label: string
   active?: boolean
   onClick: () => void
   children: ReactNode
   variant?: 'add'
+  badge?: number
 }) {
   return (
     <div className={`rail-item ${active ? 'active' : ''}`}>
@@ -65,6 +68,7 @@ function RailItem({
       >
         {children}
       </button>
+      {badge > 0 && <span className="rail-badge" aria-label={t('{n} novidades', { n: badge })}>{badge > 99 ? '99+' : badge}</span>}
     </div>
   )
 }

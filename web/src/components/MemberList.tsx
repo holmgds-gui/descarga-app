@@ -4,10 +4,11 @@ import { Avatar, displayName } from './Avatar'
 import type { Profile } from '../lib/types'
 import { locale, t } from '../lib/i18n'
 
-export function MemberList() {
+export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string | null } = {}) {
   const { memberIds, profiles, servers, activeServerId, openProfile } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
-  const members = memberIds.map((id) => profiles[id]).filter((p): p is Profile => !!p)
+  const owner = ids ? ownerId : server?.owner_id
+  const members = (ids ?? memberIds).map((id) => profiles[id]).filter((p): p is Profile => !!p)
   const sort = (a: Profile, b: Profile) => displayName(a).localeCompare(displayName(b), locale())
   const online = members.filter((m) => m.status !== 'invisible').sort(sort)
   const offline = members.filter((m) => m.status === 'invisible').sort(sort)
@@ -19,7 +20,7 @@ export function MemberList() {
       <span className="member-text">
         <span className="member-name truncate" style={{ color: p.status === 'invisible' ? undefined : p.accent_color }}>
           {displayName(p)}
-          {server?.owner_id === p.id && <Crown size={14} className="crown" aria-label={t('Dono do servidor')} />}
+          {owner === p.id && <Crown size={14} className="crown" aria-label={ids ? t('Dono do grupo') : t('Dono do servidor')} />}
         </span>
         {p.custom_status && <span className="member-status truncate">{p.custom_status}</span>}
       </span>

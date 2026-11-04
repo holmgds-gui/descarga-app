@@ -1,5 +1,5 @@
 import { t } from './i18n'
-const MAX: Record<string, number> = { avatar: 512, banner: 1200, server: 256 }
+const MAX: Record<string, number> = { avatar: 512, banner: 1200, server: 256, emoji: 128 }
 
 /** Reduz a imagem para economizar espaço. GIFs ficam como estão (para manter a animação). */
 export async function compressImage(file: File, kind: string): Promise<Blob> {
