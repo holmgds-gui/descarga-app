@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { AuthScreen } from './components/AuthScreen'
+import { AuthScreen, NewPasswordScreen } from './components/AuthScreen'
 import { Shell } from './components/Shell'
 import { backend } from './lib/backend'
 import { AppProvider } from './state'
 import { local, session } from './lib/storage'
 import { refreshPushSubscription } from './lib/push'
+import { isRecoveryLink } from './lib/authUrl'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
 export default function App() {
   const [userId, setUserId] = useState<string | null | undefined>(undefined)
+  const [recovering, setRecovering] = useState(isRecoveryLink)
+  useEffect(() => backend.onPasswordRecovery(() => setRecovering(true)), [])
 
   // guarda o código de convite do link (?convite=...) até a pessoa entrar
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function App() {
     )
 
   if (!userId) return <AuthScreen />
+  if (recovering) return <NewPasswordScreen onDone={() => setRecovering(false)} />
 
   return (
     <AppProvider key={userId} userId={userId}>

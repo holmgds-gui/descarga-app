@@ -27,17 +27,54 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async signUp(email, password, username) {
       const r = await sb.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(),
         password,
         options: { data: { username, display_name: username }, emailRedirectTo: appUrl() },
       })
       if (r.error) throw new Error(traduzErro(r.error.message))
+      // o Supabase não avisa quando o e-mail já existe: devolve um usuário "vazio" sem identidades
+      if (r.data.user && (r.data.user.identities?.length ?? 0) === 0) {
+        throw new Error('Esse e-mail já tem conta. Use "Entrar" ou "Esqueci minha senha".')
+      }
       return { needsConfirmation: !r.data.session }
     },
 
     async signIn(email, password) {
-      const r = await sb.auth.signInWithPassword({ email, password })
+      const r = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
       if (r.error) throw new Error(traduzErro(r.error.message))
+    },
+
+    async authOptions() {
+      try {
+        const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anonKey } })
+        const s = await res.json()
+        return { google: !!s?.external?.google }
+      } catch {
+        return { google: false }
+      }
+    },
+
+    async resetPassword(email) {
+      const r = await sb.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: appUrl() })
+      if (r.error) throw new Error(traduzErro(r.error.message))
+    },
+
+    async updatePassword(password) {
+      const r = await sb.auth.updateUser({ password })
+      if (r.error) throw new Error(traduzErro(r.error.message))
+    },
+
+    onPasswordRecovery(cb) {
+      const { data } = sb.auth.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY') cb()
+      })
+      return () => data.subscription.unsubscribe()
+    },
+
+    async getIceServers() {
+      const r = await sb.functions.invoke('turn', { body: {} })
+      const list = (r.data?.iceServers ?? []) as RTCIceServer[]
+      return list.length ? [...DEFAULT_ICE, ...list] : DEFAULT_ICE
     },
 
     async signInWithGoogle() {
@@ -303,13 +340,23 @@ function createSupabaseRoom(sb: SupabaseClient, topic: string): RealtimeRoom {
   }
 }
 
+const DEFAULT_ICE: RTCIceServer[] = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
+]
+
 function traduzErro(msg: string): string {
   const m = msg.toLowerCase()
-  if (m.includes('invalid login')) return 'E-mail ou senha incorretos.'
-  if (m.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.'
-  if (m.includes('password should be')) return 'A senha precisa ter pelo menos 6 caracteres.'
-  if (m.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar (veja sua caixa de entrada).'
-  if (m.includes('provider is not enabled')) return 'O login com Google ainda não foi ativado no Supabase.'
+  if (m.includes('invalid login')) return 'E-mail ou senha incorretos. Se esqueceu a senha, use "Esqueci minha senha".'
+  if (m.includes('already registered')) return 'Esse e-mail já tem conta. Use "Entrar".'
+  if (m.includes('password should be') || m.includes('weak')) return 'A senha precisa ter pelo menos 6 caracteres.'
+  if (m.includes('same password') || m.includes('should be different')) return 'A nova senha precisa ser diferente da antiga.'
+  if (m.includes('email not confirmed')) return 'Esse e-mail ainda não foi confirmado. Peça para o dono do Descarga liberar sua conta.'
+  if (m.includes('provider is not enabled')) return 'O login com Google ainda não está disponível. Use e-mail e senha.'
+  if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes'))
+    return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.'
+  if (m.includes('invalid') && m.includes('email')) return 'Esse e-mail não parece válido. Confira se digitou certo.'
+  if (m.includes('signups not allowed')) return 'Os cadastros estão fechados no momento.'
+  if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique sua internet.'
   return msg
 }
 

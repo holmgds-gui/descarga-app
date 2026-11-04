@@ -13,9 +13,13 @@ import { playJoin, playLeave, playMute, playUnmute, setSoundVolume, soundContext
 
 export const MAX_IN_CALL = 6
 
-const ICE: RTCConfiguration = {
-  iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }],
-}
+const DEFAULT_ICE: RTCIceServer[] = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
+]
+
+/** O navegador deste aparelho consegue compartilhar a tela? (celulares não conseguem) */
+export const canShareScreen = () =>
+  typeof navigator !== 'undefined' && !!navigator.mediaDevices && 'getDisplayMedia' in navigator.mediaDevices
 
 type StreamKind = 'mic' | 'camera' | 'screen'
 
@@ -51,6 +55,8 @@ export interface VoiceSnapshot {
   screenQuality: ScreenQuality
   settings: VoiceSettings
   error: string | null
+  /** o navegador bloqueou o som automático: precisa de um clique para liberar */
+  audioBlocked: boolean
 }
 
 interface Peer {
@@ -61,7 +67,8 @@ interface Peer {
   ignoreOffer: boolean
   kinds: Record<string, StreamKind>
   senders: Map<string, RTCRtpSender>
-  audio: Map<string, { el: HTMLAudioElement; source: MediaStreamAudioSourceNode; gain: GainNode; analyser: AnalyserNode }>
+  audio: Map<string, { el: HTMLAudioElement; source: MediaStreamAudioSourceNode; analyser: AnalyserNode }>
+  watchdog: number | undefined
   camera: MediaStream | null
   screen: MediaStream | null
 }
@@ -79,6 +86,7 @@ class VoiceEngine {
   private userId = ''
   private firstSync = true
   private knownMembers = new Set<string>()
+  private ice: RTCIceServer[] = DEFAULT_ICE
 
   constructor() {
     const settings = loadVoiceSettings()
@@ -86,7 +94,7 @@ class VoiceEngine {
     this.snap = {
       status: 'idle', channelId: null, serverId: null, sessionId: crypto.randomUUID(), members: [], media: {},
       speaking: {}, muted: false, deafened: false, pttActive: false, camera: null, screen: null,
-      screenQuality: settings.screenQuality, settings, error: null,
+      screenQuality: settings.screenQuality, settings, error: null, audioBlocked: false,
     }
     window.addEventListener('keydown', this.onKey)
     window.addEventListener('keyup', this.onKey)
@@ -126,6 +134,7 @@ class VoiceEngine {
     }
     this.setupMicAnalyser()
     this.applyMicState()
+    this.ice = await backend.getIceServers().catch(() => DEFAULT_ICE)
 
     const room = backend.openRoom(`call:${channelId}`)
     this.callRoom = room
@@ -198,7 +207,7 @@ class VoiceEngine {
     if (withSound) playLeave()
     this.set({
       status: 'idle', channelId: null, serverId: null, members: [], media: {}, speaking: {}, camera: null,
-      screen: null, pttActive: false,
+      screen: null, pttActive: false, audioBlocked: false,
     })
   }
 
@@ -257,10 +266,10 @@ class VoiceEngine {
   }
 
   private createPeer(remote: string): Peer {
-    const pc = new RTCPeerConnection(ICE)
+    const pc = new RTCPeerConnection({ iceServers: this.ice })
     const peer: Peer = {
       sessionId: remote, pc, polite: this.snap.sessionId > remote, makingOffer: false, ignoreOffer: false,
-      kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null,
+      kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined,
     }
     this.peers.set(remote, peer)
 
@@ -283,7 +292,11 @@ class VoiceEngine {
     }
     pc.onicecandidate = (e) => e.candidate && this.sendSignal(remote, { candidate: e.candidate.toJSON() })
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') pc.restartIce()
+      const st = pc.connectionState
+      window.clearTimeout(peer.watchdog)
+      if (st === 'failed') pc.restartIce()
+      // caiu por um instante (troca de Wi-Fi, 4G oscilando): tenta reconectar se não voltar sozinho
+      if (st === 'disconnected') peer.watchdog = window.setTimeout(() => pc.connectionState === 'disconnected' && pc.restartIce(), 4000)
       this.updateMedia(peer)
     }
     pc.ontrack = (e) => {
@@ -334,10 +347,12 @@ class VoiceEngine {
   private closePeer(id: string) {
     const peer = this.peers.get(id)
     if (!peer) return
+    window.clearTimeout(peer.watchdog)
     for (const a of peer.audio.values()) {
       a.source.disconnect()
-      a.gain.disconnect()
+      a.el.pause()
       a.el.srcObject = null
+      a.el.remove()
     }
     peer.pc.close()
     this.peers.delete(id)
@@ -356,23 +371,45 @@ class VoiceEngine {
     })
   }
 
+  /**
+   * O som de cada pessoa toca num elemento <audio> de verdade (funciona em PC, Android e iPhone).
+   * O Web Audio só é usado para medir quem está falando.
+   */
   private playRemoteAudio(peer: Peer, stream: MediaStream, kind: StreamKind) {
     if (peer.audio.has(stream.id)) return
-    const ctx = soundContext()
-    // o Chrome só libera o áudio remoto para o Web Audio se ele estiver ligado a um elemento <audio>
-    const el = new Audio()
+    const el = document.createElement('audio')
+    el.autoplay = true
+    el.setAttribute('playsinline', '')
+    el.dataset.descarga = kind
     el.srcObject = stream
-    el.muted = true
-    void el.play().catch(() => undefined)
+    el.style.display = 'none'
+    document.body.appendChild(el)
+    const ctx = soundContext()
     const source = ctx.createMediaStreamSource(stream)
-    const gain = ctx.createGain()
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 512
     source.connect(analyser)
-    source.connect(gain).connect(ctx.destination)
-    peer.audio.set(stream.id, { el, source, gain, analyser })
-    void kind
+    peer.audio.set(stream.id, { el, source, analyser })
     this.applyVolumes()
+    this.tryPlay(el)
+  }
+
+  private tryPlay(el: HTMLAudioElement) {
+    void el.play().catch((err: DOMException) => {
+      if (err?.name === 'NotAllowedError') this.set({ audioBlocked: true })
+    })
+  }
+
+  /** Chamado num clique quando o navegador bloqueou o som automático. */
+  unlockAudio() {
+    void soundContext().resume()
+    for (const peer of this.peers.values()) for (const a of peer.audio.values()) this.tryPlay(a.el)
+    this.set({ audioBlocked: false })
+  }
+
+  /** Tenta reconectar com uma pessoa que não conectou. */
+  retryPeer(sessionId: string) {
+    this.peers.get(sessionId)?.pc.restartIce()
   }
 
   /** Ajusta qualidade da tela (resolução, fps e taxa de bits) em cada conexão. */
@@ -449,8 +486,11 @@ class VoiceEngine {
   private applyVolumes() {
     for (const peer of this.peers.values()) {
       const member = this.snap.members.find((m) => m.sessionId === peer.sessionId)
-      const v = this.snap.deafened ? 0 : (this.snap.settings.volumes[member?.userId ?? ''] ?? 1)
-      for (const a of peer.audio.values()) a.gain.gain.value = v
+      const v = Math.max(0, Math.min(1, this.snap.settings.volumes[member?.userId ?? ''] ?? 1))
+      for (const a of peer.audio.values()) {
+        a.el.volume = v
+        a.el.muted = this.snap.deafened
+      }
     }
   }
 
@@ -531,30 +571,55 @@ class VoiceEngine {
   }
 
   async startScreen(quality: ScreenQuality) {
-    if (!navigator.mediaDevices?.getDisplayMedia) {
+    if (!canShareScreen()) {
       this.set({ error: 'Este aparelho não permite compartilhar a tela pelo navegador. Use um computador.' })
       return
     }
     const preset = SCREEN_PRESETS[quality]
-    let screen: MediaStream
-    try {
-      screen = await navigator.mediaDevices.getDisplayMedia({
+    // do pedido mais completo ao mais simples: cada navegador aceita opções diferentes
+    const attempts: DisplayMediaStreamOptions[] = [
+      {
         video: { height: { ideal: preset.height }, frameRate: { ideal: preset.fps, max: preset.fps } },
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-        // opções do Chrome: incluir o som do computador e não mostrar a própria aba
+        // opções do Chrome/Edge: incluir o som do computador e não mostrar a própria aba
         ...({ systemAudio: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'include' } as object),
-      })
-    } catch {
-      return // a pessoa cancelou
+      },
+      { video: { frameRate: { ideal: preset.fps } }, audio: true },
+      { video: true },
+    ]
+    let screen: MediaStream | null = null
+    for (const opts of attempts) {
+      try {
+        screen = await navigator.mediaDevices.getDisplayMedia(opts)
+        break
+      } catch (err) {
+        const e = err as DOMException
+        if (e?.name === 'NotAllowedError' || e?.name === 'AbortError') {
+          // "by system" = o computador bloqueou (no Mac: Ajustes > Privacidade > Gravação de Tela)
+          if (/system/i.test(e.message)) {
+            this.set({ error: 'O computador bloqueou a gravação de tela. Libere o navegador nas configurações de privacidade do sistema.' })
+          }
+          return // a pessoa cancelou
+        }
+        // opção não suportada por este navegador: tenta a próxima
+      }
+    }
+    if (!screen) {
+      this.set({ error: 'Não deu para compartilhar a tela neste navegador. Tente pelo Chrome ou Edge no computador.' })
+      return
     }
     if (this.snap.screen) this.stopScreen()
     const video = screen.getVideoTracks()[0]
     video.contentHint = quality === '1080p60' ? 'motion' : 'detail'
     video.onended = () => this.stopScreen()
+    if (!screen.getAudioTracks().length) {
+      this.set({ error: 'Tela compartilhada sem som. Para enviar o som, marque "Compartilhar áudio" na janela do navegador.' })
+    }
     this.set({ screen, screenQuality: quality })
     this.updateSettings({ screenQuality: quality })
     this.addStream(screen)
     void this.publishState()
+    window.setTimeout(() => this.peers.forEach((p) => this.tuneSenders(p)), 1500)
   }
 
   stopScreen() {

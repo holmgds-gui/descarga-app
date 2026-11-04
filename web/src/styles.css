@@ -638,3 +638,18 @@ button.avatar { cursor: pointer; }
   .mention-pop { left: 8px; right: 8px; }
 }
 .field .choice-list { font-size: calc(1em / .75); text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 600; }
+
+/* correções: estado da conexão, som bloqueado */
+.tile-status {
+  position: absolute; left: 8px; right: 8px; top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: .8em; font-weight: 700; flex-wrap: wrap; cursor: default;
+}
+.tile-status.bad { background: color-mix(in srgb, var(--danger) 70%, black); }
+.tile-status .btn { height: 26px; background: rgba(255,255,255,.15); color: #fff; }
+.tile-waiting { text-align: center; padding: 12px; }
+.audio-unlock {
+  margin: 0 12px 4px; padding: 10px 14px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--warning); color: #241800; font-weight: 800;
+}
+.voice-panel-actions:has(> :only-child) { grid-template-columns: 1fr; }
+.forgot-link { align-self: flex-end; font-size: .85em; margin-top: -8px; }

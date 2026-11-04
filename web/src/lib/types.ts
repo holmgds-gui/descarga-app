@@ -93,6 +93,14 @@ export interface Backend {
   deleteMessage(id: string): Promise<void>
   subscribeMessages(channelId: string, h: MessageHandlers): () => void
 
+  /** Quais jeitos de entrar estão ligados no servidor (ex.: Google). */
+  authOptions(): Promise<{ google: boolean }>
+  resetPassword(email: string): Promise<void>
+  updatePassword(password: string): Promise<void>
+  onPasswordRecovery(cb: () => void): () => void
+  /** Servidores de apoio para as calls (STUN e, se configurado, TURN). */
+  getIceServers(): Promise<RTCIceServer[]>
+
   /** Sala de tempo real (presença + mensagens rápidas) usada pelas calls. */
   openRoom(topic: string): RealtimeRoom
   /** Notificações com o app fechado (só na versão online). */

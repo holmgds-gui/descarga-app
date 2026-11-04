@@ -1,5 +1,5 @@
 import { Monitor, MonitorOff, PhoneOff, Video, VideoOff } from 'lucide-react'
-import { voice } from '../lib/voice/engine'
+import { canShareScreen, voice } from '../lib/voice/engine'
 import { useVoice } from '../lib/voice/hooks'
 import { useApp } from '../state'
 
@@ -35,10 +35,12 @@ export function VoiceConnectedPanel() {
         <button className={`btn btn-ghost btn-sm ${call.camera ? 'on' : ''}`} onClick={() => void voice.toggleCamera()}>
           {call.camera ? <VideoOff size={16} /> : <Video size={16} />} {call.camera ? 'Desligar' : 'Câmera'}
         </button>
-        <button className={`btn btn-ghost btn-sm ${call.screen ? 'on' : ''}`}
-          onClick={() => (call.screen ? voice.stopScreen() : void voice.startScreen(call.settings.screenQuality))}>
-          {call.screen ? <MonitorOff size={16} /> : <Monitor size={16} />} {call.screen ? 'Parar' : 'Tela'}
-        </button>
+        {(canShareScreen() || call.screen) && (
+          <button className={`btn btn-ghost btn-sm ${call.screen ? 'on' : ''}`}
+            onClick={() => (call.screen ? voice.stopScreen() : void voice.startScreen(call.settings.screenQuality))}>
+            {call.screen ? <MonitorOff size={16} /> : <Monitor size={16} />} {call.screen ? 'Parar' : 'Tela'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   HeadphoneOff, Headphones, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
-  Volume2, WifiOff,
+  RefreshCw, Volume2, VolumeX, WifiOff,
 } from 'lucide-react'
-import { MAX_IN_CALL, voice, type CallMember } from '../lib/voice/engine'
+import { MAX_IN_CALL, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
 import type { Channel } from '../lib/types'
@@ -89,15 +89,29 @@ export function VoiceStage({ channel }: { channel: Channel }) {
     const p = profiles[t.member.userId]
     const speaking = t.kind === 'person' && call.speaking[t.member.sessionId]
     const conn = call.media[t.member.sessionId]?.connection
-    const vol = Math.round((call.settings.volumes[t.member.userId] ?? 1) * 100)
+    const vol = Math.round(Math.min(1, call.settings.volumes[t.member.userId] ?? 1) * 100)
+    const broken = !t.mine && (conn === 'failed' || conn === 'disconnected')
+    const pending = !t.mine && (!conn || conn === 'new' || conn === 'connecting')
     return (
       <div key={t.id} className={`tile ${big ? 'tile-big' : ''} ${speaking ? 'speaking' : ''} ${t.kind}`}
         style={{ ['--tile-color' as string]: p?.accent_color ?? 'var(--accent)' }}
         onClick={() => setFocus(focusTile?.id === t.id ? null : t.id)}>
-        {t.stream ? (
+        {t.mine && t.kind === 'screen' ? (
+          // não mostra a própria tela aqui dentro (evita o efeito de "tela dentro da tela")
+          <div className="tile-waiting">
+            <Monitor size={28} />
+            <span>Você está compartilhando sua tela</span>
+            <button className="btn btn-sm btn-danger" onClick={(e) => { e.stopPropagation(); voice.stopScreen() }}>
+              <MonitorOff size={16} /> Parar
+            </button>
+          </div>
+        ) : t.stream ? (
           <VideoView stream={t.stream} mirror={t.mine && t.kind === 'person'} contain={t.kind === 'screen'} />
         ) : t.kind === 'screen' ? (
-          <div className="tile-waiting"><Monitor size={28} /><span>Carregando a tela…</span></div>
+          <div className="tile-waiting">
+            <Monitor size={28} />
+            <span>{broken ? 'Sem conexão com essa pessoa' : 'Carregando a tela…'}</span>
+          </div>
         ) : (
           <div className="tile-avatar"><Avatar profile={p} size={big ? 96 : 72} /></div>
         )}
@@ -105,10 +119,22 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           {t.kind === 'screen' && <Monitor size={14} />}
           <span className="truncate">{t.kind === 'screen' ? `Tela de ${displayName(p)}` : displayName(p)}</span>
           {t.kind === 'person' && (t.member.deafened ? <HeadphoneOff size={14} /> : t.member.muted && <MicOff size={14} />)}
-          {!t.mine && conn && conn !== 'connected' && conn !== 'new' && conn !== 'connecting' && (
-            <span className="tile-conn" data-tip="Não conectou com essa pessoa"><WifiOff size={14} /></span>
-          )}
+          {broken && <span className="tile-conn"><WifiOff size={14} /></span>}
         </div>
+        {(broken || pending) && t.kind === 'person' && (
+          <div className={`tile-status ${broken ? 'bad' : ''}`} onClick={(e) => e.stopPropagation()}>
+            {broken ? (
+              <>
+                <span>Sem conexão de áudio com essa pessoa</span>
+                <button className="btn btn-sm btn-ghost" onClick={() => voice.retryPeer(t.member.sessionId)}>
+                  <RefreshCw size={14} /> Tentar de novo
+                </button>
+              </>
+            ) : (
+              <span>Conectando…</span>
+            )}
+          </div>
+        )}
         <div className="tile-tools" onClick={(e) => e.stopPropagation()}>
           {!t.mine && t.kind === 'person' && (
             <button className="icon-btn tiny" aria-label={`Volume de ${displayName(p)}`} data-tip={`Volume ${vol}%`}
@@ -126,7 +152,7 @@ export function VoiceStage({ channel }: { channel: Channel }) {
         {volumeFor === t.member.userId && t.kind === 'person' && (
           <div className="volume-pop" onClick={(e) => e.stopPropagation()}>
             <label htmlFor={`vol-${t.member.userId}`}>Volume de {displayName(p)} — {vol}%</label>
-            <input id={`vol-${t.member.userId}`} type="range" min={0} max={200} step={5} value={vol}
+            <input id={`vol-${t.member.userId}`} type="range" min={0} max={100} step={5} value={vol}
               onChange={(e) => voice.setUserVolume(t.member.userId, Number(e.target.value) / 100)} />
           </div>
         )}
@@ -146,6 +172,12 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           {rest.map((t) => renderTile(t))}
         </div>
       </div>
+
+      {call.audioBlocked && (
+        <button className="audio-unlock" onClick={() => voice.unlockAudio()}>
+          <VolumeX size={18} /> O navegador pausou o som da call. Toque aqui para ouvir.
+        </button>
+      )}
 
       {ptt && (
         <div className="ptt-hint">
@@ -171,7 +203,7 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           data-tip={call.camera ? 'Desligar câmera' : 'Ligar câmera'} onClick={() => void voice.toggleCamera()}>
           {call.camera ? <Video size={22} /> : <VideoOff size={22} />}
         </button>
-        <div className="quality-wrap">
+        {(canShareScreen() || call.screen) && <div className="quality-wrap">
           <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label="Compartilhar tela"
             data-tip={call.screen ? 'Parar de compartilhar' : 'Compartilhar tela'}
             onClick={() => (call.screen ? voice.stopScreen() : setQualityOpen((v) => !v))}>
@@ -185,10 +217,10 @@ export function VoiceStage({ channel }: { channel: Channel }) {
                   {SCREEN_PRESETS[q].label}
                 </button>
               ))}
-              <span className="muted small">Marque "Compartilhar áudio" na janela do navegador para enviar o som.</span>
+              <span className="muted small">Para enviar o som, escolha "Tela inteira" ou uma aba e marque "Compartilhar áudio".</span>
             </div>
           )}
-        </div>
+        </div>}
         <button className="round-btn leave" aria-label="Sair da call" data-tip="Sair da call" onClick={() => void voice.leave()}>
           <PhoneOff size={22} />
         </button>

@@ -351,6 +351,25 @@ export function createDemoBackend(): Backend {
       return createDemoRoom(topic)
     },
 
+    async authOptions() {
+      return { google: true }
+    },
+    async resetPassword() {
+      throw new Error('No modo demonstração não há e-mail. Crie outra conta.')
+    },
+    async updatePassword(password) {
+      const db = load()
+      const u = db.users.find((x) => x.id === me())
+      if (u) u.password = password
+      save(db)
+    },
+    onPasswordRecovery() {
+      return () => undefined
+    },
+    async getIceServers() {
+      return [{ urls: ['stun:stun.l.google.com:19302'] }]
+    },
+
     pushSupported: false,
     async savePushSubscription() {},
     async removePushSubscription() {},
