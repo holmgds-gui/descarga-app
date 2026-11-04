@@ -2,16 +2,19 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { backend } from './lib/backend'
 import type { Channel, Profile, Server } from './lib/types'
 import { local } from './lib/storage'
+import { customTheme, themeById } from './lib/themes'
 
-export type ThemeName = 'dark' | 'light' | 'midnight'
+export type ThemeName = string
 export interface Appearance {
   theme: ThemeName
+  /** cor de fundo escolhida quando o tema é "custom" */
+  customBg: string
   accent: string
   fontScale: number
   compact: boolean
 }
 
-const DEFAULT_APPEARANCE: Appearance = { theme: 'dark', accent: '#7B3FE4', fontScale: 1, compact: false }
+const DEFAULT_APPEARANCE: Appearance = { theme: 'dark', customBg: '#26303A', accent: '#7B3FE4', fontScale: 1, compact: false }
 const APPEARANCE_KEY = 'descarga-aparencia'
 
 interface AppState {
@@ -68,10 +71,22 @@ export function loadAppearance(): Appearance {
 
 export function applyAppearance(a: Appearance) {
   const root = document.documentElement
-  root.dataset.theme = a.theme
+  const t = a.theme === 'custom' ? customTheme(a.customBg) : themeById(a.theme)
+  root.dataset.theme = t.id
+  root.dataset.tone = t.tone
   root.dataset.compact = String(a.compact)
+  const c = t.colors
+  const vars: Record<string, string | undefined> = {
+    '--bg-rail': c.rail, '--bg-side': c.side, '--bg-chat': c.chat, '--bg-elev': c.elev,
+    '--bg-input': c.input, '--bg-float': c.float, '--text': c.text, '--text-2': c.text2, '--text-3': c.text3,
+  }
+  for (const [k, v] of Object.entries(vars)) {
+    if (v) root.style.setProperty(k, v)
+    else root.style.removeProperty(k) // usa o padrão do tom (claro/escuro) no CSS
+  }
   root.style.setProperty('--accent', a.accent)
   root.style.setProperty('--font-scale', String(a.fontScale))
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', c.rail)
 }
 
 const lastChannelKey = (serverId: string) => `descarga-ultimo-canal-${serverId}`

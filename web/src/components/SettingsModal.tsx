@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
-import { useApp, type ThemeName } from '../state'
+import { useApp } from '../state'
+import { THEMES, customTheme, type ThemeDef } from '../lib/themes'
 import { ProfileCardBody } from './ProfileCard'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 
+const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
 const SWATCHES = ['#7B3FE4', '#5226A8', '#B04FD9', '#E0457B', '#F0643C', '#F5A524', '#2DBE7A', '#1FB5E0', '#3D7BF0', '#6B7280']
 
 type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'conta'
@@ -233,32 +235,63 @@ function ProfileEditor() {
 
 function AppearanceEditor() {
   const { appearance, setAppearance } = useApp()
-  const themes: { id: ThemeName; label: string; bg: string; fg: string }[] = [
-    { id: 'dark', label: 'Escuro', bg: '#211D2B', fg: '#2C2738' },
-    { id: 'light', label: 'Claro', bg: '#FFFFFF', fg: '#EEEAF5' },
-    { id: 'midnight', label: 'Meia-noite', bg: '#000000', fg: '#121016' },
-  ]
+  const custom = customTheme(appearance.customBg)
+  const preview = (t: ThemeDef, on: boolean, onClick: () => void, key: string) => (
+    <button key={key} className={`theme-option ${on ? 'on' : ''}`} onClick={onClick} aria-pressed={on}>
+      <span className="theme-mini" style={{ background: t.colors.chat }}>
+        <span className="tm-rail" style={{ background: t.colors.rail }} />
+        <span className="tm-side" style={{ background: t.colors.side }} />
+        <span className="tm-chat">
+          <span style={{ background: t.colors.text ?? (t.tone === 'light' ? '#1F2023' : '#F2F3F5') }} />
+          <span style={{ background: t.colors.text3 ?? '#80848E' }} />
+          <span className="tm-accent" style={{ background: appearance.accent }} />
+        </span>
+      </span>
+      <span className="theme-name">{t.label}</span>
+    </button>
+  )
   return (
     <>
       <h2 className="settings-title">Aparência</h2>
       <div className="form">
         <div className="field">
-          <span className="field-label">Tema</span>
+          <span className="field-label">Fundo — escuros</span>
           <div className="theme-picker">
-            {themes.map((t) => (
-              <button key={t.id} className={`theme-option ${appearance.theme === t.id ? 'on' : ''}`} onClick={() => setAppearance({ theme: t.id })}>
-                <span className="theme-swatch" style={{ background: t.bg }}>
-                  <span style={{ background: t.fg }} />
-                  <span style={{ background: appearance.accent }} />
-                </span>
-                {t.label}
-              </button>
-            ))}
+            {THEMES.filter((t) => t.tone === 'dark').map((t) =>
+              preview(t, appearance.theme === t.id, () => setAppearance({ theme: t.id }), t.id))}
+          </div>
+        </div>
+        <div className="field">
+          <span className="field-label">Fundo — claros</span>
+          <div className="theme-picker">
+            {THEMES.filter((t) => t.tone === 'light').map((t) =>
+              preview(t, appearance.theme === t.id, () => setAppearance({ theme: t.id }), t.id))}
+          </div>
+        </div>
+        <div className="field">
+          <span className="field-label">Fundo personalizado</span>
+          <div className="custom-bg">
+            {preview(custom, appearance.theme === 'custom', () => setAppearance({ theme: 'custom' }), 'custom')}
+            <div className="custom-bg-controls">
+              <label className="color-pick">
+                <input type="color" value={appearance.customBg} aria-label="Escolher a cor do fundo"
+                  onChange={(e) => setAppearance({ theme: 'custom', customBg: e.target.value.toUpperCase() })} />
+                <span>Escolher cor do fundo</span>
+              </label>
+              <div className="swatches small">
+                {BG_SWATCHES.map((c) => (
+                  <button key={c} className={`swatch ${appearance.theme === 'custom' && appearance.customBg.toLowerCase() === c.toLowerCase() ? 'on' : ''}`}
+                    style={{ background: c }} aria-label={`Fundo ${c}`} onClick={() => setAppearance({ theme: 'custom', customBg: c })} />
+                ))}
+              </div>
+              <span className="muted small hint">O app monta os tons claros e escuros a partir da cor escolhida.</span>
+            </div>
           </div>
         </div>
 
         <div className="field">
-          <span className="field-label">Cor do app</span>
+          <span className="field-label">Cor de destaque</span>
+          <span className="muted small hint">Muda botões, links, seleções e detalhes. Não muda o fundo.</span>
           <div className="swatches">
             {SWATCHES.map((c) => (
               <button key={c} className={`swatch ${appearance.accent.toLowerCase() === c.toLowerCase() ? 'on' : ''}`} style={{ background: c }}

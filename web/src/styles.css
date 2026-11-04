@@ -1,6 +1,6 @@
 /* =========================================================
    Descarga — estilos
-   Temas: escuro (padrão), claro e meia-noite. Cor principal: roxo uva.
+   Fundos: vários temas (src/lib/themes.ts) + personalizado. Cor de destaque: roxo uva.
    ========================================================= */
 
 :root {
@@ -21,47 +21,33 @@
   --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: dark;
 
-  --bg-rail: #15121C;
-  --bg-side: #1C1925;
-  --bg-chat: #221F2C;
-  --bg-elev: #2A2636;
-  --bg-input: #2E2A3B;
+  /* os fundos vêm do tema escolhido (src/lib/themes.ts); estes são os do Grafite */
+  --bg-rail: #1E1F22;
+  --bg-side: #2B2D31;
+  --bg-chat: #313338;
+  --bg-elev: #383A40;
+  --bg-input: #383A40;
+  --bg-float: #111214;
   --bg-hover: rgba(255, 255, 255, 0.05);
   --bg-active: rgba(255, 255, 255, 0.09);
-  --bg-float: #14111A;
-  --text: #EEEAF6;
-  --text-2: #B6AEC8;
-  --text-3: #7F7793;
+  --text: #F2F3F5;
+  --text-2: #B5BAC1;
+  --text-3: #80848E;
   --border: rgba(255, 255, 255, 0.07);
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 
-:root[data-theme='light'] {
+/* temas claros: textos, bordas e sombras próprios */
+:root[data-tone='light'] {
   color-scheme: light;
   --accent-text: color-mix(in srgb, var(--accent) 80%, black);
-  --bg-rail: #E4DFEE;
-  --bg-side: #F1EEF7;
-  --bg-chat: #FFFFFF;
-  --bg-elev: #FFFFFF;
-  --bg-input: #EDE9F4;
-  --bg-hover: rgba(40, 20, 80, 0.05);
-  --bg-active: rgba(40, 20, 80, 0.09);
-  --bg-float: #FFFFFF;
-  --text: #1F1A2B;
-  --text-2: #5A5268;
-  --text-3: #8C849B;
-  --border: rgba(30, 10, 60, 0.1);
-  --shadow: 0 8px 28px rgba(30, 10, 60, 0.16);
-}
-
-:root[data-theme='midnight'] {
-  --bg-rail: #000000;
-  --bg-side: #0B0A0E;
-  --bg-chat: #000000;
-  --bg-elev: #141219;
-  --bg-input: #15131B;
-  --bg-float: #0B0A0E;
-  --border: rgba(255, 255, 255, 0.08);
+  --bg-hover: rgba(20, 20, 40, 0.05);
+  --bg-active: rgba(20, 20, 40, 0.09);
+  --text: #1F2023;
+  --text-2: #4E5058;
+  --text-3: #80848E;
+  --border: rgba(20, 20, 40, 0.1);
+  --shadow: 0 8px 28px rgba(20, 20, 40, 0.16);
 }
 
 * { box-sizing: border-box; }
@@ -653,3 +639,24 @@ button.avatar { cursor: pointer; }
 }
 .voice-panel-actions:has(> :only-child) { grid-template-columns: 1fr; }
 .forgot-link { align-self: flex-end; font-size: .85em; margin-top: -8px; }
+
+/* escolha de fundo (tema) */
+.theme-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; }
+.theme-option { gap: 6px; }
+.theme-mini {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; border: 2px solid var(--border); overflow: hidden;
+  display: grid; grid-template-columns: 14% 30% 1fr;
+}
+.theme-mini .tm-chat { display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 0 8px; }
+.theme-mini .tm-chat span { height: 5px; border-radius: 3px; }
+.theme-mini .tm-chat span:nth-child(1) { width: 80%; }
+.theme-mini .tm-chat span:nth-child(2) { width: 55%; opacity: .8; }
+.theme-mini .tm-accent { width: 40%; height: 7px !important; }
+.theme-option.on .theme-mini { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.theme-name { font-size: .88rem; font-weight: 700; }
+.custom-bg { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; }
+.custom-bg-controls { display: flex; flex-direction: column; gap: 10px; text-transform: none; letter-spacing: 0; }
+.color-pick { flex-direction: row !important; align-items: center; gap: 10px; cursor: pointer; font-size: .9rem !important; color: var(--text) !important; text-transform: none !important; letter-spacing: 0 !important; }
+.color-pick input { width: 40px; height: 40px; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 8px; }
+.swatches.small .swatch { width: 30px; height: 30px; border: 1px solid var(--border); }
+@media (max-width: 767px) { .custom-bg { grid-template-columns: 1fr; } .custom-bg .theme-option { max-width: 140px; } }
