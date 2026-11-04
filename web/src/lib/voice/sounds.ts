@@ -1,7 +1,7 @@
 /**
  * Sons do Descarga, criados na hora com Web Audio (sem arquivos, sem direitos autorais):
  * - entrar na call: gotas de água caindo
- * - sair da call: descarga
+ * - sair da call: gotas descendo de tom
  * - mutar / desmutar: cliques curtos
  */
 let ctx: AudioContext | null = null
@@ -32,21 +32,22 @@ function out(c: AudioContext) {
 }
 
 /** Uma gota: tom que sobe rápido ("plip") com um respingo curtinho. */
-function drop(c: AudioContext, dest: AudioNode, at: number, base: number, level: number) {
+function drop(c: AudioContext, dest: AudioNode, at: number, base: number, level: number, bend = 2.6, splash = true) {
   const osc = c.createOscillator()
   const g = c.createGain()
   osc.type = 'sine'
   osc.frequency.setValueAtTime(base, at)
-  osc.frequency.exponentialRampToValueAtTime(base * 2.6, at + 0.07)
+  osc.frequency.exponentialRampToValueAtTime(base * bend, at + 0.07)
   g.gain.setValueAtTime(0.0001, at)
   g.gain.exponentialRampToValueAtTime(level, at + 0.008)
   g.gain.exponentialRampToValueAtTime(0.0001, at + 0.16)
   osc.connect(g).connect(dest)
   osc.start(at)
   osc.stop(at + 0.2)
+  if (!splash) return
 
-  const splash = c.createBufferSource()
-  splash.buffer = noiseBuffer(c, 0.12)
+  const splashSrc = c.createBufferSource()
+  splashSrc.buffer = noiseBuffer(c, 0.12)
   const bp = c.createBiquadFilter()
   bp.type = 'bandpass'
   bp.frequency.value = 3200
@@ -54,8 +55,8 @@ function drop(c: AudioContext, dest: AudioNode, at: number, base: number, level:
   const sg = c.createGain()
   sg.gain.setValueAtTime(level * 0.12, at + 0.02)
   sg.gain.exponentialRampToValueAtTime(0.0001, at + 0.12)
-  splash.connect(bp).connect(sg).connect(dest)
-  splash.start(at + 0.02)
+  splashSrc.connect(bp).connect(sg).connect(dest)
+  splashSrc.start(at + 0.02)
 }
 
 export function playJoin() {
@@ -67,64 +68,12 @@ export function playJoin() {
   drop(c, dest, t + 0.22, 880, 0.22)
 }
 
+/** Saída: gotas descendo de tom (a entrada ao contrário). */
 export function playLeave() {
   const c = soundContext()
   const dest = out(c)
   const t = c.currentTime + 0.02
-  const dur = 1.7
-
-  // água rodando: ruído com filtro que desce, balançando (o "redemoinho")
-  const water = c.createBufferSource()
-  water.buffer = noiseBuffer(c, dur)
-  const bp = c.createBiquadFilter()
-  bp.type = 'bandpass'
-  bp.Q.value = 2.5
-  bp.frequency.setValueAtTime(2200, t)
-  bp.frequency.exponentialRampToValueAtTime(380, t + dur)
-  const lfo = c.createOscillator()
-  const lfoGain = c.createGain()
-  lfo.frequency.setValueAtTime(5, t)
-  lfo.frequency.linearRampToValueAtTime(9, t + dur)
-  lfoGain.gain.value = 260
-  lfo.connect(lfoGain).connect(bp.frequency)
-  const wg = c.createGain()
-  wg.gain.setValueAtTime(0.0001, t)
-  wg.gain.exponentialRampToValueAtTime(0.55, t + 0.12)
-  wg.gain.setValueAtTime(0.55, t + 0.7)
-  wg.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  water.connect(bp).connect(wg).connect(dest)
-
-  // ronco grave do cano
-  const rumble = c.createBufferSource()
-  rumble.buffer = noiseBuffer(c, dur)
-  const lp = c.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = 220
-  const rg = c.createGain()
-  rg.gain.setValueAtTime(0.0001, t)
-  rg.gain.exponentialRampToValueAtTime(0.7, t + 0.2)
-  rg.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  rumble.connect(lp).connect(rg).connect(dest)
-
-  // "glub" final
-  const gulp = c.createOscillator()
-  const gg = c.createGain()
-  gulp.type = 'sine'
-  gulp.frequency.setValueAtTime(320, t + dur - 0.35)
-  gulp.frequency.exponentialRampToValueAtTime(70, t + dur - 0.05)
-  gg.gain.setValueAtTime(0.0001, t + dur - 0.35)
-  gg.gain.exponentialRampToValueAtTime(0.35, t + dur - 0.3)
-  gg.gain.exponentialRampToValueAtTime(0.0001, t + dur)
-  gulp.connect(gg).connect(dest)
-
-  water.start(t)
-  rumble.start(t)
-  lfo.start(t)
-  gulp.start(t + dur - 0.35)
-  water.stop(t + dur)
-  rumble.stop(t + dur)
-  lfo.stop(t + dur)
-  gulp.stop(t + dur)
+  ;[880, 700, 560, 440].forEach((f, i) => drop(c, dest, t + i * 0.1, f, 0.3 - i * 0.05, 0.55, false))
 }
 
 function blip(from: number, to: number) {

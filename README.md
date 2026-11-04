@@ -22,7 +22,7 @@ App de conversa inspirado no Discord: servidores, canais, chat em tempo real, pe
 - Câmera e compartilhamento de tela com som, em 720p, 1080p ou 1080p/60fps
 - Redução de ruído, "apertar para falar" (tecla configurável) e volume separado para cada pessoa
 - Indicador de quem está falando, lista de quem está em cada call na barra lateral
-- Som de água ao entrar e de descarga ao sair (gerados pelo próprio app)
+- Som de gotas subindo ao entrar e gotas descendo ao sair (gerados pelo próprio app)
 - Menções com `@usuario` (com sugestões ao digitar) e destaque das mensagens para você
 - Notificações com o app fechado: menções, respostas e quando alguém entra numa call
 - App instalável (PWA): no celular, "Adicionar à Tela de Início"

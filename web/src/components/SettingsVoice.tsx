@@ -159,7 +159,7 @@ export function VoiceSettingsTab() {
         </label>
         <div className="row-gap">
           <button type="button" className="btn btn-ghost btn-sm" onClick={playJoin}><Droplets size={16} /> Ouvir entrada (água)</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={playLeave}><Waves size={16} /> Ouvir saída (descarga)</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={playLeave}><Waves size={16} /> Ouvir saída (gotas descendo)</button>
         </div>
       </div>
     </>
