@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import { authUrlError } from '../lib/authUrl'
+import { LANGS, setLang, t, useLang } from '../lib/i18n'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -30,7 +31,7 @@ export function AuthScreen() {
     setError(null)
     setInfo(null)
     if (mode === 'signup' && !/^[a-z0-9_.]{2,32}$/.test(username)) {
-      setError('O nome de usuário pode ter letras minúsculas, números, ponto e _ (2 a 32 caracteres), sem espaços.')
+      setError(t('O nome de usuário pode ter letras minúsculas, números, ponto e _ (2 a 32 caracteres), sem espaços.'))
       return
     }
     setBusy(true)
@@ -38,10 +39,10 @@ export function AuthScreen() {
       if (mode === 'login') await backend.signIn(email, password)
       else if (mode === 'signup') {
         const r = await backend.signUp(email, password, username)
-        if (r.needsConfirmation) setInfo('Conta criada! Confirme pelo link que enviamos para o seu e-mail.')
+        if (r.needsConfirmation) setInfo(t('Conta criada! Confirme pelo link que enviamos para o seu e-mail.'))
       } else {
         await backend.resetPassword(email)
-        setInfo('Se esse e-mail tiver conta, enviamos um link para criar uma nova senha. Veja também o spam.')
+        setInfo(t('Se esse e-mail tiver conta, enviamos um link para criar uma nova senha. Veja também o spam.'))
       }
     } catch (err) {
       setError((err as Error).message)
@@ -59,10 +60,11 @@ export function AuthScreen() {
     }
   }
 
+  const lang = useLang()
   const titles: Record<Mode, [string, string]> = {
-    login: ['Que bom te ver de novo!', 'Entre para continuar no Descarga.'],
-    signup: ['Criar uma conta', 'Leva menos de um minuto. Tudo grátis.'],
-    forgot: ['Esqueceu a senha?', 'Digite seu e-mail e mandamos um link para criar outra.'],
+    login: [t('Que bom te ver de novo!'), t('Entre para continuar no Descarga.')],
+    signup: [t('Criar uma conta'), t('Leva menos de um minuto. Tudo grátis.')],
+    forgot: [t('Esqueceu a senha?'), t('Digite seu e-mail e mandamos um link para criar outra.')],
   }
 
   return (
@@ -81,51 +83,57 @@ export function AuthScreen() {
                 <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
                 <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
               </svg>
-              Continuar com Google
+              {t('Continuar com Google')}
             </button>
-            <div className="divider"><span>ou com e-mail</span></div>
+            <div className="divider"><span>{t('ou com e-mail')}</span></div>
           </>
         )}
 
         <form onSubmit={submit} className="form" noValidate={false}>
           <label>
-            E-mail
+            {t('E-mail')}
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email"
-              placeholder="voce@email.com" inputMode="email" autoCapitalize="none" spellCheck={false} />
+              placeholder={t('voce@email.com')} inputMode="email" autoCapitalize="none" spellCheck={false} />
           </label>
           {mode === 'signup' && (
             <label>
-              Nome de usuário
+              {t('Nome de usuário')}
               <input required value={username} placeholder="gui.descarga" autoComplete="username" autoCapitalize="none" spellCheck={false}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))} />
             </label>
           )}
           {mode !== 'forgot' && (
             <label>
-              Senha
+              {t('Senha')}
               <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="Mínimo 6 caracteres" />
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={t('Mínimo 6 caracteres')} />
             </label>
           )}
           {mode === 'login' && (
-            <button type="button" className="link forgot-link" onClick={() => switchTo('forgot')}>Esqueci minha senha</button>
+            <button type="button" className="link forgot-link" onClick={() => switchTo('forgot')}>{t('Esqueci minha senha')}</button>
           )}
           {error && <p className="form-error" role="alert">{error}</p>}
           {info && <p className="form-info" role="status">{info}</p>}
           <button className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : mode === 'signup' ? 'Criar conta' : 'Enviar link'}
+            {busy ? t('Aguarde…') : mode === 'login' ? t('Entrar') : mode === 'signup' ? t('Criar conta') : t('Enviar link')}
           </button>
         </form>
 
         <p className="auth-switch">
-          {mode === 'login' ? 'Ainda não tem conta? ' : mode === 'signup' ? 'Já tem conta? ' : 'Lembrou a senha? '}
+          {mode === 'login' ? t('Ainda não tem conta?') : mode === 'signup' ? t('Já tem conta?') : t('Lembrou a senha?')}{' '}
           <button type="button" className="link" onClick={() => switchTo(mode === 'login' ? 'signup' : 'login')}>
-            {mode === 'login' ? 'Cadastre-se' : 'Entrar'}
+            {mode === 'login' ? t('Cadastre-se') : t('Entrar')}
           </button>
         </p>
 
+        <div className="lang-switch" role="group" aria-label={t('Idioma')}>
+          {LANGS.map((l) => (
+            <button key={l.id} type="button" className={lang === l.id ? 'on' : ''} onClick={() => setLang(l.id)}>{l.label}</button>
+          ))}
+        </div>
+
         {backend.mode === 'demo' && (
-          <p className="demo-badge">Modo demonstração — os dados ficam só neste navegador.</p>
+          <p className="demo-badge">{t('Modo demonstração — os dados ficam só neste navegador.')}</p>
         )}
       </div>
     </div>
@@ -142,8 +150,8 @@ export function NewPasswordScreen({ onDone }: { onDone: () => void }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (password.length < 6) return setError('A senha precisa ter pelo menos 6 caracteres.')
-    if (password !== confirm) return setError('As duas senhas não são iguais.')
+    if (password.length < 6) return setError(t('A senha precisa ter pelo menos 6 caracteres.'))
+    if (password !== confirm) return setError(t('As duas senhas não são iguais.'))
     setBusy(true)
     try {
       await backend.updatePassword(password)
@@ -159,19 +167,19 @@ export function NewPasswordScreen({ onDone }: { onDone: () => void }) {
     <div className="auth-page">
       <div className="auth-card">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="auth-logo" />
-        <h1>Criar nova senha</h1>
-        <p className="muted">Escolha uma senha nova para sua conta.</p>
+        <h1>{t('Criar nova senha')}</h1>
+        <p className="muted">{t('Escolha uma senha nova para sua conta.')}</p>
         <form onSubmit={submit} className="form">
           <label>
-            Nova senha
+            {t('Nova senha')}
             <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </label>
           <label>
-            Repita a senha
+            {t('Repita a senha')}
             <input type="password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
           </label>
           {error && <p className="form-error" role="alert">{error}</p>}
-          <button className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Salvando…' : 'Salvar senha'}</button>
+          <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t('Salvando…') : t('Salvar senha')}</button>
         </form>
       </div>
     </div>

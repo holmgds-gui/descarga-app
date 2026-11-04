@@ -16,6 +16,7 @@ const CALL_COOLDOWN_MS = 3 * 60 * 1000
 const MENTION = /@([a-z0-9_.]{2,32})/g
 
 type Payload = { title: string; body: string; tag: string; url: string; icon?: string }
+type Lang = 'pt' | 'en'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -39,10 +40,10 @@ Deno.serve(async (req) => {
   const appUrl = typeof body.appUrl === 'string' && /^https:\/\//.test(body.appUrl) ? body.appUrl : ''
 
   const { data: me } = await admin.from('profiles').select('username, display_name, avatar_url').eq('id', user.id).single()
-  const myName = me?.display_name || me?.username || 'Alguém'
+  const myName = me?.display_name || me?.username || 'Descarga'
 
   let recipients: string[] = []
-  let payload: Payload
+  let payloadFor: (lang: Lang) => Payload
 
   if (body.type === 'message' && body.messageId) {
     const { data: msg } = await admin
@@ -68,13 +69,13 @@ Deno.serve(async (req) => {
       if (parent && memberIds.has(parent.author_id)) recipients.push(parent.author_id)
     }
     const text = msg.content.length > 140 ? msg.content.slice(0, 137) + '…' : msg.content
-    payload = {
-      title: `${myName} em #${ch.name}`,
+    payloadFor = (lang) => ({
+      title: lang === 'en' ? `${myName} in #${ch.name}` : `${myName} em #${ch.name}`,
       body: text,
       tag: `msg-${msg.channel_id}`,
       url: `${appUrl}?servidor=${serverId}&canal=${msg.channel_id}`,
       icon: me?.avatar_url ?? undefined,
-    }
+    })
   } else if (body.type === 'call' && body.channelId) {
     const { data: ch } = await admin
       .from('channels')
@@ -94,13 +95,13 @@ Deno.serve(async (req) => {
     recipients = (members ?? []).map((m) => m.user_id as string)
     // deno-lint-ignore no-explicit-any
     const serverName = (ch.servers as any)?.name ?? ''
-    payload = {
-      title: `${myName} entrou na call 🔊`,
+    payloadFor = (lang) => ({
+      title: lang === 'en' ? `${myName} joined the call 🔊` : `${myName} entrou na call 🔊`,
       body: `${ch.name} • ${serverName}`,
       tag: `call-${ch.id}`,
       url: `${appUrl}?servidor=${ch.server_id}&canal=${ch.id}`,
       icon: me?.avatar_url ?? undefined,
-    }
+    })
   } else {
     return json({ error: 'tipo inválido' }, 400)
   }
@@ -112,14 +113,14 @@ Deno.serve(async (req) => {
   const s = Object.fromEntries((secrets ?? []).map((r) => [r.name, r.value]))
   webpush.setVapidDetails(s.vapid_subject, s.vapid_public, s.vapid_private)
 
-  const { data: subs } = await admin.from('push_subscriptions').select('id, endpoint, p256dh, auth').in('user_id', recipients)
+  const { data: subs } = await admin.from('push_subscriptions').select('id, endpoint, p256dh, auth, lang').in('user_id', recipients)
   let sent = 0
   await Promise.all(
     (subs ?? []).map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify(payload),
+          JSON.stringify(payloadFor(sub.lang === 'en' ? 'en' : 'pt')),
           { TTL: 60 * 60, urgency: 'high' },
         )
         sent++

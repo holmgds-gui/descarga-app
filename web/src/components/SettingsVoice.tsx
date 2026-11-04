@@ -7,6 +7,7 @@ import { useVoice } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
 import { playJoin, playLeave } from '../lib/voice/sounds'
 import { useApp } from '../state'
+import { t } from '../lib/i18n'
 
 export function VoiceSettingsTab() {
   const call = useVoice()
@@ -76,90 +77,90 @@ export function VoiceSettingsTab() {
 
   return (
     <>
-      <h2 className="settings-title">Voz e vídeo</h2>
-      <p className="muted">As calls são direto entre os aparelhos: grátis, até 6 pessoas.</p>
+      <h2 className="settings-title">{t('Voz e vídeo')}</h2>
+      <p className="muted">{t('As calls são direto entre os aparelhos: grátis, até 6 pessoas.')}</p>
       <div className="form">
         <label htmlFor="mic-select">
-          Microfone
+          {t('Microfone')}
           <select id="mic-select" className="select" value={s.inputDeviceId}
             onChange={(e) => { stopTest(); voice.updateSettings({ inputDeviceId: e.target.value }) }}>
-            <option value="">Padrão do sistema</option>
+            <option value="">{t('Padrão do sistema')}</option>
             {devices.map((d, i) => (
-              <option key={d.deviceId || i} value={d.deviceId}>{d.label || `Microfone ${i + 1}`}</option>
+              <option key={d.deviceId || i} value={d.deviceId}>{d.label || t('Microfone {n}', { n: i + 1 })}</option>
             ))}
           </select>
         </label>
 
         <div className="field">
-          <span className="field-label">Teste de microfone</span>
+          <span className="field-label">{t('Teste de microfone')}</span>
           <div className="mic-test">
             <button type="button" className={`btn btn-sm ${testing ? 'btn-ghost' : 'btn-primary'}`}
               onClick={() => (testing ? stopTest() : void startTest())}>
-              <Mic size={16} /> {testing ? 'Parar teste' : 'Testar'}
+              <Mic size={16} /> {testing ? t('Parar teste') : t('Testar')}
             </button>
-            <div className="meter" aria-label="Nível do microfone"><span style={{ width: `${Math.round(level * 100)}%` }} /></div>
+            <div className="meter" aria-label={t('Nível do microfone')}><span style={{ width: `${Math.round(level * 100)}%` }} /></div>
           </div>
           {micError ? (
-            <span className="form-error">Não deu para abrir o microfone. Permita o acesso no navegador e tente de novo.</span>
+            <span className="form-error">{t('Não deu para abrir o microfone. Permita o acesso no navegador e tente de novo.')}</span>
           ) : (
-            !testing && <span className="muted small hint">Fale algo depois de clicar em Testar: a barra deve se mexer.</span>
+            !testing && <span className="muted small hint">{t('Fale algo depois de clicar em Testar: a barra deve se mexer.')}</span>
           )}
         </div>
 
         <label className="toggle-row">
           <span>
-            <strong>Redução de ruído</strong>
-            <span className="muted small">Tira barulho de fundo como ventilador e teclado</span>
+            <strong>{t('Redução de ruído')}</strong>
+            <span className="muted small">{t('Tira barulho de fundo como ventilador e teclado')}</span>
           </span>
           <input type="checkbox" className="toggle" checked={s.noiseSuppression}
             onChange={(e) => voice.updateSettings({ noiseSuppression: e.target.checked })} />
         </label>
 
         <div className="field">
-          <span className="field-label">Modo de entrada</span>
+          <span className="field-label">{t('Modo de entrada')}</span>
           <div className="choice-list">
             <button type="button" className={`choice choice-row ${s.inputMode === 'voice' ? 'selected' : ''}`}
               onClick={() => voice.updateSettings({ inputMode: 'voice' })}>
               <Waves size={22} />
-              <span><strong>Detecção de voz</strong><span>O microfone fica aberto enquanto você não silenciar</span></span>
+              <span><strong>{t('Detecção de voz')}</strong><span>{t('O microfone fica aberto enquanto você não silenciar')}</span></span>
             </button>
             <button type="button" className={`choice choice-row ${s.inputMode === 'ptt' ? 'selected' : ''}`}
               onClick={() => voice.updateSettings({ inputMode: 'ptt' })}>
               <Mic size={22} />
-              <span><strong>Apertar para falar</strong><span>O microfone só abre enquanto você segura a tecla</span></span>
+              <span><strong>{t('Apertar para falar')}</strong><span>{t('O microfone só abre enquanto você segura a tecla')}</span></span>
             </button>
           </div>
         </div>
 
         {s.inputMode === 'ptt' && (
           <div className="field">
-            <span className="field-label">Tecla de apertar para falar</span>
+            <span className="field-label">{t('Tecla de apertar para falar')}</span>
             <button type="button" className={`btn btn-ghost key-capture ${capturing ? 'capturing' : ''}`} onClick={() => setCapturing(true)}>
-              {capturing ? 'Aperte uma tecla… (Esc cancela)' : keyLabel(s.pttKey)}
+              {capturing ? t('Aperte uma tecla… (Esc cancela)') : keyLabel(s.pttKey)}
             </button>
-            <span className="muted small hint">No celular, use o botão "Segure para falar" dentro da call.</span>
+            <span className="muted small hint">{t('No celular, use o botão "Segure para falar" dentro da call.')}</span>
           </div>
         )}
 
         <label htmlFor="screen-q">
-          Qualidade padrão da tela
+          {t('Qualidade padrão da tela')}
           <select id="screen-q" className="select" value={s.screenQuality}
             onChange={(e) => voice.updateSettings({ screenQuality: e.target.value as ScreenQuality })}>
             {(Object.keys(SCREEN_PRESETS) as ScreenQuality[]).map((q) => (
               <option key={q} value={q}>{SCREEN_PRESETS[q].label}</option>
             ))}
           </select>
-          <span className="muted small hint">Quanto mais pessoas assistindo, mais internet você usa ao compartilhar.</span>
+          <span className="muted small hint">{t('Quanto mais pessoas assistindo, mais internet você usa ao compartilhar.')}</span>
         </label>
 
         <label htmlFor="snd-vol">
-          Volume dos sons — {Math.round(s.soundVolume * 100)}%
+          {t('Volume dos sons')} — {Math.round(s.soundVolume * 100)}%
           <input id="snd-vol" type="range" min={0} max={1} step={0.05} value={s.soundVolume}
             onChange={(e) => voice.updateSettings({ soundVolume: Number(e.target.value) })} />
         </label>
         <div className="row-gap">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={playJoin}><Droplets size={16} /> Ouvir entrada (água)</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={playLeave}><Waves size={16} /> Ouvir saída (gotas descendo)</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={playJoin}><Droplets size={16} /> {t('Ouvir entrada (gotas subindo)')}</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={playLeave}><Waves size={16} /> {t('Ouvir saída (gotas descendo)')}</button>
         </div>
       </div>
     </>
@@ -178,7 +179,7 @@ export function NotificationsTab() {
     setBusy(true)
     try {
       await enablePush()
-      toast('Notificações ativadas neste aparelho')
+      toast(t('Notificações ativadas neste aparelho'))
     } catch (err) {
       toast((err as Error).message)
     } finally {
@@ -190,53 +191,53 @@ export function NotificationsTab() {
     setBusy(true)
     await disablePush().catch(() => undefined)
     setBusy(false)
-    toast('Notificações desativadas neste aparelho')
+    toast(t('Notificações desativadas neste aparelho'))
     refresh()
   }
 
   return (
     <>
-      <h2 className="settings-title">Notificações</h2>
-      <p className="muted">Você recebe aviso mesmo com o Descarga fechado quando:</p>
+      <h2 className="settings-title">{t('Notificações')}</h2>
+      <p className="muted">{t('Você recebe aviso mesmo com o Descarga fechado quando:')}</p>
       <ul className="notif-list">
-        <li>alguém te menciona com <code>@seunome</code></li>
-        <li>alguém responde uma mensagem sua</li>
-        <li>alguém entra numa call de um servidor seu</li>
+        <li>{t('alguém te menciona com')} <code>@{t('seunome')}</code></li>
+        <li>{t('alguém responde uma mensagem sua')}</li>
+        <li>{t('alguém entra numa call de um servidor seu')}</li>
       </ul>
 
       {!backend.pushSupported ? (
-        <div className="account-card">As notificações funcionam na versão online do Descarga.</div>
+        <div className="account-card">{t('As notificações funcionam na versão online do Descarga.')}</div>
       ) : state === 'needs-install' ? (
         <div className="account-card install-hint">
-          <strong>No iPhone, instale o Descarga primeiro</strong>
+          <strong>{t('No iPhone, instale o Descarga primeiro')}</strong>
           <p>
-            Toque em <Share size={14} /> <strong>Compartilhar</strong> no Safari, depois em <strong>Adicionar à Tela de Início</strong>.
-            Abra o Descarga pelo ícone novo e volte aqui para ativar.
+            {t('Toque em')} <Share size={14} /> <strong>{t('Compartilhar')}</strong> {t('no Safari, depois em')} <strong>{t('Adicionar à Tela de Início')}</strong>.{' '}
+            {t('Abra o Descarga pelo ícone novo e volte aqui para ativar.')}
           </p>
         </div>
       ) : state === 'unsupported' ? (
-        <div className="account-card">Este navegador não aceita notificações. Tente o Chrome, Edge ou Firefox.</div>
+        <div className="account-card">{t('Este navegador não aceita notificações. Tente o Chrome, Edge ou Firefox.')}</div>
       ) : state === 'denied' ? (
         <div className="account-card">
-          As notificações estão bloqueadas para este site. Libere nas configurações do navegador (ícone de cadeado ao lado do endereço) e volte aqui.
+          {t('As notificações estão bloqueadas para este site. Libere nas configurações do navegador (ícone de cadeado ao lado do endereço) e volte aqui.')}
         </div>
       ) : (
         <div className="notif-actions">
           <span className={`notif-status ${state === 'on' ? 'on' : ''}`}>
             {state === 'on' ? <Bell size={18} /> : <BellOff size={18} />}
-            {state === 'on' ? 'Ativadas neste aparelho' : 'Desativadas neste aparelho'}
+            {state === 'on' ? t('Ativadas neste aparelho') : t('Desativadas neste aparelho')}
           </span>
           {state === 'on' ? (
-            <button className="btn btn-ghost" disabled={busy} onClick={() => void turnOff()}>Desativar</button>
+            <button className="btn btn-ghost" disabled={busy} onClick={() => void turnOff()}>{t('Desativar')}</button>
           ) : (
             <button className="btn btn-primary" disabled={busy || state === null} onClick={() => void turnOn()}>
-              <Bell size={16} /> Ativar notificações
+              <Bell size={16} /> {t('Ativar notificações')}
             </button>
           )}
         </div>
       )}
       {isIOS() && state !== 'needs-install' && (
-        <p className="muted small">No iPhone, as notificações funcionam com o Descarga aberto pelo ícone da Tela de Início.</p>
+        <p className="muted small">{t('No iPhone, as notificações funcionam com o Descarga aberto pelo ícone da Tela de Início.')}</p>
       )}
     </>
   )

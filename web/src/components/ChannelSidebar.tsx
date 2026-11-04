@@ -11,6 +11,7 @@ import type { Channel, Status } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
 import { CreateChannelModal, InviteModal } from './ServerModals'
+import { t } from '../lib/i18n'
 
 export function ChannelSidebar() {
   const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask, openProfile } = useApp()
@@ -43,11 +44,11 @@ export function ChannelSidebar() {
 
   const leave = async () => {
     if (!server) return
-    const ok = await ask({ title: `Sair de ${server.name}`, message: 'Você vai precisar de um novo convite para voltar.', confirmLabel: 'Sair do servidor', danger: true })
+    const ok = await ask({ title: t('Sair de {nome}', { nome: server.name }), message: t('Você vai precisar de um novo convite para voltar.'), confirmLabel: t('Sair do servidor'), danger: true })
     if (!ok) return
     await backend.leaveServer(server.id)
     await refreshServers()
-    toast('Você saiu do servidor')
+    toast(t('Você saiu do servidor'))
   }
 
   return (
@@ -62,16 +63,16 @@ export function ChannelSidebar() {
             {menuOpen && (
               <div className="dropdown" onMouseLeave={() => setMenuOpen(false)}>
                 <button className="dropdown-item accent" onClick={() => { setInviting(true); setMenuOpen(false) }}>
-                  Convidar pessoas <UserPlus size={16} />
+                  {t('Convidar pessoas')} <UserPlus size={16} />
                 </button>
                 {isOwner && (
                   <button className="dropdown-item" onClick={() => { setCreating({ category: 'Canais de texto', type: 'text' }); setMenuOpen(false) }}>
-                    Criar canal <Plus size={16} />
+                    {t('Criar canal')} <Plus size={16} />
                   </button>
                 )}
                 {!isOwner && (
                   <button className="dropdown-item danger" onClick={() => { setMenuOpen(false); void leave() }}>
-                    Sair do servidor <LogOut size={16} />
+                    {t('Sair do servidor')} <LogOut size={16} />
                   </button>
                 )}
               </div>
@@ -83,10 +84,10 @@ export function ChannelSidebar() {
                 <div className="category">
                   <button className="category-toggle" onClick={() => setCollapsed((c) => ({ ...c, [category]: !c[category] }))}>
                     {collapsed[category] ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                    <span>{category}</span>
+                    <span>{t(category)}</span>
                   </button>
                   {isOwner && (
-                    <button className="icon-btn tiny" aria-label={`Criar canal em ${category}`} data-tip="Criar canal"
+                    <button className="icon-btn tiny" aria-label={t('Criar canal em {categoria}', { categoria: t(category) })} data-tip={t('Criar canal')}
                       onClick={() => setCreating({ category, type: list[0]?.type ?? 'text' })}>
                       <Plus size={16} />
                     </button>
@@ -103,7 +104,7 @@ export function ChannelSidebar() {
                       {c.type === 'text' ? <Hash size={20} /> : <Volume2 size={20} />}
                       <span className="truncate">{c.name}</span>
                       {c.id === activeChannelId && c.type === 'text' && (
-                        <span className="channel-action" role="button" tabIndex={0} aria-label="Convidar" data-tip="Convidar pessoas"
+                        <span className="channel-action" role="button" tabIndex={0} aria-label={t('Convidar pessoas')} data-tip={t('Convidar pessoas')}
                           onClick={(e) => { e.stopPropagation(); setInviting(true) }}>
                           <UserPlus size={16} />
                         </span>
@@ -139,9 +140,9 @@ export function ChannelSidebar() {
         </>
       ) : (
         <>
-          <div className="sidebar-header static">Início</div>
+          <div className="sidebar-header static">{t('Início')}</div>
           <div className="channel-list">
-            <p className="muted small pad">Amigos e mensagens diretas chegam na etapa 3. Por enquanto, escolha um servidor à esquerda.</p>
+            <p className="muted small pad">{t('Amigos e mensagens diretas chegam na etapa 3. Por enquanto, escolha um servidor à esquerda.')}</p>
           </div>
         </>
       )}
@@ -171,7 +172,7 @@ function UserPanel() {
   }
   const saveCustom = async () => {
     upsertProfile(await backend.updateProfile({ custom_status: custom.trim() }))
-    toast('Status atualizado')
+    toast(t('Status atualizado'))
   }
   const call = useVoice()
 
@@ -184,22 +185,22 @@ function UserPanel() {
           <span className="truncate">{me?.custom_status || (me ? STATUS_LABEL[me.status] : '')}</span>
         </span>
       </button>
-      <button className={`icon-btn ${call.muted || call.deafened ? 'danger-on' : ''}`} aria-label={call.muted ? 'Ativar microfone' : 'Silenciar microfone'}
-        data-tip={call.muted ? 'Ativar microfone' : 'Silenciar'} onClick={() => voice.toggleMute()}>
+      <button className={`icon-btn ${call.muted || call.deafened ? 'danger-on' : ''}`} aria-label={call.muted ? t('Ativar microfone') : t('Silenciar microfone')}
+        data-tip={call.muted ? t('Ativar microfone') : t('Silenciar')} onClick={() => voice.toggleMute()}>
         {call.muted || call.deafened ? <MicOff size={18} /> : <Mic size={18} />}
       </button>
-      <button className={`icon-btn ${call.deafened ? 'danger-on' : ''}`} aria-label={call.deafened ? 'Ativar áudio' : 'Desativar áudio'}
-        data-tip={call.deafened ? 'Ativar áudio' : 'Desativar áudio'} onClick={() => voice.toggleDeafen()}>
+      <button className={`icon-btn ${call.deafened ? 'danger-on' : ''}`} aria-label={call.deafened ? t('Ativar áudio') : t('Desativar áudio')}
+        data-tip={call.deafened ? t('Ativar áudio') : t('Desativar áudio')} onClick={() => voice.toggleDeafen()}>
         {call.deafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
       </button>
-      <button className="icon-btn" aria-label="Configurações" data-tip="Configurações" onClick={() => setSettingsOpen(true)}><Settings size={18} /></button>
+      <button className="icon-btn" aria-label={t('Configurações')} data-tip={t('Configurações')} onClick={() => setSettingsOpen(true)}><Settings size={18} /></button>
 
       {open && me && (
         <div className="status-menu">
           <div className="status-custom">
-            <input value={custom} maxLength={80} placeholder="Defina um status personalizado"
+            <input value={custom} maxLength={80} placeholder={t('Defina um status personalizado')}
               onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveCustom()} />
-            <button className="btn btn-primary btn-sm" onClick={() => void saveCustom()}>Salvar</button>
+            <button className="btn btn-primary btn-sm" onClick={() => void saveCustom()}>{t('Salvar')}</button>
           </div>
           {(['online', 'idle', 'dnd', 'invisible'] as Status[]).map((s) => (
             <button key={s} className={`dropdown-item ${me.status === s ? 'selected' : ''}`} onClick={() => void setStatus(s)}>
@@ -208,7 +209,7 @@ function UserPanel() {
           ))}
           <div className="dropdown-sep" />
           <button className="dropdown-item" onClick={() => { setOpen(false); setSettingsOpen(true) }}>
-            Editar perfil <Settings size={16} />
+            {t('Editar perfil')} <Settings size={16} />
           </button>
         </div>
       )}

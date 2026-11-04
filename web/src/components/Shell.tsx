@@ -11,13 +11,14 @@ import { ServerRail } from './ServerRail'
 import { SettingsModal } from './SettingsModal'
 import { VoiceStage } from './VoiceStage'
 import { local } from '../lib/storage'
+import { t } from '../lib/i18n'
 
 export function Shell() {
   const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast } = useApp()
   const { error: voiceError } = useVoice()
   useEffect(() => {
     if (voiceError) {
-      toast(voiceError)
+      toast(t(voiceError))
       voice.clearError()
     }
   }, [voiceError, toast])
@@ -64,7 +65,7 @@ export function Shell() {
       {question && (
         <Modal title={question.title} onClose={() => question.resolve(false)}
           footer={<>
-            <button className="btn btn-ghost" onClick={() => question.resolve(false)}>Cancelar</button>
+            <button className="btn btn-ghost" onClick={() => question.resolve(false)}>{t('Cancelar')}</button>
             <button className={`btn ${question.danger ? 'btn-danger' : 'btn-primary'}`} autoFocus onClick={() => question.resolve(true)}>{question.confirmLabel}</button>
           </>}>
           <p className="muted confirm-text">{question.message}</p>
@@ -78,12 +79,12 @@ function Home() {
   const { me } = useApp()
   return (
     <section className="chat">
-      <ChatHeader icon={<img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={24} height={24} />} title="Início" />
+      <ChatHeader icon={<img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={24} height={24} />} title={t('Início')} />
       <div className="empty-state">
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={180} height={180} />
-        <h2>E aí, {me?.display_name || me?.username}!</h2>
-        <p className="muted">Escolha um servidor à esquerda, ou crie o seu no botão <strong>+</strong>.</p>
-        <p className="muted small">Amigos e mensagens diretas chegam na etapa 3.</p>
+        <h2>{t('E aí, {nome}!', { nome: me?.display_name || me?.username || '' })}</h2>
+        <p className="muted">{t('Escolha um servidor à esquerda, ou crie o seu no botão +.')}</p>
+        <p className="muted small">{t('Amigos e mensagens diretas chegam na etapa 3.')}</p>
       </div>
     </section>
   )
@@ -94,7 +95,7 @@ function EmptyServer() {
     <section className="chat">
       <ChatHeader icon={null} title="" />
       <div className="empty-state">
-        <p className="muted">Este servidor ainda não tem canais de texto.</p>
+        <p className="muted">{t('Este servidor ainda não tem canais de texto.')}</p>
       </div>
     </section>
   )

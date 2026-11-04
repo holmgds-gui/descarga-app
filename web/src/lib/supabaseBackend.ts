@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Backend, Channel, ChannelType, Message, PresenceEntry, Profile, ProfilePatch, RealtimeRoom, Server } from './types'
 import { compressImage } from './image'
+import { getLang, t } from './i18n'
 
 const PAGE = 50
 
@@ -34,7 +35,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       if (r.error) throw new Error(traduzErro(r.error.message))
       // o Supabase não avisa quando o e-mail já existe: devolve um usuário "vazio" sem identidades
       if (r.data.user && (r.data.user.identities?.length ?? 0) === 0) {
-        throw new Error('Esse e-mail já tem conta. Use "Entrar" ou "Esqueci minha senha".')
+        throw new Error(t('Esse e-mail já tem conta. Use "Entrar" ou "Esqueci minha senha".'))
       }
       return { needsConfirmation: !r.data.session }
     },
@@ -94,7 +95,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     async updateProfile(patch: ProfilePatch) {
       const me = await uid()
       const r = await sb.from('profiles').update(patch).eq('id', me!).select().single()
-      if (r.error?.code === '23505') throw new Error('Esse nome de usuário já está em uso.')
+      if (r.error?.code === '23505') throw new Error(t('Esse nome de usuário já está em uso.'))
       return must(r) as Profile
     },
 
@@ -134,7 +135,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async joinServer(code) {
       const r = await sb.rpc('join_server', { code: code.trim() })
-      if (r.error) throw new Error('Convite inválido ou expirado.')
+      if (r.error) throw new Error(t('Convite inválido ou expirado.'))
       return r.data as Server
     },
 
@@ -257,7 +258,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       if (!me || !sub.endpoint || !sub.keys) return
       must(
         await sb.from('push_subscriptions').upsert(
-          { user_id: me, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, user_agent: navigator.userAgent.slice(0, 200) },
+          { user_id: me, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, user_agent: navigator.userAgent.slice(0, 200), lang: getLang() },
           { onConflict: 'endpoint' },
         ),
       )
@@ -303,7 +304,7 @@ function createSupabaseRoom(sb: SupabaseClient, topic: string): RealtimeRoom {
           for (const [e, p] of queue.splice(0)) void ch.send({ type: 'broadcast', event: e, payload: p })
           resolve()
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          reject(new Error('Não foi possível conectar à call. Verifique sua internet.'))
+          reject(new Error(t('Não foi possível conectar à call. Verifique sua internet.')))
         }
       })
     })
@@ -346,17 +347,17 @@ const DEFAULT_ICE: RTCIceServer[] = [
 
 function traduzErro(msg: string): string {
   const m = msg.toLowerCase()
-  if (m.includes('invalid login')) return 'E-mail ou senha incorretos. Se esqueceu a senha, use "Esqueci minha senha".'
-  if (m.includes('already registered')) return 'Esse e-mail já tem conta. Use "Entrar".'
-  if (m.includes('password should be') || m.includes('weak')) return 'A senha precisa ter pelo menos 6 caracteres.'
-  if (m.includes('same password') || m.includes('should be different')) return 'A nova senha precisa ser diferente da antiga.'
-  if (m.includes('email not confirmed')) return 'Esse e-mail ainda não foi confirmado. Peça para o dono do Descarga liberar sua conta.'
-  if (m.includes('provider is not enabled')) return 'O login com Google ainda não está disponível. Use e-mail e senha.'
+  if (m.includes('invalid login')) return t('E-mail ou senha incorretos. Se esqueceu a senha, use "Esqueci minha senha".')
+  if (m.includes('already registered')) return t('Esse e-mail já tem conta. Use "Entrar".')
+  if (m.includes('password should be') || m.includes('weak')) return t('A senha precisa ter pelo menos 6 caracteres.')
+  if (m.includes('same password') || m.includes('should be different')) return t('A nova senha precisa ser diferente da antiga.')
+  if (m.includes('email not confirmed')) return t('Esse e-mail ainda não foi confirmado. Peça para o dono do Descarga liberar sua conta.')
+  if (m.includes('provider is not enabled')) return t('O login com Google ainda não está disponível. Use e-mail e senha.')
   if (m.includes('rate limit') || m.includes('too many') || m.includes('security purposes'))
-    return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.'
-  if (m.includes('invalid') && m.includes('email')) return 'Esse e-mail não parece válido. Confira se digitou certo.'
-  if (m.includes('signups not allowed')) return 'Os cadastros estão fechados no momento.'
-  if (m.includes('failed to fetch') || m.includes('network')) return 'Sem conexão com o servidor. Verifique sua internet.'
+    return t('Muitas tentativas seguidas. Espere alguns minutos e tente de novo.')
+  if (m.includes('invalid') && m.includes('email')) return t('Esse e-mail não parece válido. Confira se digitou certo.')
+  if (m.includes('signups not allowed')) return t('Os cadastros estão fechados no momento.')
+  if (m.includes('failed to fetch') || m.includes('network')) return t('Sem conexão com o servidor. Verifique sua internet.')
   return msg
 }
 

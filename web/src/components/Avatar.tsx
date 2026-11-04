@@ -1,15 +1,16 @@
 import type { MouseEvent } from 'react'
 import type { Profile, Status } from '../lib/types'
+import { t } from '../lib/i18n'
 
 export const STATUS_LABEL: Record<Status, string> = {
-  online: 'Disponível',
-  idle: 'Ausente',
-  dnd: 'Não perturbe',
-  invisible: 'Invisível',
+  get online() { return t('Disponível') },
+  get idle() { return t('Ausente') },
+  get dnd() { return t('Não perturbe') },
+  get invisible() { return t('Invisível') },
 }
 
 export function displayName(p: Profile | null | undefined) {
-  return p ? p.display_name || p.username : 'Carregando…'
+  return p ? p.display_name || p.username : t('Carregando…')
 }
 
 export function StatusDot({ status, size = 12 }: { status: Status; size?: number }) {
@@ -40,7 +41,7 @@ export function Avatar({
       className="avatar"
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       onClick={onClick}
-      aria-label={onClick ? `Ver perfil de ${name}` : undefined}
+      aria-label={onClick ? t('Ver perfil de {nome}', { nome: name }) : undefined}
       type={onClick ? 'button' : undefined}
     >
       {profile?.avatar_url ? (

@@ -4,6 +4,7 @@ import { formatBirthday, formatLongDate } from '../lib/format'
 import type { Profile } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, STATUS_LABEL, displayName } from './Avatar'
+import { t } from '../lib/i18n'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
 export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?: () => void }) {
@@ -19,7 +20,7 @@ export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?
         </div>
         {onEdit && (
           <button className="btn btn-sm btn-ghost profile-edit" onClick={onEdit}>
-            <Pencil size={14} /> Editar perfil
+            <Pencil size={14} /> {t('Editar perfil')}
           </button>
         )}
       </div>
@@ -35,7 +36,7 @@ export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?
 
         {profile.bio && (
           <section>
-            <h3>Sobre mim</h3>
+            <h3>{t('Sobre mim')}</h3>
             <p className="profile-bio">{profile.bio}</p>
           </section>
         )}
@@ -49,7 +50,7 @@ export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?
 
         {profile.links.length > 0 && (
           <section>
-            <h3>Links</h3>
+            <h3>{t('Links')}</h3>
             <div className="profile-links">
               {profile.links.map((l, i) => (
                 <a key={i} href={l.url} target="_blank" rel="noopener noreferrer nofollow">
@@ -61,7 +62,7 @@ export function ProfileCardBody({ profile, onEdit }: { profile: Profile; onEdit?
         )}
 
         <section>
-          <h3>Membro do Descarga desde</h3>
+          <h3>{t('Membro do Descarga desde')}</h3>
           <p className="small">{formatLongDate(profile.created_at)}</p>
         </section>
       </div>

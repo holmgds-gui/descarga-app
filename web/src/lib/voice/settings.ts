@@ -1,4 +1,5 @@
 import { local } from '../storage'
+import { t } from '../i18n'
 
 export type InputMode = 'voice' | 'ptt'
 export type ScreenQuality = '720p30' | '1080p30' | '1080p60'
@@ -47,7 +48,7 @@ export function keyLabel(code: string) {
   if (code.startsWith('Key')) return code.slice(3)
   if (code.startsWith('Digit')) return code.slice(5)
   const names: Record<string, string> = {
-    Space: 'Espaço', Backquote: '`', ControlLeft: 'Ctrl', ControlRight: 'Ctrl dir.', AltLeft: 'Alt',
+    Space: t('Espaço'), Backquote: '`', ControlLeft: 'Ctrl', ControlRight: t('Ctrl dir.'), AltLeft: 'Alt',
     ShiftLeft: 'Shift', CapsLock: 'Caps Lock', Tab: 'Tab',
   }
   return names[code] ?? code

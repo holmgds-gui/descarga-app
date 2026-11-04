@@ -6,6 +6,7 @@
 import type { Backend, Channel, Message, PresenceEntry, Profile, RealtimeRoom, Server } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
+import { t } from './i18n'
 
 interface DemoUser { id: string; email: string; password: string }
 interface Member { server_id: string; user_id: string; joined_at: string }
@@ -93,7 +94,7 @@ export function createDemoBackend(): Backend {
     try {
       local.set(KEY, JSON.stringify(db))
     } catch {
-      throw new Error('O armazenamento do modo demonstração encheu. Use imagens menores.')
+      throw new Error(t('O armazenamento do modo demonstração encheu. Use imagens menores.'))
     }
   }
   const emit = (e: Event) => {
@@ -124,7 +125,7 @@ export function createDemoBackend(): Backend {
   }
   const me = () => {
     const uid = getSession()
-    if (!uid) throw new Error('Você não está conectado.')
+    if (!uid) throw new Error(t('Você não está conectado.'))
     return uid
   }
   const isMember = (db: DB, serverId: string, uid: string) =>
@@ -158,8 +159,8 @@ export function createDemoBackend(): Backend {
 
     async signUp(email, password, username) {
       const db = load()
-      if (db.users.some((u) => u.email === email.toLowerCase())) throw new Error('Esse e-mail já tem conta. Tente entrar.')
-      if (password.length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.')
+      if (db.users.some((u) => u.email === email.toLowerCase())) throw new Error(t('Esse e-mail já tem conta. Tente entrar.'))
+      if (password.length < 6) throw new Error(t('A senha precisa ter pelo menos 6 caracteres.'))
       const uid = createAccount(db, email, password, username)
       save(db)
       setSession(uid)
@@ -169,7 +170,7 @@ export function createDemoBackend(): Backend {
 
     async signIn(email, password) {
       const u = load().users.find((x) => x.email === email.toLowerCase() && x.password === password)
-      if (!u) throw new Error('E-mail ou senha incorretos.')
+      if (!u) throw new Error(t('E-mail ou senha incorretos.'))
       setSession(u.id)
     },
 
@@ -196,7 +197,7 @@ export function createDemoBackend(): Backend {
       const db = load()
       const uid = me()
       if (patch.username && db.profiles.some((p) => p.username === patch.username && p.id !== uid))
-        throw new Error('Esse nome de usuário já está em uso.')
+        throw new Error(t('Esse nome de usuário já está em uso.'))
       const i = db.profiles.findIndex((p) => p.id === uid)
       db.profiles[i] = { ...db.profiles[i], ...patch }
       save(db)
@@ -247,7 +248,7 @@ export function createDemoBackend(): Backend {
       const uid = me()
       const clean = c.trim().split('/').pop() ?? ''
       const s = db.servers.find((x) => x.invite_code === clean)
-      if (!s) throw new Error('Convite inválido ou expirado.')
+      if (!s) throw new Error(t('Convite inválido ou expirado.'))
       if (!isMember(db, s.id, uid)) db.members.push({ server_id: s.id, user_id: uid, joined_at: now() })
       save(db)
       emit({ type: 'servers' })
@@ -280,7 +281,7 @@ export function createDemoBackend(): Backend {
       const db = load()
       const uid = me()
       const s = db.servers.find((x) => x.id === serverId)
-      if (s?.owner_id !== uid) throw new Error('Só o dono do servidor pode criar canais (por enquanto).')
+      if (s?.owner_id !== uid) throw new Error(t('Só o dono do servidor pode criar canais (por enquanto).'))
       const c: Channel = {
         id: id(), server_id: serverId, name, type, category, topic: '',
         position: db.channels.filter((x) => x.server_id === serverId).length, created_at: now(),
@@ -355,7 +356,7 @@ export function createDemoBackend(): Backend {
       return { google: true }
     },
     async resetPassword() {
-      throw new Error('No modo demonstração não há e-mail. Crie outra conta.')
+      throw new Error(t('No modo demonstração não há e-mail. Crie outra conta.'))
     },
     async updatePassword(password) {
       const db = load()

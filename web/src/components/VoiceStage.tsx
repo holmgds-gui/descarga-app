@@ -10,6 +10,7 @@ import type { Channel } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import { ChatHeader } from './ChatView'
+import { t as tr } from '../lib/i18n'
 
 function VideoView({ stream, mirror = false, muted = true, contain = false }: { stream: MediaStream; mirror?: boolean; muted?: boolean; contain?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null)
@@ -56,13 +57,13 @@ export function VoiceStage({ channel }: { channel: Channel }) {
               {present.map((m) => <Avatar key={m.sessionId} profile={profiles[m.userId]} size={48} />)}
             </div>
           ) : (
-            <p className="muted">Ninguém está na call ainda.</p>
+            <p className="muted">{tr('Ninguém está na call ainda.')}</p>
           )}
           <button className="btn btn-success btn-lg" disabled={call.status === 'connecting' || present.length >= MAX_IN_CALL}
             onClick={() => void voice.join(channel.id, channel.server_id, userId)}>
-            <PhoneCall size={18} /> {present.length >= MAX_IN_CALL ? 'Call cheia' : 'Entrar na call'}
+            <PhoneCall size={18} /> {present.length >= MAX_IN_CALL ? tr('Call cheia') : tr('Entrar na call')}
           </button>
-          <p className="muted small">Chamadas direto entre os aparelhos • até {MAX_IN_CALL} pessoas • grátis</p>
+          <p className="muted small">{tr('Chamadas direto entre os aparelhos • até {n} pessoas • grátis', { n: MAX_IN_CALL })}</p>
         </div>
       </section>
     )
@@ -100,9 +101,9 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           // não mostra a própria tela aqui dentro (evita o efeito de "tela dentro da tela")
           <div className="tile-waiting">
             <Monitor size={28} />
-            <span>Você está compartilhando sua tela</span>
+            <span>{tr('Você está compartilhando sua tela')}</span>
             <button className="btn btn-sm btn-danger" onClick={(e) => { e.stopPropagation(); voice.stopScreen() }}>
-              <MonitorOff size={16} /> Parar
+              <MonitorOff size={16} /> {tr('Parar')}
             </button>
           </div>
         ) : t.stream ? (
@@ -110,14 +111,14 @@ export function VoiceStage({ channel }: { channel: Channel }) {
         ) : t.kind === 'screen' ? (
           <div className="tile-waiting">
             <Monitor size={28} />
-            <span>{broken ? 'Sem conexão com essa pessoa' : 'Carregando a tela…'}</span>
+            <span>{broken ? tr('Sem conexão com essa pessoa') : tr('Carregando a tela…')}</span>
           </div>
         ) : (
           <div className="tile-avatar"><Avatar profile={p} size={big ? 96 : 72} /></div>
         )}
         <div className="tile-label">
           {t.kind === 'screen' && <Monitor size={14} />}
-          <span className="truncate">{t.kind === 'screen' ? `Tela de ${displayName(p)}` : displayName(p)}</span>
+          <span className="truncate">{t.kind === 'screen' ? tr('Tela de {nome}', { nome: displayName(p) }) : displayName(p)}</span>
           {t.kind === 'person' && (t.member.deafened ? <HeadphoneOff size={14} /> : t.member.muted && <MicOff size={14} />)}
           {broken && <span className="tile-conn"><WifiOff size={14} /></span>}
         </div>
@@ -125,25 +126,25 @@ export function VoiceStage({ channel }: { channel: Channel }) {
           <div className={`tile-status ${broken ? 'bad' : ''}`} onClick={(e) => e.stopPropagation()}>
             {broken ? (
               <>
-                <span>Sem conexão de áudio com essa pessoa</span>
+                <span>{tr('Sem conexão de áudio com essa pessoa')}</span>
                 <button className="btn btn-sm btn-ghost" onClick={() => voice.retryPeer(t.member.sessionId)}>
-                  <RefreshCw size={14} /> Tentar de novo
+                  <RefreshCw size={14} /> {tr('Tentar de novo')}
                 </button>
               </>
             ) : (
-              <span>Conectando…</span>
+              <span>{tr('Conectando…')}</span>
             )}
           </div>
         )}
         <div className="tile-tools" onClick={(e) => e.stopPropagation()}>
           {!t.mine && t.kind === 'person' && (
-            <button className="icon-btn tiny" aria-label={`Volume de ${displayName(p)}`} data-tip={`Volume ${vol}%`}
+            <button className="icon-btn tiny" aria-label={tr('Volume de {nome}', { nome: displayName(p) })} data-tip={`${tr('Volume')} ${vol}%`}
               onClick={() => setVolumeFor(volumeFor === t.member.userId ? null : t.member.userId)}>
               <Volume2 size={16} />
             </button>
           )}
           {t.stream && (
-            <button className="icon-btn tiny" aria-label="Tela cheia" data-tip="Tela cheia"
+            <button className="icon-btn tiny" aria-label={tr('Tela cheia')} data-tip={tr('Tela cheia')}
               onClick={(e) => void (e.currentTarget.closest('.tile') as HTMLElement)?.requestFullscreen?.().catch(() => undefined)}>
               <Maximize2 size={16} />
             </button>
@@ -151,7 +152,7 @@ export function VoiceStage({ channel }: { channel: Channel }) {
         </div>
         {volumeFor === t.member.userId && t.kind === 'person' && (
           <div className="volume-pop" onClick={(e) => e.stopPropagation()}>
-            <label htmlFor={`vol-${t.member.userId}`}>Volume de {displayName(p)} — {vol}%</label>
+            <label htmlFor={`vol-${t.member.userId}`}>{tr('Volume de {nome}', { nome: displayName(p) })} — {vol}%</label>
             <input id={`vol-${t.member.userId}`} type="range" min={0} max={100} step={5} value={vol}
               onChange={(e) => voice.setUserVolume(t.member.userId, Number(e.target.value) / 100)} />
           </div>
@@ -165,7 +166,7 @@ export function VoiceStage({ channel }: { channel: Channel }) {
   return (
     <section className="chat voice-stage">
       <ChatHeader icon={<Volume2 size={22} />} title={channel.name}
-        topic={`${call.members.length} de ${MAX_IN_CALL} na call`} />
+        topic={tr('{n} de {max} na call', { n: call.members.length, max: MAX_IN_CALL })} />
       <div className={`stage ${focusTile ? 'has-focus' : ''}`}>
         {focusTile && <div className="stage-focus">{renderTile(focusTile, true)}</div>}
         <div className={`stage-grid ${focusTile ? 'strip' : ''} n${Math.min(rest.length, 6)}`}>
@@ -175,53 +176,53 @@ export function VoiceStage({ channel }: { channel: Channel }) {
 
       {call.audioBlocked && (
         <button className="audio-unlock" onClick={() => voice.unlockAudio()}>
-          <VolumeX size={18} /> O navegador pausou o som da call. Toque aqui para ouvir.
+          <VolumeX size={18} /> {tr('O navegador pausou o som da call. Toque aqui para ouvir.')}
         </button>
       )}
 
       {ptt && (
         <div className="ptt-hint">
-          <span>{call.pttActive ? 'Falando…' : `Segure ${keyLabel(call.settings.pttKey)} para falar`}</span>
+          <span>{call.pttActive ? tr('Falando…') : tr('Segure {tecla} para falar', { tecla: keyLabel(call.settings.pttKey) })}</span>
           <button className={`btn btn-sm ${call.pttActive ? 'btn-success' : 'btn-ghost'}`}
             onPointerDown={() => voice.setPtt(true)} onPointerUp={() => voice.setPtt(false)}
             onPointerLeave={() => voice.setPtt(false)} onContextMenu={(e) => e.preventDefault()}>
-            <Mic size={16} /> Segure para falar
+            <Mic size={16} /> {tr('Segure para falar')}
           </button>
         </div>
       )}
 
       <div className="call-controls">
-        <button className={`round-btn ${call.muted || call.deafened ? 'off' : ''}`} aria-label="Microfone"
-          data-tip={call.muted ? 'Ativar microfone' : 'Silenciar'} onClick={() => voice.toggleMute()}>
+        <button className={`round-btn ${call.muted || call.deafened ? 'off' : ''}`} aria-label={tr('Microfone')}
+          data-tip={call.muted ? tr('Ativar microfone') : tr('Silenciar')} onClick={() => voice.toggleMute()}>
           {call.muted || call.deafened ? <MicOff size={22} /> : <Mic size={22} />}
         </button>
-        <button className={`round-btn ${call.deafened ? 'off' : ''}`} aria-label="Áudio"
-          data-tip={call.deafened ? 'Ativar áudio' : 'Desativar áudio'} onClick={() => voice.toggleDeafen()}>
+        <button className={`round-btn ${call.deafened ? 'off' : ''}`} aria-label={tr('Áudio')}
+          data-tip={call.deafened ? tr('Ativar áudio') : tr('Desativar áudio')} onClick={() => voice.toggleDeafen()}>
           {call.deafened ? <HeadphoneOff size={22} /> : <Headphones size={22} />}
         </button>
-        <button className={`round-btn ${call.camera ? 'on' : ''}`} aria-label="Câmera"
-          data-tip={call.camera ? 'Desligar câmera' : 'Ligar câmera'} onClick={() => void voice.toggleCamera()}>
+        <button className={`round-btn ${call.camera ? 'on' : ''}`} aria-label={tr('Câmera')}
+          data-tip={call.camera ? tr('Desligar câmera') : tr('Ligar câmera')} onClick={() => void voice.toggleCamera()}>
           {call.camera ? <Video size={22} /> : <VideoOff size={22} />}
         </button>
         {(canShareScreen() || call.screen) && <div className="quality-wrap">
-          <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label="Compartilhar tela"
-            data-tip={call.screen ? 'Parar de compartilhar' : 'Compartilhar tela'}
+          <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label={tr('Compartilhar tela')}
+            data-tip={call.screen ? tr('Parar de compartilhar') : tr('Compartilhar tela')}
             onClick={() => (call.screen ? voice.stopScreen() : setQualityOpen((v) => !v))}>
             {call.screen ? <MonitorOff size={22} /> : <Monitor size={22} />}
           </button>
           {qualityOpen && (
             <div className="quality-pop">
-              <strong>Qualidade da tela</strong>
+              <strong>{tr('Qualidade da tela')}</strong>
               {(Object.keys(SCREEN_PRESETS) as ScreenQuality[]).map((q) => (
                 <button key={q} className={`dropdown-item ${call.settings.screenQuality === q ? 'selected' : ''}`} onClick={() => share(q)}>
                   {SCREEN_PRESETS[q].label}
                 </button>
               ))}
-              <span className="muted small">Para enviar o som, escolha "Tela inteira" ou uma aba e marque "Compartilhar áudio".</span>
+              <span className="muted small">{tr('Para enviar o som, escolha "Tela inteira" ou uma aba e marque "Compartilhar áudio".')}</span>
             </div>
           )}
         </div>}
-        <button className="round-btn leave" aria-label="Sair da call" data-tip="Sair da call" onClick={() => void voice.leave()}>
+        <button className="round-btn leave" aria-label={tr('Sair da call')} data-tip={tr('Sair da call')} onClick={() => void voice.leave()}>
           <PhoneOff size={22} />
         </button>
       </div>

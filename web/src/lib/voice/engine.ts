@@ -10,6 +10,7 @@ import {
   SCREEN_PRESETS, loadVoiceSettings, saveVoiceSettings, type ScreenQuality, type VoiceSettings,
 } from './settings'
 import { playJoin, playLeave, playMute, playUnmute, setSoundVolume, soundContext } from './sounds'
+import { t } from '../i18n'
 
 export const MAX_IN_CALL = 6
 
@@ -129,7 +130,7 @@ class VoiceEngine {
     try {
       this.mic = await this.openMic()
     } catch {
-      this.set({ status: 'idle', channelId: null, serverId: null, error: 'Permita o uso do microfone para entrar na call.' })
+      this.set({ status: 'idle', channelId: null, serverId: null, error: t('Permita o uso do microfone para entrar na call.') })
       return
     }
     this.setupMicAnalyser()
@@ -169,7 +170,7 @@ class VoiceEngine {
     })
     if (others.filter((e) => e.sessionId !== this.snap.sessionId).length >= MAX_IN_CALL) {
       await this.leave(false)
-      this.set({ error: `Essa call está cheia (máximo de ${MAX_IN_CALL} pessoas).` })
+      this.set({ error: t('Essa call está cheia (máximo de {n} pessoas).', { n: MAX_IN_CALL }) })
       return
     }
 
@@ -563,7 +564,7 @@ class VoiceEngine {
         this.addStream(cam)
         this.set({ camera: cam })
       } catch {
-        this.set({ error: 'Não deu para abrir a câmera. Verifique a permissão.' })
+        this.set({ error: t('Não deu para abrir a câmera. Verifique a permissão.') })
         return
       }
     }
@@ -572,7 +573,7 @@ class VoiceEngine {
 
   async startScreen(quality: ScreenQuality) {
     if (!canShareScreen()) {
-      this.set({ error: 'Este aparelho não permite compartilhar a tela pelo navegador. Use um computador.' })
+      this.set({ error: t('Este aparelho não permite compartilhar a tela pelo navegador. Use um computador.') })
       return
     }
     const preset = SCREEN_PRESETS[quality]
@@ -597,7 +598,7 @@ class VoiceEngine {
         if (e?.name === 'NotAllowedError' || e?.name === 'AbortError') {
           // "by system" = o computador bloqueou (no Mac: Ajustes > Privacidade > Gravação de Tela)
           if (/system/i.test(e.message)) {
-            this.set({ error: 'O computador bloqueou a gravação de tela. Libere o navegador nas configurações de privacidade do sistema.' })
+            this.set({ error: t('O computador bloqueou a gravação de tela. Libere o navegador nas configurações de privacidade do sistema.') })
           }
           return // a pessoa cancelou
         }
@@ -605,7 +606,7 @@ class VoiceEngine {
       }
     }
     if (!screen) {
-      this.set({ error: 'Não deu para compartilhar a tela neste navegador. Tente pelo Chrome ou Edge no computador.' })
+      this.set({ error: t('Não deu para compartilhar a tela neste navegador. Tente pelo Chrome ou Edge no computador.') })
       return
     }
     if (this.snap.screen) this.stopScreen()
@@ -613,7 +614,7 @@ class VoiceEngine {
     video.contentHint = quality === '1080p60' ? 'motion' : 'detail'
     video.onended = () => this.stopScreen()
     if (!screen.getAudioTracks().length) {
-      this.set({ error: 'Tela compartilhada sem som. Para enviar o som, marque "Compartilhar áudio" na janela do navegador.' })
+      this.set({ error: t('Tela compartilhada sem som. Para enviar o som, marque "Compartilhar áudio" na janela do navegador.') })
     }
     this.set({ screen, screenQuality: quality })
     this.updateSettings({ screenQuality: quality })
@@ -662,7 +663,7 @@ class VoiceEngine {
       (patch.inputDeviceId !== undefined && patch.inputDeviceId !== prev.inputDeviceId ||
         patch.noiseSuppression !== undefined && patch.noiseSuppression !== prev.noiseSuppression)
     ) {
-      void this.restartMic().catch(() => this.set({ error: 'Não deu para trocar o microfone.' }))
+      void this.restartMic().catch(() => this.set({ error: t('Não deu para trocar o microfone.') }))
     }
   }
 

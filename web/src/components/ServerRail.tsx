@@ -2,14 +2,15 @@ import { useState, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { useApp } from '../state'
 import { ServerCreateModal } from './ServerModals'
+import { t } from '../lib/i18n'
 
 export function ServerRail() {
   const { servers, activeServerId, setActiveServerId } = useApp()
   const [creating, setCreating] = useState(false)
 
   return (
-    <nav className="server-rail" aria-label="Servidores">
-      <RailItem label="Início" active={activeServerId === null} onClick={() => setActiveServerId(null)}>
+    <nav className="server-rail" aria-label={t('Servidores')}>
+      <RailItem label={t('Início')} active={activeServerId === null} onClick={() => setActiveServerId(null)}>
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="rail-home" />
       </RailItem>
       <div className="rail-sep" />
@@ -22,7 +23,7 @@ export function ServerRail() {
           )}
         </RailItem>
       ))}
-      <RailItem label="Criar ou entrar em um servidor" onClick={() => setCreating(true)} variant="add">
+      <RailItem label={t('Criar ou entrar em um servidor')} onClick={() => setCreating(true)} variant="add">
         <Plus size={24} />
       </RailItem>
       {creating && <ServerCreateModal onClose={() => setCreating(false)} />}

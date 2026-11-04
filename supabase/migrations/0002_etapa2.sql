@@ -75,3 +75,7 @@ create table if not exists public.app_secrets (
 );
 alter table public.app_secrets enable row level security;
 revoke all on public.app_secrets from anon, authenticated;
+
+-- idioma das notificações de cada aparelho (pt ou en)
+alter table public.push_subscriptions
+  add column if not exists lang text not null default 'pt' check (lang in ('pt', 'en'));

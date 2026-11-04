@@ -6,12 +6,18 @@ import { AppProvider } from './state'
 import { local, session } from './lib/storage'
 import { refreshPushSubscription } from './lib/push'
 import { isRecoveryLink } from './lib/authUrl'
+import { useLang } from './lib/i18n'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
 export default function App() {
   const [userId, setUserId] = useState<string | null | undefined>(undefined)
   const [recovering, setRecovering] = useState(isRecoveryLink)
+  const lang = useLang() // redesenha tudo quando o idioma muda
+  useEffect(() => {
+    // as notificações deste aparelho passam a chegar no idioma escolhido
+    if (userId) void refreshPushSubscription()
+  }, [lang, userId])
   useEffect(() => backend.onPasswordRecovery(() => setRecovering(true)), [])
 
   // guarda o código de convite do link (?convite=...) até a pessoa entrar

@@ -26,6 +26,8 @@ App de conversa inspirado no Discord: servidores, canais, chat em tempo real, pe
 - Menções com `@usuario` (com sugestões ao digitar) e destaque das mensagens para você
 - Notificações com o app fechado: menções, respostas e quando alguém entra numa call
 - App instalável (PWA): no celular, "Adicionar à Tela de Início"
+- Idiomas: português e inglês (detecta o idioma do aparelho; troca em Configurações → Aparência e idioma ou na tela de login)
+- Fundos: 11 temas prontos + fundo personalizado
 
 ## Rodar no seu computador
 

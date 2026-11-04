@@ -1,4 +1,5 @@
 import { backend } from './backend'
+import { t } from './i18n'
 
 const VAPID = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -37,9 +38,9 @@ function base64ToBytes(b64: string) {
 }
 
 export async function enablePush() {
-  if (!supported()) throw new Error('Este navegador não aceita notificações.')
+  if (!supported()) throw new Error(t('Este navegador não aceita notificações.'))
   const permission = await Notification.requestPermission()
-  if (permission !== 'granted') throw new Error('Você não permitiu as notificações. Dá para liberar nas configurações do navegador.')
+  if (permission !== 'granted') throw new Error(t('Você não permitiu as notificações. Dá para liberar nas configurações do navegador.'))
   const reg = (await registerServiceWorker()) ?? (await navigator.serviceWorker.ready)
   await navigator.serviceWorker.ready
   const sub =

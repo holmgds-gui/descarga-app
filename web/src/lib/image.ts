@@ -1,10 +1,11 @@
+import { t } from './i18n'
 const MAX: Record<string, number> = { avatar: 512, banner: 1200, server: 256 }
 
 /** Reduz a imagem para economizar espaço. GIFs ficam como estão (para manter a animação). */
 export async function compressImage(file: File, kind: string): Promise<Blob> {
-  if (!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
+  if (!file.type.startsWith('image/')) throw new Error(t('Escolha um arquivo de imagem.'))
   if (file.type === 'image/gif') {
-    if (file.size > 8 * 1024 * 1024) throw new Error('O GIF precisa ter no máximo 8 MB.')
+    if (file.size > 8 * 1024 * 1024) throw new Error(t('O GIF precisa ter no máximo 8 MB.'))
     return file
   }
   const bitmap = await createImageBitmap(file)
@@ -15,7 +16,7 @@ export async function compressImage(file: File, kind: string): Promise<Blob> {
   canvas.height = Math.round(bitmap.height * scale)
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Não deu para ler a imagem.'))), 'image/webp', 0.85),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t('Não deu para ler a imagem.')))), 'image/webp', 0.85),
   )
 }
 

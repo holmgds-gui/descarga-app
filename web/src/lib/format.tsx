@@ -1,3 +1,4 @@
+import { locale, t } from './i18n'
 import { Fragment, type ReactNode } from 'react'
 
 /** Formatação simples e segura: **negrito**, *itálico*, __sublinhado__, ~~riscado~~, `código`, ```bloco``` e links. */
@@ -43,9 +44,11 @@ function renderInline(text: string): ReactNode[] {
   return out
 }
 
-const timeFmt = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' })
-const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-const longDateFmt = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+// formatadores no idioma atual (recriados quando o idioma muda)
+const fmt = (opts: Intl.DateTimeFormatOptions) => (d: Date) => new Intl.DateTimeFormat(locale(), opts).format(d)
+const timeFmt = { format: fmt({ hour: '2-digit', minute: '2-digit' }) }
+const dateFmt = { format: fmt({ day: '2-digit', month: '2-digit', year: 'numeric' }) }
+const longDateFmt = { format: fmt({ day: 'numeric', month: 'long', year: 'numeric' }) }
 
 export function formatTimestamp(iso: string) {
   const d = new Date(iso)
@@ -53,8 +56,8 @@ export function formatTimestamp(iso: string) {
   const yesterday = new Date()
   yesterday.setDate(today.getDate() - 1)
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
-  if (same(d, today)) return `Hoje às ${timeFmt.format(d)}`
-  if (same(d, yesterday)) return `Ontem às ${timeFmt.format(d)}`
+  if (same(d, today)) return t('Hoje às {hora}', { hora: timeFmt.format(d) })
+  if (same(d, yesterday)) return t('Ontem às {hora}', { hora: timeFmt.format(d) })
   return `${dateFmt.format(d)} ${timeFmt.format(d)}`
 }
 
@@ -63,5 +66,5 @@ export const formatLongDate = (iso: string) => longDateFmt.format(new Date(iso))
 
 export function formatBirthday(date: string) {
   const [, m, d] = date.split('-').map(Number)
-  return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long' }).format(new Date(2000, m - 1, d))
+  return new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long' }).format(new Date(2000, m - 1, d))
 }

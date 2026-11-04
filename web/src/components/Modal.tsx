@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { t } from '../lib/i18n'
 
 export function Modal({
   title,
@@ -25,7 +26,7 @@ export function Modal({
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
-        <button className="icon-btn modal-close" onClick={onClose} aria-label="Fechar">
+        <button className="icon-btn modal-close" onClick={onClose} aria-label={t('Fechar')}>
           <X size={20} />
         </button>
         {title && (

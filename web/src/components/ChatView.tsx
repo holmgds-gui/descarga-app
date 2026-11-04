@@ -5,6 +5,7 @@ import { formatLongDate, formatTime, formatTimestamp, renderMessage } from '../l
 import type { Channel, Message, Profile } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
+import { t } from '../lib/i18n'
 
 const GROUP_MS = 7 * 60 * 1000
 
@@ -26,7 +27,7 @@ export function ChatHeader({
   const { setMobilePane } = useApp()
   return (
     <header className="chat-header">
-      <button className="icon-btn mobile-only" aria-label="Abrir canais" onClick={() => setMobilePane('nav')}>
+      <button className="icon-btn mobile-only" aria-label={t('Abrir canais')} onClick={() => setMobilePane('nav')}>
         <Menu size={22} />
       </button>
       <span className="chat-header-icon">{icon}</span>
@@ -34,7 +35,7 @@ export function ChatHeader({
       {topic && <span className="chat-topic truncate">{topic}</span>}
       <span className="flex-1" />
       {showMembersToggle && (
-        <button className={`icon-btn ${membersOpen ? 'on' : ''}`} aria-label="Lista de membros" data-tip="Membros"
+        <button className={`icon-btn ${membersOpen ? 'on' : ''}`} aria-label={t('Lista de membros')} data-tip={t('Membros')}
           onClick={onToggleMembers}>
           <Users size={22} />
         </button>
@@ -125,7 +126,7 @@ export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: C
   }
 
   const remove = async (m: Message) => {
-    const ok = await ask({ title: 'Apagar mensagem', message: 'Tem certeza de que quer apagar esta mensagem? Não dá para desfazer.', confirmLabel: 'Apagar', danger: true })
+    const ok = await ask({ title: t('Apagar mensagem'), message: t('Tem certeza de que quer apagar esta mensagem? Não dá para desfazer.'), confirmLabel: t('Apagar'), danger: true })
     if (!ok) return
     await backend.deleteMessage(m.id)
     setMessages((prev) => prev.filter((x) => x.id !== m.id))
@@ -152,8 +153,8 @@ export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: C
         {!hasMore && (
           <div className="channel-welcome">
             <div className="channel-welcome-icon"><Hash size={40} /></div>
-            <h2>Bem-vindo(a) a #{channel.name}!</h2>
-            <p className="muted">Este é o começo do canal #{channel.name}.</p>
+            <h2>{t('Bem-vindo(a) a #{canal}!', { canal: channel.name })}</h2>
+            <p className="muted">{t('Este é o começo do canal #{canal}.', { canal: channel.name })}</p>
           </div>
         )}
         {loading && hasMore && <div className="loading-dots"><span /><span /><span /></div>}
@@ -180,7 +181,7 @@ export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: C
                         <span className="truncate">{parent.content.replace(/[*_~`]/g, '')}</span>
                       </>
                     ) : (
-                      <em className="muted">Mensagem original indisponível</em>
+                      <em className="muted">{t('Mensagem original indisponível')}</em>
                     )}
                   </div>
                 )}
@@ -206,21 +207,21 @@ export function ChatView({ channel, membersOpen, onToggleMembers }: { channel: C
                   ) : (
                     <div className="msg-content">
                       {renderMessage(m.content)}
-                      {m.edited_at && <span className="edited">(editado)</span>}
+                      {m.edited_at && <span className="edited">{t('(editado)')}</span>}
                     </div>
                   )}
                 </div>
                 {editingId !== m.id && (
                   <div className="msg-actions">
-                    <button className="icon-btn tiny" aria-label="Responder" data-tip="Responder" onClick={() => setReplyTo(m)}>
+                    <button className="icon-btn tiny" aria-label={t('Responder')} data-tip={t('Responder')} onClick={() => setReplyTo(m)}>
                       <CornerUpLeft size={18} />
                     </button>
                     {mine && (
                       <>
-                        <button className="icon-btn tiny" aria-label="Editar" data-tip="Editar" onClick={() => setEditingId(m.id)}>
+                        <button className="icon-btn tiny" aria-label={t('Editar')} data-tip={t('Editar')} onClick={() => setEditingId(m.id)}>
                           <Pencil size={18} />
                         </button>
-                        <button className="icon-btn tiny danger" aria-label="Apagar" data-tip="Apagar" onClick={() => void remove(m)}>
+                        <button className="icon-btn tiny danger" aria-label={t('Apagar')} data-tip={t('Apagar')} onClick={() => void remove(m)}>
                           <Trash2 size={18} />
                         </button>
                       </>
@@ -256,7 +257,7 @@ function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (c: s
           if (e.key === 'Escape') onCancel()
         }} />
       <p className="small muted">
-        Esc para <button className="link" onClick={onCancel}>cancelar</button> • Enter para <button className="link" onClick={() => onSave(value)}>salvar</button>
+        {t('Esc para')} <button className="link" onClick={onCancel}>{t('cancelar')}</button> • {t('Enter para')} <button className="link" onClick={() => onSave(value)}>{t('salvar')}</button>
       </p>
     </div>
   )
@@ -348,8 +349,8 @@ function Composer({
   return (
     <div className="composer-wrap">
       {suggestions.length > 0 && (
-        <div className="mention-pop" role="listbox" aria-label="Mencionar alguém">
-          <span className="mention-pop-title">Membros</span>
+        <div className="mention-pop" role="listbox" aria-label={t('Mencionar alguém')}>
+          <span className="mention-pop-title">{t('Membros')}</span>
           {suggestions.map((p, i) => (
             <button key={p.id} role="option" aria-selected={i === pick} className={`mention-option ${i === pick ? 'on' : ''}`}
               onMouseDown={(e) => { e.preventDefault(); choose(p) }}>
@@ -362,16 +363,16 @@ function Composer({
       )}
       {replyTo && (
         <div className="reply-bar">
-          <span>Respondendo a <strong>{replyTo.name}</strong></span>
-          <button className="icon-btn tiny" aria-label="Cancelar resposta" onClick={onCancelReply}><X size={16} /></button>
+          <span>{t('Respondendo a')} <strong>{replyTo.name}</strong></span>
+          <button className="icon-btn tiny" aria-label={t('Cancelar resposta')} onClick={onCancelReply}><X size={16} /></button>
         </div>
       )}
       <div className={`composer ${replyTo ? 'with-reply' : ''}`}>
-        <button className="icon-btn" aria-label="Enviar arquivo" data-tip="Arquivos e áudios chegam na etapa 3"
-          onClick={() => toast('Envio de arquivos e mensagens de voz chega na etapa 3')}>
+        <button className="icon-btn" aria-label={t('Enviar arquivo')} data-tip={t('Arquivos e áudios chegam na etapa 3')}
+          onClick={() => toast(t('Envio de arquivos e mensagens de voz chega na etapa 3'))}>
           <PlusCircle size={22} />
         </button>
-        <AutoTextarea value={text} onChange={setText} placeholder={`Conversar em #${channelName}`} inputRef={ref} onCaret={readCaret}
+        <AutoTextarea value={text} onChange={setText} placeholder={t('Conversar em #{canal}', { canal: channelName })} inputRef={ref} onCaret={readCaret}
           onKeyDown={(e) => {
             if (suggestions.length) {
               if (e.key === 'ArrowDown') { e.preventDefault(); setPick((pick + 1) % suggestions.length); return }
@@ -383,8 +384,8 @@ function Composer({
             if (e.key === 'Escape') onCancelReply()
             if (e.key === 'ArrowUp' && !text) { e.preventDefault(); onEditLast() }
           }} />
-        <button className="icon-btn" aria-label="Emojis" data-tip="Emojis chegam na etapa 3"
-          onClick={() => toast('Seletor de emojis e reações chega na etapa 3')}>
+        <button className="icon-btn" aria-label={t('Emojis')} data-tip={t('Emojis chegam na etapa 3')}
+          onClick={() => toast(t('Seletor de emojis e reações chega na etapa 3'))}>
           <Smile size={22} />
         </button>
       </div>
