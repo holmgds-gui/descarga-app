@@ -897,3 +897,14 @@ button.avatar { cursor: pointer; }
   .admin-row { flex-wrap: wrap; }
   .admin-row-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* Termos de Uso */
+.check-row { display: flex; align-items: flex-start; gap: 10px; text-align: left; font-size: .9em; line-height: 1.4; cursor: pointer; }
+.check-row input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--accent); }
+.terms-check { margin: 4px 0; }
+.auth-terms { margin-top: 10px; font-size: .85em; text-align: center; }
+.terms-btn { margin-bottom: 10px; }
+.terms-card { max-width: 640px; width: 100%; }
+.terms-scroll { max-height: 42vh; overflow-y: auto; text-align: left; padding: 12px 14px; margin: 10px 0; border-radius: 10px; background: var(--bg-elev); }
+.terms-doc h3 { margin: 16px 0 6px; font-size: 1em; }
+.terms-doc p { margin: 0 0 8px; line-height: 1.5; font-size: .92em; }

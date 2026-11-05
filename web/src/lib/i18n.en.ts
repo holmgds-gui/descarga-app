@@ -534,4 +534,11 @@ export const EN: Record<string, string> = {
   "Só você vê este painel. Quem se cadastra fica esperando aqui até você aprovar.": "Only you see this panel. New sign-ups wait here until you approve them.",
   "Verificar agora": "Check now",
   "Você": "You",
+  // termos de uso
+  "Aceitar e continuar": "Accept and continue",
+  "Antes de continuar, leia e aceite os termos.": "Before continuing, please read and accept the terms.",
+  "Para criar a conta, marque que você leu e aceita os Termos de Uso.": "To create your account, check that you have read and accept the Terms of Use.",
+  "Tenho 18 anos ou mais e li e aceito os": "I'm 18 or older and I have read and accept the",
+  "Tenho 18 anos ou mais e li e aceito os Termos de Uso.": "I'm 18 or older and I have read and accept the Terms of Use.",
+  "Termos de Uso": "Terms of Use",
 }

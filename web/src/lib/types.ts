@@ -24,6 +24,7 @@ export interface Profile {
   read_receipts: boolean
   /** só contas aprovadas pelo administrador usam o app (versões antigas do banco não têm este campo) */
   approval?: Approval
+  terms_version?: string | null
   is_admin?: boolean
   created_at: string
 }
@@ -201,6 +202,8 @@ export interface Backend {
   // ---------- administração (só a conta do administrador) ----------
   adminListUsers(): Promise<AdminUser[]>
   adminSetApproval(userId: string, status: 'approved' | 'blocked'): Promise<void>
+  /** Registra que a pessoa aceitou os Termos de Uso desta versão. Não falha se o banco ainda não tiver o recurso. */
+  acceptTerms(version: string): Promise<void>
   onAdminUsersChange(cb: () => void): () => void
 
   /** Quais jeitos de entrar estão ligados no servidor (ex.: Google). */

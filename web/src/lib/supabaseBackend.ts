@@ -127,6 +127,11 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       return must(await sb.rpc('admin_list_users')) as AdminUser[]
     },
 
+    async acceptTerms(version) {
+      // banco ainda sem a função: o aceite fica guardado só neste aparelho (ver AccessGate)
+      await sb.rpc('accept_terms', { v: version })
+    },
+
     async adminSetApproval(userId, status) {
       const r = await sb.rpc('admin_set_approval', { target: userId, new_status: status })
       if (r.error) {
