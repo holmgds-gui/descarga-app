@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Clock, LogOut, RefreshCw, ShieldX } from 'lucide-react'
+import { TermsDocument } from './TermsModal'
+import { TERMS_VERSION, acceptedLocally, rememberAcceptance, signupAcceptedFor, termsFor } from '../lib/terms'
 import { backend } from '../lib/backend'
 import { voice } from '../lib/voice/engine'
 import type { Approval, Profile } from '../lib/types'
-import { t } from '../lib/i18n'
+import { t, useLang } from '../lib/i18n'
 
 /**
  * Só deixa entrar no app quem foi aprovado pelo administrador.
@@ -15,6 +17,9 @@ export function AccessGate({ userId, children }: { userId: string; children: Rea
   const [failed, setFailed] = useState(false)
   const [checking, setChecking] = useState(false)
   const alive = useRef(true)
+  const [agree, setAgree] = useState(false)
+  const [accepting, setAccepting] = useState(false)
+  const lang = useLang()
 
   const load = useCallback(async () => {
     setChecking(true)
@@ -42,6 +47,28 @@ export function AccessGate({ userId, children }: { userId: string; children: Rea
     }
   }, [load, userId])
 
+  // Termos de Uso: vale o aceite no banco, o do cadastro (mesma pessoa) ou o guardado neste aparelho
+  const termsOk = !profile || profile.terms_version === TERMS_VERSION || acceptedLocally(userId) || signupAcceptedFor(profile.username)
+  const termsSynced = useRef(false)
+  useEffect(() => {
+    if (!profile || !termsOk || profile.terms_version === TERMS_VERSION || termsSynced.current) return
+    termsSynced.current = true
+    rememberAcceptance(userId)
+    void backend.acceptTerms(TERMS_VERSION).catch(() => undefined)
+  }, [profile, termsOk, userId])
+
+  const accept = async () => {
+    setAccepting(true)
+    rememberAcceptance(userId)
+    try {
+      await backend.acceptTerms(TERMS_VERSION)
+    } catch {
+      /* fica guardado neste aparelho */
+    }
+    setProfile((p) => (p ? { ...p, terms_version: TERMS_VERSION } : p))
+    setAccepting(false)
+  }
+
   // versões antigas do banco não têm o campo: nesse caso, a conta conta como aprovada
   const approval: Approval | null = profile ? (profile.approval ?? 'approved') : null
 
@@ -61,6 +88,27 @@ export function AccessGate({ userId, children }: { userId: string; children: Rea
   useEffect(() => {
     if (approval === 'pending') void backend.notify({ type: 'signup' })
   }, [approval])
+
+  if (approval !== null && !termsOk) {
+    return (
+      <div className="auth-page gate-screen">
+        <div className="auth-card terms-card">
+          <img className="auth-logo" src={`${import.meta.env.BASE_URL}logo.svg`} alt="" />
+          <h1>{termsFor(lang).title}</h1>
+          <p className="muted">{t('Antes de continuar, leia e aceite os termos.')}</p>
+          <div className="terms-scroll"><TermsDocument /></div>
+          <label className="check-row terms-check">
+            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+            <span>{t('Tenho 18 anos ou mais e li e aceito os Termos de Uso.')}</span>
+          </label>
+          <div className="gate-actions">
+            <button className="btn btn-primary" disabled={!agree || accepting} onClick={() => void accept()}>{t('Aceitar e continuar')}</button>
+            <button className="btn btn-ghost" onClick={() => void backend.signOut()}><LogOut size={16} /> {t('Sair da conta')}</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (approval === 'approved') return <>{children}</>
 

@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { backend } from '../lib/backend'
 import { authUrlError } from '../lib/authUrl'
 import { LANGS, setLang, t, useLang } from '../lib/i18n'
+import { rememberSignupAcceptance } from '../lib/terms'
+import { TermsModal } from './TermsModal'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -14,6 +16,8 @@ export function AuthScreen() {
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [google, setGoogle] = useState(false)
+  const [agree, setAgree] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
 
   useEffect(() => {
     void backend.authOptions().then((o) => setGoogle(o.google))
@@ -34,10 +38,15 @@ export function AuthScreen() {
       setError(t('O nome de usuário pode ter letras minúsculas, números, ponto e _ (2 a 32 caracteres), sem espaços.'))
       return
     }
+    if (mode === 'signup' && !agree) {
+      setError(t('Para criar a conta, marque que você leu e aceita os Termos de Uso.'))
+      return
+    }
     setBusy(true)
     try {
       if (mode === 'login') await backend.signIn(email, password)
       else if (mode === 'signup') {
+        rememberSignupAcceptance(username)
         const r = await backend.signUp(email, password, username)
         if (r.needsConfirmation) setInfo(t('Conta criada! Confirme pelo link que enviamos para o seu e-mail.'))
       } else {
@@ -109,6 +118,15 @@ export function AuthScreen() {
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder={t('Mínimo 6 caracteres')} />
             </label>
           )}
+          {mode === 'signup' && (
+            <label className="check-row terms-check">
+              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+              <span>
+                {t('Tenho 18 anos ou mais e li e aceito os')}{' '}
+                <button type="button" className="link" onClick={() => setShowTerms(true)}>{t('Termos de Uso')}</button>.
+              </span>
+            </label>
+          )}
           {mode === 'login' && (
             <button type="button" className="link forgot-link" onClick={() => switchTo('forgot')}>{t('Esqueci minha senha')}</button>
           )}
@@ -125,6 +143,11 @@ export function AuthScreen() {
             {mode === 'login' ? t('Cadastre-se') : t('Entrar')}
           </button>
         </p>
+
+        <p className="auth-terms">
+          <button type="button" className="link" onClick={() => setShowTerms(true)}>{t('Termos de Uso')}</button>
+        </p>
+        {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
 
         <div className="lang-switch" role="group" aria-label={t('Idioma')}>
           {LANGS.map((l) => (

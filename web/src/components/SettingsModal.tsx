@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
+import { FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
 import { THEMES, customTheme, type ThemeDef } from '../lib/themes'
 import { ProfileCardBody } from './ProfileCard'
 import { AdminPanel } from './AdminPanel'
+import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
@@ -349,6 +350,7 @@ function AppearanceEditor() {
 
 function AccountTab() {
   const { me } = useApp()
+  const [terms, setTerms] = useState(false)
   return (
     <>
       <h2 className="settings-title">{tr('Conta')}</h2>
@@ -357,6 +359,8 @@ function AccountTab() {
         <p><strong>{tr('Servidor:')}</strong> {backend.mode === 'demo' ? tr('Modo demonstração (dados só neste navegador)') : tr('Supabase (na nuvem)')}</p>
       </div>
       <PrivacySettings />
+      <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos de Uso')}</button>
+      {terms && <TermsModal onClose={() => setTerms(false)} />}
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>
     </>
   )

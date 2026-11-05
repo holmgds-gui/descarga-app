@@ -279,6 +279,15 @@ export function createDemoBackend(): Backend {
         }))
         .sort((a, b) => order[a.approval] - order[b.approval] || b.created_at.localeCompare(a.created_at))
     },
+    async acceptTerms(version) {
+      const db = load()
+      const i = db.profiles.findIndex((p) => p.id === me())
+      if (i < 0) return
+      db.profiles[i] = { ...db.profiles[i], terms_version: version }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+    },
+
     async adminSetApproval(userId, status) {
       const db = load()
       if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
