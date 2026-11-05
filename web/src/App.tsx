@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AuthScreen, NewPasswordScreen } from './components/AuthScreen'
+import { AccessGate } from './components/AccessGate'
 import { Shell } from './components/Shell'
 import { backend } from './lib/backend'
 import { AppProvider } from './state'
@@ -7,7 +8,7 @@ import { local, session } from './lib/storage'
 import { refreshPushSubscription } from './lib/push'
 import { isRecoveryLink } from './lib/authUrl'
 import { useLang } from './lib/i18n'
-import { DM_KEY, HOME, SERVER_KEY } from './state'
+import { ADMIN_KEY, DM_KEY, HOME, SERVER_KEY } from './state'
 
 const INVITE_KEY = 'descarga-convite-pendente'
 
@@ -30,6 +31,7 @@ export default function App() {
     const srv = params.get('servidor')
     const ch = params.get('canal')
     const dm = params.get('dm')
+    const admin = params.get('admin')
     if (srv) {
       local.set(SERVER_KEY, srv)
       if (ch) local.set(`descarga-ultimo-canal-${srv}`, ch)
@@ -38,8 +40,9 @@ export default function App() {
       local.set(SERVER_KEY, HOME)
       local.set(DM_KEY, dm)
     }
-    if (code || srv || dm) {
-      ;['convite', 'servidor', 'canal', 'dm'].forEach((k) => params.delete(k))
+    if (admin) session.set(ADMIN_KEY, '1')
+    if (code || srv || dm || admin) {
+      ;['convite', 'servidor', 'canal', 'dm', 'admin'].forEach((k) => params.delete(k))
       const q = params.toString()
       history.replaceState(null, '', location.pathname + (q ? `?${q}` : '') + location.hash)
     }
@@ -77,8 +80,10 @@ export default function App() {
   if (recovering) return <NewPasswordScreen onDone={() => setRecovering(false)} />
 
   return (
-    <AppProvider key={userId} userId={userId}>
-      <Shell />
-    </AppProvider>
+    <AccessGate key={userId} userId={userId}>
+      <AppProvider userId={userId}>
+        <Shell />
+      </AppProvider>
+    </AccessGate>
   )
 }

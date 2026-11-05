@@ -23,6 +23,9 @@ Deno.serve(async (req) => {
   const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
   const { data: auth } = await admin.auth.getUser(token)
   if (!auth?.user) return json({ error: 'faça login' }, 401)
+  // o servidor de apoio é só para contas aprovadas
+  const { data: prof } = await admin.from('profiles').select('approval').eq('id', auth.user.id).single()
+  if (prof?.approval !== 'approved') return json({ iceServers: [], configured: false })
 
   const { data: rows } = await admin.from('app_secrets').select('name, value').in('name', ['turn_urls', 'turn_username'])
   const cfg = Object.fromEntries((rows ?? []).map((r) => [r.name, r.value]))
