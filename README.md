@@ -29,6 +29,10 @@ App de conversa inspirado no Discord: servidores, canais, chat em tempo real, pe
 - Idiomas: português e inglês (detecta o idioma do aparelho; troca em Configurações → Aparência e idioma ou na tela de login)
 - Fundos: 11 temas prontos + fundo personalizado
 
+## Documentação completa
+
+Tudo o que foi decidido e construído, explicado passo a passo, está na pasta [`docs/`](docs/README.md). Comece por [`docs/04-pendencias.md`](docs/04-pendencias.md) para ver o que falta fazer.
+
 ## Rodar no seu computador
 
 Precisa do [Node.js](https://nodejs.org) 20 ou mais novo.
