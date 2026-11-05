@@ -1,6 +1,6 @@
 // Descarga — envia notificações (menções, respostas e calls) para os aparelhos inscritos.
 // O app chama esta função depois de mandar uma mensagem com @ ou resposta (ou qualquer mensagem numa conversa
-// direta), e quando alguém entra numa call.
+// direta), quando alguém entra numa call e quando alguém novo pede para entrar (aviso para o administrador).
 import webpush from 'npm:web-push@3.6.7'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -40,8 +40,10 @@ Deno.serve(async (req) => {
   }
   const appUrl = typeof body.appUrl === 'string' && /^https:\/\//.test(body.appUrl) ? body.appUrl : ''
 
-  const { data: me } = await admin.from('profiles').select('username, display_name, avatar_url').eq('id', user.id).single()
+  const { data: me } = await admin.from('profiles').select('username, display_name, avatar_url, approval').eq('id', user.id).single()
   const myName = me?.display_name || me?.username || 'Descarga'
+  // só contas aprovadas mandam avisos (o pedido de entrada é a única exceção: vem de quem ainda está pendente)
+  if (body.type !== 'signup' && me?.approval !== 'approved') return json({ error: 'conta não aprovada' }, 403)
 
   let recipients: string[] = []
   let payloadFor: (lang: Lang) => Payload
@@ -139,11 +141,32 @@ Deno.serve(async (req) => {
       url: `${appUrl}?servidor=${ch.server_id}&canal=${ch.id}`,
       icon: me?.avatar_url ?? undefined,
     })
+  } else if (body.type === 'signup') {
+    // quem acabou de se cadastrar avisa o administrador (uma vez só por conta)
+    const { data: self } = await admin.from('profiles').select('approval, admin_notified, username, display_name').eq('id', user.id).single()
+    if (!self || self.approval !== 'pending') return json({ sent: 0, skipped: 'nao_pendente' })
+    if (self.admin_notified) return json({ sent: 0, skipped: 'ja_avisado' })
+    await admin.from('profiles').update({ admin_notified: true }).eq('id', user.id)
+    const { data: admins } = await admin.from('profiles').select('id').eq('is_admin', true)
+    recipients = (admins ?? []).map((a) => a.id as string)
+    const who = self.display_name || self.username
+    payloadFor = (lang) => ({
+      title: lang === 'en' ? 'New request to join' : 'Novo pedido para entrar',
+      body: lang === 'en' ? `${who} (@${self.username}) wants to join Descarga` : `${who} (@${self.username}) quer entrar no Descarga`,
+      tag: `signup-${user.id}`,
+      url: `${appUrl}?admin=1`,
+      icon: me?.avatar_url ?? undefined,
+    })
   } else {
     return json({ error: 'tipo inválido' }, 400)
   }
 
   recipients = [...new Set(recipients)].filter((id) => id !== user.id)
+  if (recipients.length) {
+    // contas pendentes ou bloqueadas não recebem avisos
+    const { data: ok } = await admin.from('profiles').select('id').in('id', recipients).eq('approval', 'approved')
+    recipients = (ok ?? []).map((r) => r.id as string)
+  }
   if (!recipients.length) return json({ sent: 0 })
 
   const { data: secrets } = await admin.from('app_secrets').select('name, value')

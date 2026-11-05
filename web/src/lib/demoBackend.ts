@@ -4,7 +4,7 @@
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
 import type {
-  Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji,
+  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
@@ -39,8 +39,13 @@ type Event =
   | { type: 'msg-delete'; payload: string }
   | { type: 'servers' | 'channels' | 'auth' }
   | { type: 'profile'; payload: Profile }
-  | { type: 'friends' | 'dms' | 'emojis' }
+  | { type: 'friends' | 'dms' | 'emojis' | 'users' }
   | { type: 'reaction-add' | 'reaction-remove'; payload: Reaction }
+
+// no modo demonstração a conta do administrador é a deste e-mail; a aprovação só é exigida quando
+// o navegador tem a chave "descarga-demo-aprovacao" = "1" (usada nos testes)
+const ADMIN_EMAIL = 'holmgds@gmail.com'
+const needsApproval = () => local.get('descarga-demo-aprovacao') === '1'
 
 const now = () => new Date().toISOString()
 const id = () => crypto.randomUUID()
@@ -177,7 +182,10 @@ export function createDemoBackend(): Backend {
     while (db.profiles.some((p) => p.username === candidate)) candidate = clean + ++n
     const uid = id()
     db.users.push({ id: uid, email: email.toLowerCase(), password })
-    db.profiles.push(blankProfile(uid, candidate))
+    const profile = blankProfile(uid, candidate)
+    profile.is_admin = email.toLowerCase() === ADMIN_EMAIL
+    profile.approval = needsApproval() && !profile.is_admin ? 'pending' : 'approved'
+    db.profiles.push(profile)
     db.members.push({ server_id: WELCOME_ID, user_id: uid, joined_at: now() })
     return uid
   }
@@ -204,6 +212,7 @@ export function createDemoBackend(): Backend {
       save(db)
       setSession(uid)
       emit({ type: 'channels' })
+      emit({ type: 'users' })
       return { needsConfirmation: false }
     },
 
@@ -221,6 +230,7 @@ export function createDemoBackend(): Backend {
       save(db)
       setSession(uid)
       emit({ type: 'channels' })
+      emit({ type: 'users' })
     },
 
     async signOut() {
@@ -252,6 +262,36 @@ export function createDemoBackend(): Backend {
       return listen((e) => {
         if (e.type === 'profile') cb(e.payload)
       })
+    },
+
+    // ---------- administração ----------
+    async adminListUsers() {
+      const db = load()
+      const mine = db.profiles.find((p) => p.id === me())
+      if (!mine?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      const order = { pending: 0, approved: 1, blocked: 2 } as const
+      return db.profiles
+        .filter((p) => p.id !== BOT_ID)
+        .map((p): AdminUser => ({
+          id: p.id, email: db.users.find((u) => u.id === p.id)?.email ?? '', username: p.username,
+          display_name: p.display_name, avatar_url: p.avatar_url, approval: p.approval ?? 'approved',
+          is_admin: !!p.is_admin, created_at: p.created_at, last_sign_in_at: p.created_at,
+        }))
+        .sort((a, b) => order[a.approval] - order[b.approval] || b.created_at.localeCompare(a.created_at))
+    },
+    async adminSetApproval(userId, status) {
+      const db = load()
+      if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      const i = db.profiles.findIndex((p) => p.id === userId)
+      if (i < 0) return
+      if (db.profiles[i].is_admin) throw new Error(t('A conta do administrador não pode ser alterada.'))
+      db.profiles[i] = { ...db.profiles[i], approval: status }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+      emit({ type: 'users' })
+    },
+    onAdminUsersChange(cb) {
+      return listen((e) => (e.type === 'users' || e.type === 'profile' || e.type === 'auth') && cb())
     },
 
     async listServers() {
@@ -338,9 +378,10 @@ export function createDemoBackend(): Backend {
     },
 
     async listMemberIds(serverId) {
-      return load()
-        .members.filter((m) => m.server_id === serverId)
-        .map((m) => m.user_id)
+      const db = load()
+      // quem ainda não foi aprovado (ou foi bloqueado) não aparece nas listas
+      const ok = new Set(db.profiles.filter((p) => (p.approval ?? 'approved') === 'approved').map((p) => p.id))
+      return db.members.filter((m) => m.server_id === serverId && ok.has(m.user_id)).map((m) => m.user_id)
     },
 
     async listMessages(channelId, before) {

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
 import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji } from './lib/types'
-import { local } from './lib/storage'
+import { local, session } from './lib/storage'
+import { t } from './lib/i18n'
 import { customTheme, themeById } from './lib/themes'
 
 export type ThemeName = string
@@ -54,6 +55,12 @@ interface AppState {
   closeProfile: () => void
   settingsOpen: boolean
   setSettingsOpen: (v: boolean) => void
+  /** aba das configurações pedida de fora (ex.: o aviso de novo cadastro abre a Administração) */
+  requestedTab: string | null
+  clearRequestedTab: () => void
+  openAdminPanel: () => void
+  /** quantas contas estão esperando aprovação (só o administrador vê) */
+  adminPending: number
   mobilePane: 'nav' | 'chat' | 'members'
   setMobilePane: (p: 'nav' | 'chat' | 'members') => void
   toast: (msg: string) => void
@@ -108,6 +115,8 @@ export function applyAppearance(a: Appearance) {
 const lastChannelKey = (serverId: string) => `descarga-ultimo-canal-${serverId}`
 export const SERVER_KEY = 'descarga-ultimo-servidor'
 export const DM_KEY = 'descarga-ultima-dm'
+/** vem do aviso "novo pedido para entrar": abre o painel de administração */
+export const ADMIN_KEY = 'descarga-abrir-admin'
 /** valor guardado quando a pessoa está no Início */
 export const HOME = '@inicio'
 const SEEN_KEY = 'descarga-dm-visto'
@@ -143,6 +152,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [appearance, setAppearanceRaw] = useState<Appearance>(loadAppearance)
   const [profileView, setProfileView] = useState<{ userId: string; anchor?: DOMRect } | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [requestedTab, setRequestedTab] = useState<string | null>(null)
+  const [adminPending, setAdminPending] = useState(0)
   const [mobilePane, setMobilePane] = useState<'nav' | 'chat' | 'members'>('chat')
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const [question, setQuestion] = useState<(ConfirmQuestion & { resolve: (v: boolean) => void }) | null>(null)
@@ -362,6 +373,47 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     [activeServerId],
   )
 
+  // ---- administrador: contas esperando aprovação ----
+  const isAdmin = !!profiles[userId]?.is_admin
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminPending(0)
+      return
+    }
+    let first = true
+    let prev = 0
+    let timer: number | undefined
+    const load = () =>
+      void backend.adminListUsers().then((list) => {
+        const n = list.filter((u) => u.approval === 'pending').length
+        if (!first && n > prev) toast(t('Novo pedido para entrar no Descarga'))
+        first = false
+        prev = n
+        setAdminPending(n)
+      }).catch(() => undefined)
+    const later = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(load, 400)
+    }
+    load()
+    const off = backend.onAdminUsersChange(later)
+    return () => {
+      window.clearTimeout(timer)
+      off()
+    }
+  }, [isAdmin, toast])
+
+  const openAdminPanel = useCallback(() => {
+    setRequestedTab('admin')
+    setSettingsOpen(true)
+  }, [])
+  useEffect(() => {
+    if (isAdmin && session.get(ADMIN_KEY)) {
+      session.remove(ADMIN_KEY)
+      openAdminPanel()
+    }
+  }, [isAdmin, openAdminPanel])
+
   // ---- aparência ----
   const setAppearance = useCallback((a: Partial<Appearance>) => {
     setAppearanceRaw((prev) => {
@@ -406,6 +458,10 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       closeProfile: () => setProfileView(null),
       settingsOpen,
       setSettingsOpen,
+      requestedTab,
+      clearRequestedTab: () => setRequestedTab(null),
+      openAdminPanel,
+      adminPending,
       mobilePane,
       setMobilePane,
       toast,
@@ -419,7 +475,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
       activeChannelId, setActiveChannelId, memberIds, friendships, refreshFriends, dms, refreshDms, activeDmId,
       setActiveDmId, openDmWith, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
-      mobilePane, toast, toastMsg, question],
+      requestedTab, openAdminPanel, adminPending, mobilePane, toast, toastMsg, question],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

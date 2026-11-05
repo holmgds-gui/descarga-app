@@ -156,7 +156,7 @@ export function ChannelSidebar() {
 }
 
 function UserPanel() {
-  const { me, setSettingsOpen, upsertProfile, toast } = useApp()
+  const { me, setSettingsOpen, upsertProfile, toast, adminPending, openAdminPanel } = useApp()
   const [open, setOpen] = useState(false)
   const [custom, setCustom] = useState(me?.custom_status ?? '')
   const ref = useRef<HTMLDivElement>(null)
@@ -196,7 +196,11 @@ function UserPanel() {
         data-tip={call.deafened ? t('Ativar áudio') : t('Desativar áudio')} onClick={() => voice.toggleDeafen()}>
         {call.deafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
       </button>
-      <button className="icon-btn" aria-label={t('Configurações')} data-tip={t('Configurações')} onClick={() => setSettingsOpen(true)}><Settings size={18} /></button>
+      <span className="gear-wrap">
+        <button className="icon-btn" aria-label={adminPending > 0 ? t('Configurações ({n} pedidos para entrar)', { n: adminPending }) : t('Configurações')}
+          data-tip={t('Configurações')} onClick={() => (adminPending > 0 ? openAdminPanel() : setSettingsOpen(true))}><Settings size={18} /></button>
+        {adminPending > 0 && <span className="badge gear-badge" aria-hidden="true">{adminPending}</span>}
+      </span>
 
       {open && me && (
         <div className="status-menu">

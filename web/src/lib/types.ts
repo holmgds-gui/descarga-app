@@ -5,6 +5,8 @@ export interface ProfileLink {
   url: string
 }
 
+export type Approval = 'pending' | 'approved' | 'blocked'
+
 export interface Profile {
   id: string
   username: string
@@ -20,10 +22,26 @@ export interface Profile {
   status: Status
   custom_status: string
   read_receipts: boolean
+  /** só contas aprovadas pelo administrador usam o app (versões antigas do banco não têm este campo) */
+  approval?: Approval
+  is_admin?: boolean
   created_at: string
 }
 
-export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at'>>
+export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin'>>
+
+/** linha da lista de contas do painel do administrador */
+export interface AdminUser {
+  id: string
+  email: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+  approval: Approval
+  is_admin: boolean
+  created_at: string
+  last_sign_in_at: string | null
+}
 
 export interface Server {
   id: string
@@ -180,6 +198,11 @@ export interface Backend {
   attachmentUrls(paths: string[]): Promise<Record<string, string>>
   maxUploadBytes: number
 
+  // ---------- administração (só a conta do administrador) ----------
+  adminListUsers(): Promise<AdminUser[]>
+  adminSetApproval(userId: string, status: 'approved' | 'blocked'): Promise<void>
+  onAdminUsersChange(cb: () => void): () => void
+
   /** Quais jeitos de entrar estão ligados no servidor (ex.: Google). */
   authOptions(): Promise<{ google: boolean }>
   resetPassword(email: string): Promise<void>
@@ -194,7 +217,7 @@ export interface Backend {
   pushSupported: boolean
   savePushSubscription(sub: PushSubscriptionJSON): Promise<void>
   removePushSubscription(endpoint: string): Promise<void>
-  notify(body: { type: 'message'; messageId: string } | { type: 'call'; channelId: string }): Promise<void>
+  notify(body: { type: 'message'; messageId: string } | { type: 'call'; channelId: string } | { type: 'signup' }): Promise<void>
 }
 
 export type PresenceEntry = Record<string, unknown> & { key: string }

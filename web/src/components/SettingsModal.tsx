@@ -5,17 +5,26 @@ import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
 import { THEMES, customTheme, type ThemeDef } from '../lib/themes'
 import { ProfileCardBody } from './ProfileCard'
+import { AdminPanel } from './AdminPanel'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
 const SWATCHES = ['#7B3FE4', '#5226A8', '#B04FD9', '#E0457B', '#F0643C', '#F5A524', '#2DBE7A', '#1FB5E0', '#3D7BF0', '#6B7280']
 
-type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'conta'
+type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'conta' | 'admin'
 
 export function SettingsModal() {
-  const { settingsOpen, setSettingsOpen } = useApp()
+  const { settingsOpen, setSettingsOpen, me, adminPending, requestedTab, clearRequestedTab } = useApp()
   const [tab, setTab] = useState<Tab>('perfil')
+  const isAdmin = !!me?.is_admin
+  // pedido de fora (aviso de novo cadastro): abre direto na Administração
+  useEffect(() => {
+    if (settingsOpen && requestedTab === 'admin' && isAdmin) {
+      setTab('admin')
+      clearRequestedTab()
+    }
+  }, [settingsOpen, requestedTab, isAdmin, clearRequestedTab])
   const close = () => setSettingsOpen(false)
 
   useEffect(() => {
@@ -37,6 +46,11 @@ export function SettingsModal() {
           <button className={tab === 'voz' ? 'active' : ''} onClick={() => setTab('voz')}>{tr('Voz e vídeo')}</button>
           <button className={tab === 'notificacoes' ? 'active' : ''} onClick={() => setTab('notificacoes')}>{tr('Notificações')}</button>
           <button className={tab === 'conta' ? 'active' : ''} onClick={() => setTab('conta')}>{tr('Conta')}</button>
+          {isAdmin && (
+            <button className={`${tab === 'admin' ? 'active' : ''} admin-tab`} onClick={() => setTab('admin')}>
+              {tr('Administração')}{adminPending > 0 && <span className="badge">{adminPending}</span>}
+            </button>
+          )}
           <div className="dropdown-sep" />
           <button className="danger" onClick={() => void backend.signOut()}>{tr('Sair')} <LogOut size={16} /></button>
         </div>
@@ -48,6 +62,7 @@ export function SettingsModal() {
           {tab === 'voz' && <VoiceSettingsTab />}
           {tab === 'notificacoes' && <NotificationsTab />}
           {tab === 'conta' && <AccountTab />}
+          {tab === 'admin' && isAdmin && <AdminPanel />}
         </div>
         <button className="settings-close" onClick={close} aria-label={tr('Fechar configurações')}>
           <X size={20} />

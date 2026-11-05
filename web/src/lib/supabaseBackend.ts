@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
+  AdminUser,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
   ServerEmoji,
 } from './types'
@@ -113,10 +114,32 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     onProfileChange(cb) {
       const ch = sb
-        .channel('profiles-all')
+        .channel('profiles-' + crypto.randomUUID())
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) =>
           cb(p.new as Profile),
         )
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    // ---------- administração ----------
+    async adminListUsers() {
+      return must(await sb.rpc('admin_list_users')) as AdminUser[]
+    },
+
+    async adminSetApproval(userId, status) {
+      const r = await sb.rpc('admin_set_approval', { target: userId, new_status: status })
+      if (r.error) {
+        if (/nao_pode_admin/.test(r.error.message)) throw new Error(t('A conta do administrador não pode ser alterada.'))
+        if (/sem_permissao/.test(r.error.message)) throw new Error(t('Só o administrador pode fazer isso.'))
+        throw new Error(r.error.message)
+      }
+    },
+
+    onAdminUsersChange(cb) {
+      const ch = sb
+        .channel('admin-users-' + crypto.randomUUID())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => cb())
         .subscribe()
       return () => void sb.removeChannel(ch)
     },
