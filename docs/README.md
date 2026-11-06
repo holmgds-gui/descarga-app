@@ -14,4 +14,4 @@ Tudo o que foi combinado, decidido e construído nas conversas com o Claude, exp
 
 Se você só vai ler um arquivo, leia o [04-pendencias.md](04-pendencias.md).
 
-> **Onde está o código novo?** O código da etapa 3 (social), da aprovação de contas e dos Termos de Uso está pronto e guardado na branch [`etapa-3-pronta`](https://github.com/holmgds-gui/descarga-app/tree/etapa-3-pronta). Ele ainda não está na `main` (e por isso ainda não está no ar) porque depende das ações do Supabase descritas em [04-pendencias.md](04-pendencias.md). Os arquivos `0003`, `0004` e `0005` de `supabase/migrations/` só existem nessa branch por enquanto.
+> O código da etapa 3 (social), da aprovação de contas e dos Termos de Uso já está na `main` e no ar desde 5 de novembro de 2026.
