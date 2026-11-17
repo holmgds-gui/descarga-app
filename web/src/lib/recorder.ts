@@ -1,4 +1,5 @@
 import { t } from './i18n'
+import { micErrorMessage } from './voice/micError'
 
 export const MAX_VOICE_SECONDS = 10 * 60
 const BARS = 48
@@ -61,8 +62,8 @@ export class VoiceRecorder {
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
-    } catch {
-      throw new Error(t('Permita o uso do microfone para gravar.'))
+    } catch (err) {
+      throw new Error(micErrorMessage(err, 'gravar'))
     }
     const type = pickType()
     const rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined)

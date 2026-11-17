@@ -8,6 +8,7 @@ import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/setti
 import { playJoin, playLeave } from '../lib/voice/sounds'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
+import { micErrorMessage } from '../lib/voice/micError'
 
 export function VoiceSettingsTab() {
   const call = useVoice()
@@ -16,7 +17,7 @@ export function VoiceSettingsTab() {
   const [testing, setTesting] = useState(false)
   const [level, setLevel] = useState(0)
   const [capturing, setCapturing] = useState(false)
-  const [micError, setMicError] = useState(false)
+  const [micError, setMicError] = useState<string | null>(null)
   const testRef = useRef<{ stream: MediaStream; ctx: AudioContext; timer: number } | null>(null)
 
   const loadDevices = async () => {
@@ -52,9 +53,19 @@ export function VoiceSettingsTab() {
 
   const startTest = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: s.inputDeviceId ? { exact: s.inputDeviceId } : undefined, noiseSuppression: s.noiseSuppression, echoCancellation: true },
+      const open = (deviceId?: string) => navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: deviceId ? { exact: deviceId } : undefined, noiseSuppression: s.noiseSuppression, echoCancellation: true },
       })
+      let stream: MediaStream
+      try {
+        stream = await open(s.inputDeviceId || undefined)
+      } catch (err) {
+        // microfone guardado não existe mais: testa com o padrão do sistema
+        const name = (err as { name?: string })?.name
+        if (!s.inputDeviceId || (name !== 'OverconstrainedError' && name !== 'NotFoundError')) throw err
+        stream = await open()
+        voice.updateSettings({ inputDeviceId: '' })
+      }
       const ctx = new AudioContext()
       const an = ctx.createAnalyser()
       an.fftSize = 512
@@ -67,11 +78,11 @@ export function VoiceSettingsTab() {
         setLevel(Math.min(1, Math.sqrt(sum / data.length) * 6))
       }, 60)
       testRef.current = { stream, ctx, timer }
-      setMicError(false)
+      setMicError(null)
       setTesting(true)
       void loadDevices() // com a permissão, os nomes dos microfones aparecem
-    } catch {
-      setMicError(true)
+    } catch (err) {
+      setMicError(micErrorMessage(err))
     }
   }
 
@@ -101,7 +112,7 @@ export function VoiceSettingsTab() {
             <div className="meter" aria-label={t('Nível do microfone')}><span style={{ width: `${Math.round(level * 100)}%` }} /></div>
           </div>
           {micError ? (
-            <span className="form-error">{t('Não deu para abrir o microfone. Permita o acesso no navegador e tente de novo.')}</span>
+            <span className="form-error">{micError}</span>
           ) : (
             !testing && <span className="muted small hint">{t('Fale algo depois de clicar em Testar: a barra deve se mexer.')}</span>
           )}

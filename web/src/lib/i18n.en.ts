@@ -541,4 +541,10 @@ export const EN: Record<string, string> = {
   "Tenho 18 anos ou mais e li e aceito os": "I'm 18 or older and I have read and accept the",
   "Tenho 18 anos ou mais e li e aceito os Termos de Uso.": "I'm 18 or older and I have read and accept the Terms of Use.",
   "Termos de Uso": "Terms of Use",
+  // erros de microfone
+  "O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço, permita o microfone e tente de novo. Se já permitiu, confira em Configurações do Windows → Privacidade → Microfone.": "The browser blocked the microphone. Click the lock next to the address, allow the microphone and try again. If you already allowed it, check Windows Settings → Privacy → Microphone.",
+  "O navegador bloqueou o microfone. Permita o acesso no cadeado ao lado do endereço e tente de novo.": "The browser blocked the microphone. Allow access with the lock next to the address and try again.",
+  "Nenhum microfone foi encontrado. Conecte um microfone e tente de novo.": "No microphone was found. Plug in a microphone and try again.",
+  "Não deu para abrir o microfone: outro programa pode estar usando ele (Discord, jogo, outra aba). Feche e tente de novo.": "Couldn't open the microphone: another program may be using it (Discord, a game, another tab). Close it and try again.",
+  "Não deu para abrir o microfone. Tente de novo.": "Couldn't open the microphone. Try again.",
 }

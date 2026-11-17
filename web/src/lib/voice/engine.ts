@@ -11,6 +11,7 @@ import {
 } from './settings'
 import { playJoin, playLeave, playMute, playUnmute, setSoundVolume, soundContext } from './sounds'
 import { t } from '../i18n'
+import { micErrorMessage } from './micError'
 
 export const MAX_IN_CALL = 6
 
@@ -132,8 +133,8 @@ class VoiceEngine {
 
     try {
       this.mic = await this.openMic()
-    } catch {
-      this.set({ status: 'idle', channelId: null, serverId: null, error: t('Permita o uso do microfone para entrar na call.') })
+    } catch (err) {
+      this.set({ status: 'idle', channelId: null, serverId: null, error: micErrorMessage(err) })
       return
     }
     this.setupMicAnalyser()
@@ -459,14 +460,28 @@ class VoiceEngine {
   // ---------- microfone ----------
   private async openMic() {
     const s = this.snap.settings
-    return navigator.mediaDevices.getUserMedia({
+    const open = (deviceId?: string) => navigator.mediaDevices.getUserMedia({
       audio: {
-        deviceId: s.inputDeviceId ? { exact: s.inputDeviceId } : undefined,
+        deviceId: deviceId ? { exact: deviceId } : undefined,
         echoCancellation: true,
         noiseSuppression: s.noiseSuppression,
         autoGainControl: true,
       },
     })
+    try {
+      return await open(s.inputDeviceId || undefined)
+    } catch (err) {
+      // o microfone guardado sumiu (fone reconectado, outro PC...): usa o padrão do sistema
+      const name = (err as { name?: string })?.name
+      if (s.inputDeviceId && (name === 'OverconstrainedError' || name === 'NotFoundError')) {
+        const stream = await open()
+        const settings = { ...this.snap.settings, inputDeviceId: '' }
+        saveVoiceSettings(settings)
+        this.set({ settings })
+        return stream
+      }
+      throw err
+    }
   }
 
   private setupMicAnalyser() {
