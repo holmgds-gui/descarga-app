@@ -633,16 +633,22 @@ class VoiceEngine {
       { video: true },
     ]
     let screen: MediaStream | null = null
+    let lastError = ''
     for (const opts of attempts) {
+      const startedAt = performance.now()
       try {
         screen = await navigator.mediaDevices.getDisplayMedia(opts)
         break
       } catch (err) {
         const e = err as DOMException
+        lastError = e?.name ?? ''
         if (e?.name === 'NotAllowedError' || e?.name === 'AbortError') {
           // "by system" = o computador bloqueou (no Mac: Ajustes > Privacidade > Gravação de Tela)
           if (/system/i.test(e.message)) {
             this.set({ error: t('O computador bloqueou a gravação de tela. Libere o navegador nas configurações de privacidade do sistema.') })
+          } else if (e.name === 'NotAllowedError' && performance.now() - startedAt < 400) {
+            // recusou na hora, sem nem mostrar a janela de escolha: o navegador ou o site está bloqueando
+            this.set({ error: t('O navegador bloqueou o compartilhamento de tela. Clique no cadeado ao lado do endereço, abra as configurações do site e permita "Compartilhamento de tela".') })
           }
           return // a pessoa cancelou
         }
@@ -650,7 +656,7 @@ class VoiceEngine {
       }
     }
     if (!screen) {
-      this.set({ error: t('Não deu para compartilhar a tela neste navegador. Tente pelo Chrome ou Edge no computador.') })
+      this.set({ error: t('Não deu para compartilhar a tela neste navegador. Tente pelo Chrome ou Edge no computador.') + (lastError ? ` (${lastError})` : '') })
       return
     }
     if (this.snap.screen) this.stopScreen()

@@ -547,4 +547,5 @@ export const EN: Record<string, string> = {
   "Nenhum microfone foi encontrado. Conecte um microfone e tente de novo.": "No microphone was found. Plug in a microphone and try again.",
   "Não deu para abrir o microfone: outro programa pode estar usando ele (Discord, jogo, outra aba). Feche e tente de novo.": "Couldn't open the microphone: another program may be using it (Discord, a game, another tab). Close it and try again.",
   "Não deu para abrir o microfone. Tente de novo.": "Couldn't open the microphone. Try again.",
+  "O navegador bloqueou o compartilhamento de tela. Clique no cadeado ao lado do endereço, abra as configurações do site e permita \"Compartilhamento de tela\".": "The browser blocked screen sharing. Click the lock next to the address, open the site settings and allow \"Screen sharing\".",
 }
