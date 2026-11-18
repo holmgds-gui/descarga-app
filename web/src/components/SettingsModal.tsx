@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
+import { Download, FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
@@ -349,6 +349,8 @@ function AppearanceEditor() {
   )
 }
 
+const DESKTOP_URL = 'https://github.com/holmgds-gui/descarga-app/releases/download/desktop-latest/Descarga-Setup.exe'
+
 function AccountTab() {
   const { me, ask, toast } = useApp()
   const [terms, setTerms] = useState(false)
@@ -374,6 +376,9 @@ function AccountTab() {
         <p><strong>{tr('Servidor:')}</strong> {backend.mode === 'demo' ? tr('Modo demonstração (dados só neste navegador)') : tr('Supabase (na nuvem)')}</p>
       </div>
       <PrivacySettings />
+      <a className="btn btn-ghost terms-btn" href={DESKTOP_URL} target="_blank" rel="noreferrer">
+        <Download size={16} /> {tr('Baixar o app para Windows')}
+      </a>
       <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos de Uso')}</button>
       {terms && <TermsModal onClose={() => setTerms(false)} />}
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>

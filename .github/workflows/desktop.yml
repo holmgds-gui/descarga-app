@@ -1,0 +1,42 @@
+# Cria o instalador do Descarga para Windows (.exe) e publica em Releases.
+# Link fixo para baixar: https://github.com/holmgds-gui/descarga-app/releases/download/desktop-latest/Descarga-Setup.exe
+name: App para Windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'desktop-shell/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Criar o instalador
+        run: npx --yes @tauri-apps/cli@2 build
+      - name: Publicar em Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          f=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe | head -n 1)
+          cp "$f" Descarga-Setup.exe
+          gh release delete desktop-latest --yes --cleanup-tag || true
+          gh release create desktop-latest Descarga-Setup.exe \
+            --title "Descarga para Windows" \
+            --notes "Instalador do Descarga para Windows. Baixe o Descarga-Setup.exe e abra. O app sempre mostra a versão mais nova do site, sem precisar reinstalar." \
+            --target "${{ github.sha }}"

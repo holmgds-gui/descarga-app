@@ -582,4 +582,5 @@ export const EN: Record<string, string> = {
   "Usuário excluído": "Deleted user",
   "Ver perfil": "View profile",
   "Voltar o volume dessa pessoa": "Restore this person's volume",
+  "Baixar o app para Windows": "Download the Windows app",
 }
