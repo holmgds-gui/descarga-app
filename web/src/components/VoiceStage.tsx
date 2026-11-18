@@ -268,7 +268,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           {gallery ? <Maximize2 size={22} /> : <LayoutGrid size={22} />}
         </button>
         {(canShareScreen() || call.screen) && <div className="quality-wrap">
-          <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label={tr('Compartilhar tela')}
+          <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label={call.screen ? tr('Parar de compartilhar') : tr('Compartilhar tela')}
             data-tip={call.screen ? tr('Parar de compartilhar') : tr('Compartilhar tela')}
             onClick={() => (call.screen ? voice.stopScreen() : setQualityOpen((v) => !v))}>
             {call.screen ? <MonitorOff size={22} /> : <Monitor size={22} />}
