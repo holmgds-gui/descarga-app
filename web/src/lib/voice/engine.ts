@@ -14,6 +14,8 @@ import { t } from '../i18n'
 import { micErrorMessage } from './micError'
 
 export const MAX_IN_CALL = 6
+/** versão do protocolo das calls: 2 = sabe recriar uma conexão a pedido da outra ponta */
+const PROTOCOL = 2
 
 /** Diário técnico das calls (fica só neste aparelho): ajuda a descobrir por que uma conexão ou um compartilhamento falhou. */
 const DIAG_KEY = 'descarga-diag'
@@ -106,6 +108,8 @@ interface Peer {
   /** vigia de "conectando": tenta de novo e, se preciso, recria a conexão */
   stuck: number | undefined
   resets: number
+  /** versão do protocolo da outra ponta (1 = versão antiga do app, que não sabe recriar conexões) */
+  remoteV: number
   gaveUp: boolean
   route: 'direct' | 'relay' | null
   camera: MediaStream | null
@@ -302,7 +306,7 @@ class VoiceEngine {
   }
 
   private sendSignal(to: string, data: Record<string, unknown>) {
-    this.callRoom?.send('signal', { from: this.snap.sessionId, to, kinds: this.localKinds(), ...data })
+    this.callRoom?.send('signal', { from: this.snap.sessionId, to, v: PROTOCOL, kinds: this.localKinds(), ...data })
   }
 
   private createPeer(remote: string, resets?: number): Peer {
@@ -310,7 +314,7 @@ class VoiceEngine {
     const peer: Peer = {
       sessionId: remote, pc, polite: this.snap.sessionId > remote, makingOffer: false, ignoreOffer: false,
       kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined, route: null,
-      queue: Promise.resolve(), pending: [], stuck: undefined, resets: resets ?? 0, gaveUp: false,
+      queue: Promise.resolve(), pending: [], stuck: undefined, resets: resets ?? 0, remoteV: 1, gaveUp: false,
     }
     this.peers.set(remote, peer)
     diag(`peer ${remote.slice(0, 6)} criado (tentativa ${peer.resets + 1}, ${peer.polite ? 'educado' : 'inicia'}, ice=${this.ice.some((i) => String(i.urls).includes('turn')) ? 'com TURN' : 'só STUN'})`)
@@ -386,6 +390,7 @@ class VoiceEngine {
 
   private async handleSignal(peer: Peer, p: Record<string, unknown>) {
     if (this.peers.get(peer.sessionId) !== peer) return
+    peer.remoteV = typeof p.v === 'number' ? p.v : 1
     if (p.kinds) Object.assign(peer.kinds, p.kinds as Record<string, StreamKind>)
     const pc = peer.pc
     try {
@@ -525,6 +530,13 @@ class VoiceEngine {
           this.watchPeer(peer)
           return
         }
+        if (peer.remoteV < 2) {
+          // a outra pessoa ainda está numa versão antiga do app: recriar a conexão só pioraria; segue tentando a rede
+          diag(`peer ${peer.sessionId.slice(0, 6)} usa versão antiga do app: sem reinício (peça para atualizar com Ctrl+Shift+R)`)
+          peer.pc.restartIce()
+          this.watchPeer(peer)
+          return
+        }
         if (peer.resets >= 3) {
           peer.gaveUp = true
           diag(`peer ${peer.sessionId.slice(0, 6)} desistiu depois de ${peer.resets} reinícios`)
@@ -548,6 +560,7 @@ class VoiceEngine {
     peer.gaveUp = false
     peer.pc.restartIce()
     if (peer.pc.connectionState !== 'connected') {
+      if (peer.remoteV < 2) return // versão antiga do outro lado: só a nova rodada de rede acima
       if (!peer.polite) {
         const resets = peer.resets + 1
         this.sendSignal(sessionId, { reset: true })
@@ -756,7 +769,7 @@ class VoiceEngine {
       const startedAt = performance.now()
       try {
         screen = await navigator.mediaDevices.getDisplayMedia(opts)
-        diag(`tela: aberta (tentativa ${attempts.indexOf(opts) + 1}) vídeo=${screen.getVideoTracks().length} áudio=${screen.getAudioTracks().length}`)
+        diag(`tela: aberta (tentativa ${attempts.indexOf(opts) + 1}) vídeo=${screen.getVideoTracks().length} áudio=${screen.getAudioTracks().length} origem=${(screen.getVideoTracks()[0]?.getSettings() as { displaySurface?: string }).displaySurface ?? '?'}`)
         break
       } catch (err) {
         const e = err as DOMException
