@@ -28,6 +28,6 @@
 ## 4. Pendências antigas
 
 - **Servidor de apoio das calls (TURN):** crie conta grátis no **ExpressTURN** (sem cartão). Mande no chat só o **servidor** e o **usuário**. A **senha** vai pelo campo seguro que o Claude abrir (`TURN_PASSWORD`); nunca cole no chat. O Claude coloca `turn_urls` e `turn_username` na configuração. Se algum site pedir cartão ou PayPal, pare e avise.
-- **Login com Google** (opcional, escondido por enquanto): precisa criar credenciais no Google Cloud.
+- **Login com Google** (feito em 18/11/2026): projeto `descarga-515103` no Google Cloud (grátis, sem faturamento), app externo em produção, cliente OAuth Web "Descarga Web" (origem `https://holmgds-gui.github.io`, retorno `https://ebumtgqfiygrfaafjctg.supabase.co/auth/v1/callback`), provedor Google ligado no Supabase com Client ID + secret. Termos/privacidade públicos em `web/public/termos.html` e `privacidade.html` (gerados por `web/scripts/gen-legal.mjs` a partir de `terms.ts`: rode de novo se o texto mudar). Contas novas do Google também passam pela aprovação do administrador. Se o secret vazar, gere outro em Google Auth Platform > Clientes e cole no Supabase.
 - **E-mail próprio para os avisos de cadastro** e **domínio próprio** (opcionais).
 - **Revisão jurídica dos Termos de Uso** (recomendada antes de divulgar).
