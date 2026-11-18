@@ -587,4 +587,9 @@ export const EN: Record<string, string> = {
   "Voltar para o foco": "Back to focus view",
   "Ver todos em galeria": "See everyone in gallery",
   "Galeria: ver todos": "Gallery: see everyone",
+  "Você parou de assistir esta tela": "You stopped watching this screen",
+  "Voltar a assistir": "Watch again",
+  "Parar de assistir": "Stop watching",
+  "{n} assistindo": "{n} watching",
+  "Ninguém está assistindo agora": "Nobody is watching right now",
 }

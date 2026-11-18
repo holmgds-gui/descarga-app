@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  HeadphoneOff, Headphones, LayoutGrid, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
+  Eye, EyeOff, HeadphoneOff, Headphones, LayoutGrid, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
   RefreshCw, Server, Volume2, VolumeX, Wifi, WifiOff,
 } from 'lucide-react'
 import { MAX_IN_CALL, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
@@ -105,6 +105,11 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
     const vol = Math.round(Math.min(1, call.settings.volumes[t.member.userId] ?? 1) * 100)
     const broken = !t.mine && (conn === 'failed' || conn === 'disconnected')
     const pending = !t.mine && (!conn || conn === 'new' || conn === 'connecting')
+    const notWatching = !t.mine && t.kind === 'screen' && call.stopped.includes(t.member.sessionId)
+    // quem está vendo a minha tela: conectado e que não parou de assistir
+    const viewers = t.mine && t.kind === 'screen'
+      ? call.members.filter((m) => m.sessionId !== call.sessionId && call.media[m.sessionId]?.connection === 'connected' && !m.stopped?.includes(call.sessionId))
+      : []
     return (
       <div key={t.id} className={`tile ${big ? 'tile-big' : ''} ${speaking ? 'speaking' : ''} ${t.kind}`}
         style={{ ['--tile-color' as string]: p?.accent_color ?? 'var(--accent)' }}
@@ -115,7 +120,10 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           const tile = e.currentTarget
           const extra: MenuItem[] = [
             { label: focusTile?.id === t.id ? tr('Tirar do destaque') : tr('Destacar'), icon: <Maximize2 size={16} />, onClick: () => setFocus(focusTile?.id === t.id ? null : t.id) },
-            ...(t.stream
+            ...(!t.mine && t.kind === 'screen'
+              ? [{ label: notWatching ? tr('Voltar a assistir') : tr('Parar de assistir'), icon: notWatching ? <Eye size={16} /> : <EyeOff size={16} />,
+                onClick: () => voice.setWatching(t.member.sessionId, notWatching) }] : []),
+            ...(t.stream && !notWatching
               ? [{ label: tr('Tela cheia'), icon: <Maximize2 size={16} />, onClick: () => void tile.requestFullscreen?.().catch(() => undefined) }] : []),
             ...(t.mine && t.kind === 'screen' ? [{ label: tr('Parar de compartilhar'), icon: <MonitorOff size={16} />, danger: true, onClick: () => voice.stopScreen() }] : []),
             ...(!t.mine && t.kind === 'person'
@@ -125,7 +133,15 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           ]
           userMenu(e, p, extra)
         }}>
-        {t.stream ? (
+        {notWatching ? (
+          <div className="tile-waiting">
+            <EyeOff size={28} />
+            <span>{tr('Você parou de assistir esta tela')}</span>
+            <button className="btn btn-sm btn-primary" onClick={(e) => { e.stopPropagation(); voice.setWatching(t.member.sessionId, true) }}>
+              <Eye size={16} /> {tr('Voltar a assistir')}
+            </button>
+          </div>
+        ) : t.stream ? (
           <VideoView stream={t.stream} mirror={t.mine && t.kind === 'person'} contain={t.kind === 'screen'} />
         ) : t.kind === 'screen' ? (
           <div className="tile-waiting">
@@ -139,6 +155,11 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           {t.kind === 'screen' && <Monitor size={14} />}
           <span className="truncate">{t.kind === 'screen' ? (t.mine ? tr('Prévia da sua tela') : tr('Tela de {nome}', { nome: displayName(p) })) : displayName(p)}</span>
           {t.kind === 'person' && (t.member.deafened ? <HeadphoneOff size={14} /> : t.member.muted && <MicOff size={14} />)}
+          {t.mine && t.kind === 'screen' && (
+            <span className="viewer-count" data-tip={viewers.length ? viewers.map((m) => displayName(profiles[m.userId])).join(', ') : tr('Ninguém está assistindo agora')}>
+              <Eye size={14} /> {tr('{n} assistindo', { n: viewers.length })}
+            </span>
+          )}
           {broken && <span className="tile-conn"><WifiOff size={14} /></span>}
           {!t.mine && t.kind === 'person' && conn === 'connected' && call.media[t.member.sessionId]?.route && (
             <span className={`route-badge ${call.media[t.member.sessionId]?.route}`}
@@ -162,6 +183,12 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           </div>
         )}
         <div className="tile-tools" onClick={(e) => e.stopPropagation()}>
+          {!t.mine && t.kind === 'screen' && !notWatching && (
+            <button className="icon-btn tiny" aria-label={tr('Parar de assistir')} data-tip={tr('Parar de assistir')}
+              onClick={() => voice.setWatching(t.member.sessionId, false)}>
+              <EyeOff size={16} />
+            </button>
+          )}
           {t.mine && t.kind === 'screen' && (
             <button className="icon-btn tiny danger" aria-label={tr('Parar de compartilhar')} data-tip={tr('Parar de compartilhar')} onClick={() => voice.stopScreen()}>
               <MonitorOff size={16} />

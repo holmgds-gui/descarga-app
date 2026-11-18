@@ -61,6 +61,8 @@ export interface CallMember {
   deafened: boolean
   camera: boolean
   screen: boolean
+  /** sessões cujas telas essa pessoa parou de assistir (versões antigas não mandam: assistem tudo) */
+  stopped?: string[]
 }
 
 export interface RemoteMedia {
@@ -89,6 +91,8 @@ export interface VoiceSnapshot {
   error: string | null
   /** o navegador bloqueou o som automático: precisa de um clique para liberar */
   audioBlocked: boolean
+  /** sessões de quem compartilha a tela e que eu parei de assistir */
+  stopped: string[]
 }
 
 interface Peer {
@@ -111,6 +115,8 @@ interface Peer {
   /** versão do protocolo da outra ponta (1 = versão antiga do app, que não sabe recriar conexões) */
   remoteV: number
   gaveUp: boolean
+  /** a outra pessoa parou de assistir minha tela: não envio a tela para ela */
+  screenPaused: boolean
   route: 'direct' | 'relay' | null
   camera: MediaStream | null
   screen: MediaStream | null
@@ -137,7 +143,7 @@ class VoiceEngine {
     this.snap = {
       status: 'idle', channelId: null, serverId: null, sessionId: crypto.randomUUID(), members: [], media: {},
       speaking: {}, muted: false, deafened: false, pttActive: false, camera: null, screen: null,
-      screenQuality: settings.screenQuality, settings, error: null, audioBlocked: false,
+      screenQuality: settings.screenQuality, settings, error: null, audioBlocked: false, stopped: [],
     }
     window.addEventListener('keydown', this.onKey)
     window.addEventListener('keyup', this.onKey)
@@ -251,7 +257,7 @@ class VoiceEngine {
     if (withSound) playLeave()
     this.set({
       status: 'idle', channelId: null, serverId: null, members: [], media: {}, speaking: {}, camera: null,
-      screen: null, pttActive: false, audioBlocked: false,
+      screen: null, pttActive: false, audioBlocked: false, stopped: [],
     })
   }
 
@@ -265,6 +271,7 @@ class VoiceEngine {
       deafened: this.snap.deafened,
       camera: !!this.snap.camera,
       screen: !!this.snap.screen,
+      stopped: this.snap.stopped,
     }
   }
 
@@ -294,6 +301,8 @@ class VoiceEngine {
     this.knownMembers = new Set([...ids].filter((id) => id !== me))
     this.firstSync = false
     this.set({ members })
+    this.applyViewers()
+    this.applyVolumes()
   }
 
   // ---------- conexões entre aparelhos ----------
@@ -314,7 +323,7 @@ class VoiceEngine {
     const peer: Peer = {
       sessionId: remote, pc, polite: this.snap.sessionId > remote, makingOffer: false, ignoreOffer: false,
       kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined, route: null,
-      queue: Promise.resolve(), pending: [], stuck: undefined, resets: resets ?? 0, remoteV: 1, gaveUp: false,
+      queue: Promise.resolve(), pending: [], stuck: undefined, resets: resets ?? 0, remoteV: 1, gaveUp: false, screenPaused: false,
     }
     this.peers.set(remote, peer)
     diag(`peer ${remote.slice(0, 6)} criado (tentativa ${peer.resets + 1}, ${peer.polite ? 'educado' : 'inicia'}, ice=${this.ice.some((i) => String(i.urls).includes('turn')) ? 'com TURN' : 'só STUN'})`)
@@ -661,7 +670,8 @@ class VoiceEngine {
       const v = Math.max(0, Math.min(1, this.snap.settings.volumes[member?.userId ?? ''] ?? 1))
       for (const a of peer.audio.values()) {
         a.el.volume = v
-        a.el.muted = this.snap.deafened
+        // a tela que parei de assistir também fica sem som
+        a.el.muted = this.snap.deafened || (a.el.dataset.descarga === 'screen' && this.snap.stopped.includes(peer.sessionId))
       }
     }
   }
@@ -807,7 +817,33 @@ class VoiceEngine {
     this.updateSettings({ screenQuality: quality })
     this.addStream(screen)
     void this.publishState()
+    window.setTimeout(() => this.applyViewers(), 300)
     window.setTimeout(() => this.peers.forEach((p) => this.tuneSenders(p)), 1500)
+  }
+
+  /** Para (ou volta) de assistir a tela de alguém. Quem compartilha deixa de enviar a tela para mim. */
+  setWatching(sessionId: string, watching: boolean) {
+    const has = this.snap.stopped.includes(sessionId)
+    if (watching === !has) return
+    diag(`${watching ? 'voltou a assistir' : 'parou de assistir'} a tela de ${sessionId.slice(0, 6)}`)
+    this.set({ stopped: watching ? this.snap.stopped.filter((x) => x !== sessionId) : [...this.snap.stopped, sessionId] })
+    this.applyVolumes()
+    void this.publishState()
+  }
+
+  /** Quem compartilha: não manda a tela (nem o som dela) para quem parou de assistir. */
+  private applyViewers() {
+    const screen = this.snap.screen
+    if (!screen) return
+    for (const peer of this.peers.values()) {
+      const member = this.snap.members.find((m) => m.sessionId === peer.sessionId)
+      const paused = !!member?.stopped?.includes(this.snap.sessionId)
+      if (paused === peer.screenPaused) continue
+      peer.screenPaused = paused
+      for (const track of screen.getTracks()) {
+        void peer.senders.get(track.id)?.replaceTrack(paused ? null : track).catch(() => undefined)
+      }
+    }
   }
 
   stopScreen() {
@@ -831,6 +867,7 @@ class VoiceEngine {
         if (sender) {
           peer.pc.removeTrack(sender)
           peer.senders.delete(t.id)
+          peer.screenPaused = false
         }
       }
       t.stop()

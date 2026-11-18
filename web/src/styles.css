@@ -926,3 +926,6 @@ button.avatar { cursor: pointer; }
 .ctx-menu { position: fixed; right: auto; bottom: auto; width: max-content; z-index: 3000; min-width: 200px; max-width: 280px; }
 .ctx-menu .dropdown-item { justify-content: flex-start; }
 .ctx-menu .dropdown-item { width: 100%; }
+
+/* quantas pessoas assistem a minha tela */
+.viewer-count { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,.3); font-weight: 700; }
