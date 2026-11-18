@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  HeadphoneOff, Headphones, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
+  HeadphoneOff, Headphones, LayoutGrid, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
   RefreshCw, Server, Volume2, VolumeX, Wifi, WifiOff,
 } from 'lucide-react'
 import { MAX_IN_CALL, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
@@ -41,6 +41,13 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
   const present = useVoicePresence(roomId).filter((m) => m.channelId === channel.id)
   const joined = call.channelId === channel.id && call.status !== 'idle'
   const [focus, setFocus] = useState<string | null>(null)
+  const [layout, setLayoutState] = useState<'focus' | 'gallery'>(() => {
+    try { return localStorage.getItem('descarga-call-layout') === 'gallery' ? 'gallery' : 'focus' } catch { return 'focus' }
+  })
+  const setLayout = (l: 'focus' | 'gallery') => {
+    setLayoutState(l)
+    try { localStorage.setItem('descarga-call-layout', l) } catch { /* ok */ }
+  }
   const [qualityOpen, setQualityOpen] = useState(false)
   const [volumeFor, setVolumeFor] = useState<string | null>(null)
 
@@ -82,7 +89,8 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
     const scr = mine ? call.screen : m.screen ? media?.screen ?? null : null
     if (scr || (m.screen && !mine)) tiles.push({ id: `s-${m.sessionId}`, member: m, kind: 'screen', stream: scr, mine })
   }
-  const focusTile = tiles.find((t) => t.id === focus) ?? (tiles.find((t) => t.kind === 'screen' && !t.mine) ?? null)
+  const gallery = layout === 'gallery'
+  const focusTile = gallery ? null : tiles.find((t) => t.id === focus) ?? (tiles.find((t) => t.kind === 'screen' && !t.mine) ?? null)
   const rest = focusTile ? tiles.filter((t) => t !== focusTile) : tiles
 
   const share = (q: ScreenQuality) => {
@@ -100,12 +108,14 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
     return (
       <div key={t.id} className={`tile ${big ? 'tile-big' : ''} ${speaking ? 'speaking' : ''} ${t.kind}`}
         style={{ ['--tile-color' as string]: p?.accent_color ?? 'var(--accent)' }}
-        onClick={() => setFocus(focusTile?.id === t.id ? null : t.id)}
+        onClick={() => {
+          if (gallery) { setFocus(t.id); setLayout('focus') } else setFocus(focusTile?.id === t.id ? null : t.id)
+        }}
         onContextMenu={(e) => {
           const tile = e.currentTarget
           const extra: MenuItem[] = [
             { label: focusTile?.id === t.id ? tr('Tirar do destaque') : tr('Destacar'), icon: <Maximize2 size={16} />, onClick: () => setFocus(focusTile?.id === t.id ? null : t.id) },
-            ...(t.stream && !(t.mine && t.kind === 'screen')
+            ...(t.stream
               ? [{ label: tr('Tela cheia'), icon: <Maximize2 size={16} />, onClick: () => void tile.requestFullscreen?.().catch(() => undefined) }] : []),
             ...(t.mine && t.kind === 'screen' ? [{ label: tr('Parar de compartilhar'), icon: <MonitorOff size={16} />, danger: true, onClick: () => voice.stopScreen() }] : []),
             ...(!t.mine && t.kind === 'person'
@@ -115,16 +125,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           ]
           userMenu(e, p, extra)
         }}>
-        {t.mine && t.kind === 'screen' ? (
-          // não mostra a própria tela aqui dentro (evita o efeito de "tela dentro da tela")
-          <div className="tile-waiting">
-            <Monitor size={28} />
-            <span>{tr('Você está compartilhando sua tela')}</span>
-            <button className="btn btn-sm btn-danger" onClick={(e) => { e.stopPropagation(); voice.stopScreen() }}>
-              <MonitorOff size={16} /> {tr('Parar')}
-            </button>
-          </div>
-        ) : t.stream ? (
+        {t.stream ? (
           <VideoView stream={t.stream} mirror={t.mine && t.kind === 'person'} contain={t.kind === 'screen'} />
         ) : t.kind === 'screen' ? (
           <div className="tile-waiting">
@@ -136,7 +137,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
         )}
         <div className="tile-label">
           {t.kind === 'screen' && <Monitor size={14} />}
-          <span className="truncate">{t.kind === 'screen' ? tr('Tela de {nome}', { nome: displayName(p) }) : displayName(p)}</span>
+          <span className="truncate">{t.kind === 'screen' ? (t.mine ? tr('Prévia da sua tela') : tr('Tela de {nome}', { nome: displayName(p) })) : displayName(p)}</span>
           {t.kind === 'person' && (t.member.deafened ? <HeadphoneOff size={14} /> : t.member.muted && <MicOff size={14} />)}
           {broken && <span className="tile-conn"><WifiOff size={14} /></span>}
           {!t.mine && t.kind === 'person' && conn === 'connected' && call.media[t.member.sessionId]?.route && (
@@ -161,6 +162,11 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           </div>
         )}
         <div className="tile-tools" onClick={(e) => e.stopPropagation()}>
+          {t.mine && t.kind === 'screen' && (
+            <button className="icon-btn tiny danger" aria-label={tr('Parar de compartilhar')} data-tip={tr('Parar de compartilhar')} onClick={() => voice.stopScreen()}>
+              <MonitorOff size={16} />
+            </button>
+          )}
           {!t.mine && t.kind === 'person' && (
             <button className="icon-btn tiny" aria-label={tr('Volume de {nome}', { nome: displayName(p) })} data-tip={`${tr('Volume')} ${vol}%`}
               onClick={() => setVolumeFor(volumeFor === t.member.userId ? null : t.member.userId)}>
@@ -193,9 +199,9 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
         <ChatHeader icon={<Volume2 size={22} />} title={channel.name}
           topic={tr('{n} de {max} na call', { n: call.members.length, max: MAX_IN_CALL })} />
       )}
-      <div className={`stage ${focusTile ? 'has-focus' : ''}`}>
+      <div className={`stage ${focusTile ? 'has-focus' : ''} ${gallery ? 'is-gallery' : ''}`}>
         {focusTile && <div className="stage-focus">{renderTile(focusTile, true)}</div>}
-        <div className={`stage-grid ${focusTile ? 'strip' : ''} n${Math.min(rest.length, 6)}`}>
+        <div className={`stage-grid ${focusTile ? 'strip' : ''} ${gallery ? `gallery g${Math.min(tiles.length, 12)}` : ''} n${Math.min(rest.length, 6)}`}>
           {rest.map((t) => renderTile(t))}
         </div>
       </div>
@@ -229,6 +235,10 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
         <button className={`round-btn ${call.camera ? 'on' : ''}`} aria-label={tr('Câmera')}
           data-tip={call.camera ? tr('Desligar câmera') : tr('Ligar câmera')} onClick={() => void voice.toggleCamera()}>
           {call.camera ? <Video size={22} /> : <VideoOff size={22} />}
+        </button>
+        <button className={`round-btn ${gallery ? 'on' : ''}`} aria-label={gallery ? tr('Voltar para o foco') : tr('Ver todos em galeria')}
+          data-tip={gallery ? tr('Voltar para o foco') : tr('Galeria: ver todos')} onClick={() => setLayout(gallery ? 'focus' : 'gallery')}>
+          {gallery ? <Maximize2 size={22} /> : <LayoutGrid size={22} />}
         </button>
         {(canShareScreen() || call.screen) && <div className="quality-wrap">
           <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label={tr('Compartilhar tela')}

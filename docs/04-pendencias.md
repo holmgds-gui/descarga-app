@@ -8,6 +8,7 @@
 - Layout do palco da call corrigido (tela compartilhada e faixa de pessoas não ficam mais cortadas).
 - Conexões da call: sinais agora são tratados em ordem (candidatos de rede não se perdem), nova tentativa automática aos 10 s, reinício da conexão aos ~22 s, botão "Tentar de novo" refaz do zero.
 - Compartilhar tela: som sem eco (`restrictOwnAudio`), mensagem clara quando o navegador não envia som; diário técnico em Configurações > Voz > Diagnóstico.
+- Galeria na call (botão alterna Foco ⇄ Galeria) e prévia da própria tela para quem compartilha.
 - Função `notificar` (v5) reconhece @menções com maiúsculas e símbolos.
 
 ## Concluído em 5 de novembro de 2026 (noite)

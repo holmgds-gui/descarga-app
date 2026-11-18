@@ -583,4 +583,8 @@ export const EN: Record<string, string> = {
   "Ver perfil": "View profile",
   "Voltar o volume dessa pessoa": "Restore this person's volume",
   "Baixar o app para Windows": "Download the Windows app",
+  "Prévia da sua tela": "Preview of your screen",
+  "Voltar para o foco": "Back to focus view",
+  "Ver todos em galeria": "See everyone in gallery",
+  "Galeria: ver todos": "Gallery: see everyone",
 }
