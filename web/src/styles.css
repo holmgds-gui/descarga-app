@@ -929,3 +929,21 @@ button.avatar { cursor: pointer; }
 
 /* quantas pessoas assistem a minha tela */
 .viewer-count { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px; margin-left: 2px; border-left: 1px solid rgba(255,255,255,.3); font-weight: 700; }
+
+/* ---------- configurações do servidor ---------- */
+.server-banner { height: 96px; background-size: cover; background-position: center; flex-shrink: 0; }
+.server-desc { margin: 0; padding: 8px 14px 6px; font-size: .8em; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.srv-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.srv-tab { padding: 8px 14px; font-weight: 800; font-size: .9em; color: var(--text-2); border-bottom: 2px solid transparent; white-space: nowrap; }
+.srv-tab:hover { color: var(--text); }
+.srv-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.srv-banner { min-height: 110px; border-radius: 10px; background: var(--bg-elev) center / cover no-repeat; display: flex; align-items: flex-end; gap: 8px; padding: 10px; flex-wrap: wrap; }
+.srv-icon-row { display: flex; align-items: center; gap: 12px; }
+.srv-icon-row .icon-upload { margin: 0; }
+.srv-channels, .srv-mods { display: flex; flex-direction: column; gap: 12px; }
+.srv-channels section { display: flex; flex-direction: column; gap: 4px; }
+.srv-channel-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; background: var(--bg-elev); min-height: 40px; }
+.srv-channel-actions { display: flex; gap: 2px; }
+.srv-rename { display: flex; align-items: center; gap: 4px; flex: 1; }
+.srv-rename input { flex: 1; min-width: 0; }
+.mod-badge { background: var(--accent); }

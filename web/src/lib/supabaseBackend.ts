@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   AdminUser,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
-  ServerEmoji,
+  ServerEmoji, ServerRole,
 } from './types'
 import { compressImage } from './image'
 import { getLang, t } from './i18n'
@@ -184,10 +184,30 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       must(await sb.from('server_members').delete().eq('server_id', serverId).eq('user_id', me!))
     },
 
+    async updateServer(serverId, patch) {
+      const r = await sb.from('servers').update(patch).eq('id', serverId).select().maybeSingle()
+      if (r.error) throw new Error(r.error.message)
+      if (!r.data) throw new Error(t('Você não tem permissão para mudar este servidor.'))
+      return r.data as Server
+    },
+
+    async listMemberRoles(serverId) {
+      const rows = must(
+        await sb.from('server_members').select('user_id, role').eq('server_id', serverId),
+      ) as { user_id: string; role: ServerRole }[]
+      return Object.fromEntries(rows.map((r) => [r.user_id, r.role]))
+    },
+
+    async setMemberRole(serverId, userId, role) {
+      const r = await sb.rpc('set_member_role', { s: serverId, target: userId, new_role: role })
+      if (r.error) throw new Error(t('Só o dono do servidor pode escolher os moderadores.'))
+    },
+
     onServersChange(cb) {
       const ch = sb
         .channel('my-servers')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_members' }, () => cb())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'servers' }, () => cb())
         .subscribe()
       return () => void sb.removeChannel(ch)
     },
@@ -207,6 +227,26 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
           .select()
           .single(),
       ) as Channel
+    },
+
+    async renameChannel(channelId, name) {
+      const r = await sb.from('channels').update({ name }).eq('id', channelId).select('id')
+      if (r.error) throw new Error(r.error.message)
+      if (!r.data?.length) throw new Error(t('Você não tem permissão para mudar este canal.'))
+    },
+
+    async deleteChannel(channelId) {
+      const r = await sb.from('channels').delete().eq('id', channelId).select('id')
+      if (r.error) throw new Error(r.error.message)
+      if (!r.data?.length) throw new Error(t('Você não tem permissão para apagar este canal.'))
+    },
+
+    async reorderChannels(_serverId, orderedIds) {
+      const results = await Promise.all(
+        orderedIds.map((id, position) => sb.from('channels').update({ position }).eq('id', id)),
+      )
+      const bad = results.find((r) => r.error)
+      if (bad?.error) throw new Error(bad.error.message)
     },
 
     onChannelsChange(serverId, cb) {

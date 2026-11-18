@@ -4,7 +4,7 @@
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
 import type {
-  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji,
+  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, ServerRole,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
@@ -12,7 +12,7 @@ import { t } from './i18n'
 import { cleanUsername } from './username'
 
 interface DemoUser { id: string; email: string; password: string }
-interface Member { server_id: string; user_id: string; joined_at: string }
+interface Member { server_id: string; user_id: string; joined_at: string; role?: ServerRole }
 interface DmMember { channel_id: string; user_id: string; joined_at: string; last_read_at: string | null }
 type DemoChannel = Channel & Partial<Pick<DmChannel, 'is_group' | 'title' | 'owner_id' | 'last_message_at'>>
 interface DB {
@@ -71,7 +71,7 @@ function seed(): DB {
     custom_status: 'Pronto pra descarga 🚽',
   }
   const server: Server = {
-    id: WELCOME_ID, name: 'Bem-vindo ao Descarga', icon_url: import.meta.env.BASE_URL + 'icon-192.png',
+    id: WELCOME_ID, name: 'Bem-vindo ao Descarga', icon_url: import.meta.env.BASE_URL + 'icon-192.png', banner_url: null, description: '',
     owner_id: BOT_ID, invite_code: 'descarga', created_at: at(60),
   }
   const ch = (name: string, type: 'text' | 'voice', category: string, position: number, topic = ''): Channel => ({
@@ -175,6 +175,10 @@ export function createDemoBackend(): Backend {
   }
   const isMember = (db: DB, serverId: string, uid: string) =>
     db.members.some((m) => m.server_id === serverId && m.user_id === uid)
+  /** dono ou moderador */
+  const canManage = (db: DB, serverId: string, uid: string) =>
+    db.servers.find((s) => s.id === serverId)?.owner_id === uid ||
+    db.members.some((m) => m.server_id === serverId && m.user_id === uid && m.role === 'mod')
 
   const createAccount = (db: DB, email: string, password: string, username: string) => {
     const clean = cleanUsername(username).slice(0, 26) || 'usuario'
@@ -341,7 +345,7 @@ export function createDemoBackend(): Backend {
     async createServer(name, iconUrl) {
       const db = load()
       const uid = me()
-      const s: Server = { id: id(), name, icon_url: iconUrl, owner_id: uid, invite_code: code(), created_at: now() }
+      const s: Server = { id: id(), name, icon_url: iconUrl, banner_url: null, description: '', owner_id: uid, invite_code: code(), created_at: now() }
       db.servers.push(s)
       db.members.push({ server_id: s.id, user_id: uid, joined_at: now() })
       const mk = (name: string, type: 'text' | 'voice', category: string, position: number): Channel => ({
@@ -379,6 +383,34 @@ export function createDemoBackend(): Backend {
       emit({ type: 'channels' })
     },
 
+    async updateServer(serverId, patch) {
+      const db = load()
+      const s = db.servers.find((x) => x.id === serverId)
+      if (!s || !canManage(db, serverId, me())) throw new Error(t('Você não tem permissão para mudar este servidor.'))
+      if (patch.name !== undefined) s.name = patch.name
+      if (patch.icon_url !== undefined) s.icon_url = patch.icon_url
+      if (patch.banner_url !== undefined) s.banner_url = patch.banner_url
+      if (patch.description !== undefined) s.description = patch.description
+      save(db)
+      emit({ type: 'servers' })
+      return { ...s }
+    },
+
+    async listMemberRoles(serverId) {
+      const db = load()
+      return Object.fromEntries(db.members.filter((m) => m.server_id === serverId).map((m) => [m.user_id, m.role ?? 'member' as ServerRole]))
+    },
+
+    async setMemberRole(serverId, userId, role) {
+      const db = load()
+      const s = db.servers.find((x) => x.id === serverId)
+      if (s?.owner_id !== me() || userId === me()) throw new Error(t('Só o dono do servidor pode escolher os moderadores.'))
+      const m = db.members.find((x) => x.server_id === serverId && x.user_id === userId)
+      if (m) m.role = role
+      save(db)
+      emit({ type: 'servers' })
+    },
+
     onServersChange(cb) {
       return listen((e) => {
         if (e.type === 'servers') cb()
@@ -394,8 +426,7 @@ export function createDemoBackend(): Backend {
     async createChannel(serverId, name, type, category) {
       const db = load()
       const uid = me()
-      const s = db.servers.find((x) => x.id === serverId)
-      if (s?.owner_id !== uid) throw new Error(t('Só o dono do servidor pode criar canais (por enquanto).'))
+      if (!canManage(db, serverId, uid)) throw new Error(t('Só o dono e os moderadores podem criar canais.'))
       const c: Channel = {
         id: id(), server_id: serverId, name, type, category, topic: '',
         position: db.channels.filter((x) => x.server_id === serverId).length, created_at: now(),
@@ -404,6 +435,36 @@ export function createDemoBackend(): Backend {
       save(db)
       emit({ type: 'channels' })
       return c
+    },
+
+    async renameChannel(channelId, name) {
+      const db = load()
+      const c = db.channels.find((x) => x.id === channelId)
+      if (!c?.server_id || !canManage(db, c.server_id, me())) throw new Error(t('Você não tem permissão para mudar este canal.'))
+      c.name = name
+      save(db)
+      emit({ type: 'channels' })
+    },
+
+    async deleteChannel(channelId) {
+      const db = load()
+      const c = db.channels.find((x) => x.id === channelId)
+      if (!c?.server_id || !canManage(db, c.server_id, me())) throw new Error(t('Você não tem permissão para apagar este canal.'))
+      db.channels = db.channels.filter((x) => x.id !== channelId)
+      db.messages = db.messages.filter((m) => m.channel_id !== channelId)
+      save(db)
+      emit({ type: 'channels' })
+    },
+
+    async reorderChannels(serverId, orderedIds) {
+      const db = load()
+      if (!canManage(db, serverId, me())) throw new Error(t('Você não tem permissão para mudar este canal.'))
+      orderedIds.forEach((id, position) => {
+        const c = db.channels.find((x) => x.id === id && x.server_id === serverId)
+        if (c) c.position = position
+      })
+      save(db)
+      emit({ type: 'channels' })
     },
 
     onChannelsChange(_serverId, cb) {

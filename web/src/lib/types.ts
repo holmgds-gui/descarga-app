@@ -50,9 +50,20 @@ export interface Server {
   id: string
   name: string
   icon_url: string | null
+  banner_url: string | null
+  description: string
   owner_id: string
   invite_code: string
   created_at: string
+}
+
+/** cargo dentro de um servidor (o dono é quem tem owner_id; moderadores editam servidor e canais) */
+export type ServerRole = 'member' | 'mod'
+export interface ServerPatch {
+  name?: string
+  icon_url?: string | null
+  banner_url?: string | null
+  description?: string
 }
 
 export type ChannelType = 'text' | 'voice'
@@ -155,10 +166,18 @@ export interface Backend {
   createServer(name: string, iconUrl: string | null): Promise<Server>
   joinServer(code: string): Promise<Server>
   leaveServer(serverId: string): Promise<void>
+  updateServer(serverId: string, patch: ServerPatch): Promise<Server>
+  listMemberRoles(serverId: string): Promise<Record<string, ServerRole>>
+  /** só o dono */
+  setMemberRole(serverId: string, userId: string, role: ServerRole): Promise<void>
   onServersChange(cb: () => void): () => void
 
   listChannels(serverId: string): Promise<Channel[]>
   createChannel(serverId: string, name: string, type: ChannelType, category: string): Promise<Channel>
+  renameChannel(channelId: string, name: string): Promise<void>
+  deleteChannel(channelId: string): Promise<void>
+  /** salva a ordem: o primeiro id fica na posição 0, e assim por diante */
+  reorderChannels(serverId: string, orderedIds: string[]): Promise<void>
   onChannelsChange(serverId: string, cb: () => void): () => void
   listMemberIds(serverId: string): Promise<string[]>
 
