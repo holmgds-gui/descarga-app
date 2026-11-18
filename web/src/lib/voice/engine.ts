@@ -15,6 +15,32 @@ import { micErrorMessage } from './micError'
 
 export const MAX_IN_CALL = 6
 
+/** Diário técnico das calls (fica só neste aparelho): ajuda a descobrir por que uma conexão ou um compartilhamento falhou. */
+const DIAG_KEY = 'descarga-diag'
+export function diag(msg: string) {
+  try {
+    const list: string[] = JSON.parse(localStorage.getItem(DIAG_KEY) ?? '[]')
+    list.push(`${new Date().toISOString().slice(11, 23)} ${msg}`)
+    localStorage.setItem(DIAG_KEY, JSON.stringify(list.slice(-300)))
+  } catch {
+    /* sem armazenamento: tudo bem */
+  }
+}
+export const getDiagnostics = () => {
+  try {
+    return (JSON.parse(localStorage.getItem(DIAG_KEY) ?? '[]') as string[]).join('\n')
+  } catch {
+    return ''
+  }
+}
+export const clearDiagnostics = () => {
+  try {
+    localStorage.removeItem(DIAG_KEY)
+  } catch {
+    /* ok */
+  }
+}
+
 const DEFAULT_ICE: RTCIceServer[] = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
 ]
@@ -73,6 +99,14 @@ interface Peer {
   senders: Map<string, RTCRtpSender>
   audio: Map<string, { el: HTMLAudioElement; source: MediaStreamAudioSourceNode; analyser: AnalyserNode }>
   watchdog: number | undefined
+  /** fila: os sinais de cada pessoa são tratados um de cada vez, na ordem em que chegam */
+  queue: Promise<void>
+  /** candidatos de rede que chegaram antes da descrição da conexão */
+  pending: RTCIceCandidateInit[]
+  /** vigia de "conectando": tenta de novo e, se preciso, recria a conexão */
+  stuck: number | undefined
+  resets: number
+  gaveUp: boolean
   route: 'direct' | 'relay' | null
   camera: MediaStream | null
   screen: MediaStream | null
@@ -140,6 +174,7 @@ class VoiceEngine {
     this.setupMicAnalyser()
     this.applyMicState()
     this.ice = await backend.getIceServers().catch(() => DEFAULT_ICE)
+    diag(`entrou na call (ice: ${this.ice.some((i) => String(i.urls).includes('turn')) ? 'com TURN' : 'só STUN'})`)
 
     const room = backend.openRoom(`call:${channelId}`)
     this.callRoom = room
@@ -181,7 +216,7 @@ class VoiceEngine {
     this.offs.push(
       room.onPresence((list) => this.reconcile(list)),
       room.onBroadcast((event, payload) => {
-        if (event === 'signal') void this.onSignal(payload)
+        if (event === 'signal') this.onSignal(payload)
       }),
     )
     await this.publishState()
@@ -270,13 +305,16 @@ class VoiceEngine {
     this.callRoom?.send('signal', { from: this.snap.sessionId, to, kinds: this.localKinds(), ...data })
   }
 
-  private createPeer(remote: string): Peer {
+  private createPeer(remote: string, resets?: number): Peer {
     const pc = new RTCPeerConnection({ iceServers: this.ice })
     const peer: Peer = {
       sessionId: remote, pc, polite: this.snap.sessionId > remote, makingOffer: false, ignoreOffer: false,
       kinds: {}, senders: new Map(), audio: new Map(), camera: null, screen: null, watchdog: undefined, route: null,
+      queue: Promise.resolve(), pending: [], stuck: undefined, resets: resets ?? 0, gaveUp: false,
     }
     this.peers.set(remote, peer)
+    diag(`peer ${remote.slice(0, 6)} criado (tentativa ${peer.resets + 1}, ${peer.polite ? 'educado' : 'inicia'}, ice=${this.ice.some((i) => String(i.urls).includes('turn')) ? 'com TURN' : 'só STUN'})`)
+    this.watchPeer(peer)
 
     const add = (stream: MediaStream | null) =>
       stream?.getTracks().forEach((t) => peer.senders.set(t.id, pc.addTrack(t, stream)))
@@ -298,6 +336,7 @@ class VoiceEngine {
     pc.onicecandidate = (e) => e.candidate && this.sendSignal(remote, { candidate: e.candidate.toJSON() })
     pc.onconnectionstatechange = () => {
       const st = pc.connectionState
+      diag(`peer ${remote.slice(0, 6)} conexão=${st} ice=${pc.iceConnectionState}`)
       window.clearTimeout(peer.watchdog)
       if (st === 'failed') pc.restartIce()
       // caiu por um instante (troca de Wi-Fi, 4G oscilando): tenta reconectar se não voltar sozinho
@@ -320,9 +359,33 @@ class VoiceEngine {
     return peer
   }
 
-  private async onSignal(p: Record<string, unknown>) {
+  private onSignal(p: Record<string, unknown>) {
     if (p.to !== this.snap.sessionId || typeof p.from !== 'string') return
+    if (p.reset) {
+      // a outra ponta pediu para recomeçar essa conexão do zero
+      diag(`peer ${p.from.slice(0, 6)} pediu reinício`)
+      const old = this.peers.get(p.from)
+      const resets = (old?.resets ?? 0) + 1
+      this.closePeer(p.from)
+      this.createPeer(p.from, resets)
+      return
+    }
+    if (p.retry) {
+      const old = this.peers.get(p.from)
+      if (old && !old.polite && old.pc.connectionState !== 'connected') {
+        const resets = old.resets + 1
+        this.sendSignal(p.from, { reset: true })
+        this.closePeer(p.from)
+        this.createPeer(p.from, resets)
+      }
+      return
+    }
     const peer = this.peers.get(p.from) ?? this.createPeer(p.from)
+    peer.queue = peer.queue.then(() => this.handleSignal(peer, p)).catch(() => undefined)
+  }
+
+  private async handleSignal(peer: Peer, p: Record<string, unknown>) {
+    if (this.peers.get(peer.sessionId) !== peer) return
     if (p.kinds) Object.assign(peer.kinds, p.kinds as Record<string, StreamKind>)
     const pc = peer.pc
     try {
@@ -332,20 +395,26 @@ class VoiceEngine {
         peer.ignoreOffer = !peer.polite && collision
         if (peer.ignoreOffer) return
         await pc.setRemoteDescription(desc)
+        // candidatos que chegaram cedo demais
+        for (const c of peer.pending.splice(0)) await pc.addIceCandidate(c).catch(() => undefined)
         if (desc.type === 'offer') {
           await pc.setLocalDescription()
-          this.sendSignal(p.from, { description: pc.localDescription?.toJSON() })
+          this.sendSignal(peer.sessionId, { description: pc.localDescription?.toJSON() })
         }
         this.tuneSenders(peer)
       } else if (p.candidate) {
-        try {
-          await pc.addIceCandidate(p.candidate as RTCIceCandidateInit)
-        } catch (err) {
-          if (!peer.ignoreOffer) throw err
+        if (!pc.remoteDescription) peer.pending.push(p.candidate as RTCIceCandidateInit)
+        else {
+          try {
+            await pc.addIceCandidate(p.candidate as RTCIceCandidateInit)
+          } catch (err) {
+            if (!peer.ignoreOffer) throw err
+          }
         }
       }
     } catch (err) {
       console.warn('sinal da call falhou', err)
+      diag(`sinal falhou: ${(err as Error)?.name ?? ''} ${(err as Error)?.message ?? ''}`)
     }
   }
 
@@ -353,6 +422,7 @@ class VoiceEngine {
     const peer = this.peers.get(id)
     if (!peer) return
     window.clearTimeout(peer.watchdog)
+    window.clearTimeout(peer.stuck)
     for (const a of peer.audio.values()) {
       a.source.disconnect()
       a.el.pause()
@@ -371,7 +441,7 @@ class VoiceEngine {
     this.set({
       media: {
         ...this.snap.media,
-        [peer.sessionId]: { camera: live(peer.camera), screen: live(peer.screen), connection: peer.pc.connectionState, route: peer.route },
+        [peer.sessionId]: { camera: live(peer.camera), screen: live(peer.screen), connection: peer.gaveUp ? 'failed' : peer.pc.connectionState, route: peer.route },
       },
     })
     if (peer.pc.connectionState === 'connected') void this.detectRoute(peer)
@@ -438,9 +508,53 @@ class VoiceEngine {
     this.set({ audioBlocked: false })
   }
 
+  /**
+   * Vigia uma conexão nova: se em 10 s não conectou, pede nova rodada de rede; se em 22 s ainda não,
+   * quem tem o menor código recria a conexão do zero (até 3 vezes) — o sinal pode ter se perdido no caminho.
+   */
+  private watchPeer(peer: Peer) {
+    window.clearTimeout(peer.stuck)
+    peer.stuck = window.setTimeout(() => {
+      if (this.peers.get(peer.sessionId) !== peer || peer.pc.connectionState === 'connected') return
+      diag(`peer ${peer.sessionId.slice(0, 6)} ainda não conectou (${peer.pc.connectionState}/${peer.pc.iceConnectionState}/${peer.pc.signalingState}): nova rodada`)
+      peer.pc.restartIce()
+      peer.stuck = window.setTimeout(() => {
+        if (this.peers.get(peer.sessionId) !== peer || peer.pc.connectionState === 'connected') return
+        if (peer.polite) {
+          // quem recria é o outro lado; se ele não vier, tenta de novo daqui a pouco
+          this.watchPeer(peer)
+          return
+        }
+        if (peer.resets >= 3) {
+          peer.gaveUp = true
+          diag(`peer ${peer.sessionId.slice(0, 6)} desistiu depois de ${peer.resets} reinícios`)
+          this.updateMedia(peer)
+          return
+        }
+        const id = peer.sessionId
+        const resets = peer.resets + 1
+        this.sendSignal(id, { reset: true })
+        this.closePeer(id)
+        this.createPeer(id, resets)
+      }, 12000)
+    }, 10000)
+  }
+
   /** Tenta reconectar com uma pessoa que não conectou. */
   retryPeer(sessionId: string) {
-    this.peers.get(sessionId)?.pc.restartIce()
+    const peer = this.peers.get(sessionId)
+    if (!peer) return
+    diag(`peer ${sessionId.slice(0, 6)} tentar de novo (manual)`)
+    peer.gaveUp = false
+    peer.pc.restartIce()
+    if (peer.pc.connectionState !== 'connected') {
+      if (!peer.polite) {
+        const resets = peer.resets + 1
+        this.sendSignal(sessionId, { reset: true })
+        this.closePeer(sessionId)
+        this.createPeer(sessionId, resets)
+      } else this.sendSignal(sessionId, { retry: true })
+    }
   }
 
   /** Ajusta qualidade da tela (resolução, fps e taxa de bits) em cada conexão. */
@@ -625,7 +739,11 @@ class VoiceEngine {
     const attempts: DisplayMediaStreamOptions[] = [
       {
         video: { height: { ideal: preset.height }, frameRate: { ideal: preset.fps, max: preset.fps } },
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        // restrictOwnAudio/suppressLocalAudioPlayback: não manda de volta a voz de quem está na call (evita eco)
+        audio: {
+          echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+          ...({ restrictOwnAudio: true, suppressLocalAudioPlayback: true } as object),
+        },
         // opções do Chrome/Edge: incluir o som do computador e não mostrar a própria aba
         ...({ systemAudio: 'include', selfBrowserSurface: 'exclude', surfaceSwitching: 'include' } as object),
       },
@@ -638,10 +756,12 @@ class VoiceEngine {
       const startedAt = performance.now()
       try {
         screen = await navigator.mediaDevices.getDisplayMedia(opts)
+        diag(`tela: aberta (tentativa ${attempts.indexOf(opts) + 1}) vídeo=${screen.getVideoTracks().length} áudio=${screen.getAudioTracks().length}`)
         break
       } catch (err) {
         const e = err as DOMException
         lastError = e?.name ?? ''
+        diag(`tela: tentativa ${attempts.indexOf(opts) + 1} falhou ${e?.name} ${e?.message}`)
         if (e?.name === 'NotAllowedError' || e?.name === 'AbortError') {
           // "by system" = o computador bloqueou (no Mac: Ajustes > Privacidade > Gravação de Tela)
           if (/system/i.test(e.message)) {
@@ -662,9 +782,13 @@ class VoiceEngine {
     if (this.snap.screen) this.stopScreen()
     const video = screen.getVideoTracks()[0]
     video.contentHint = quality === '1080p60' ? 'motion' : 'detail'
-    video.onended = () => this.stopScreen()
+    video.onended = () => {
+      diag('tela: a captura terminou (o navegador ou o sistema parou o compartilhamento)')
+      this.stopScreen()
+    }
+    screen.getAudioTracks().forEach((a) => { a.contentHint = 'music'; a.onended = () => diag('tela: o áudio da captura terminou') })
     if (!screen.getAudioTracks().length) {
-      this.set({ error: t('Tela compartilhada sem som. Para enviar o som, marque "Compartilhar áudio" na janela do navegador.') })
+      this.set({ error: t('Tela compartilhada sem som. O Chrome só envia som se você escolher "Tela inteira" (marcando "Compartilhar áudio do sistema") ou uma aba (marcando "Compartilhar áudio da guia"). Janelas não enviam som.') })
     }
     this.set({ screen, screenQuality: quality })
     this.updateSettings({ screenQuality: quality })
@@ -675,6 +799,7 @@ class VoiceEngine {
 
   stopScreen() {
     if (!this.snap.screen) return
+    diag('tela: parada')
     this.removeStream(this.snap.screen)
     this.set({ screen: null })
     void this.publishState()

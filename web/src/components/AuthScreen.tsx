@@ -3,6 +3,7 @@ import { backend } from '../lib/backend'
 import { authUrlError } from '../lib/authUrl'
 import { LANGS, setLang, t, useLang } from '../lib/i18n'
 import { rememberSignupAcceptance } from '../lib/terms'
+import { cleanUsername, isValidUsername } from '../lib/username'
 import { TermsModal } from './TermsModal'
 
 type Mode = 'login' | 'signup' | 'forgot'
@@ -34,8 +35,8 @@ export function AuthScreen() {
     if (busy) return
     setError(null)
     setInfo(null)
-    if (mode === 'signup' && !/^[a-z0-9_.]{2,32}$/.test(username)) {
-      setError(t('O nome de usuário pode ter letras minúsculas, números, ponto e _ (2 a 32 caracteres), sem espaços.'))
+    if (mode === 'signup' && !isValidUsername(username)) {
+      setError(t('O nome de usuário pode ter letras (maiúsculas e acentos também), números e símbolos, de 2 a 32 caracteres, sem espaços.'))
       return
     }
     if (mode === 'signup' && !agree) {
@@ -107,8 +108,8 @@ export function AuthScreen() {
           {mode === 'signup' && (
             <label>
               {t('Nome de usuário')}
-              <input required value={username} placeholder="gui.descarga" autoComplete="username" autoCapitalize="none" spellCheck={false}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))} />
+              <input required value={username} placeholder="Gui.Descarga" autoComplete="username" autoCapitalize="none" spellCheck={false}
+                onChange={(e) => setUsername(cleanUsername(e.target.value))} />
             </label>
           )}
           {mode !== 'forgot' && (

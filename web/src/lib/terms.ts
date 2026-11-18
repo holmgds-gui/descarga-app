@@ -162,6 +162,14 @@ const SIGNUP_KEY = 'descarga-termos-cadastro'
 
 /** No cadastro a pessoa marca "li e aceito"; guardamos isso até ela entrar pela primeira vez. */
 export const rememberSignupAcceptance = (username: string) => local.set(SIGNUP_KEY, `${TERMS_VERSION}:${username}`)
-export const signupAcceptedFor = (username: string) => local.get(SIGNUP_KEY) === `${TERMS_VERSION}:${username}`
+/** o nome pode ter ganhado um número no fim (nome já usado) e não diferencia maiúsculas */
+export const signupAcceptedFor = (username: string) => {
+  const saved = local.get(SIGNUP_KEY) ?? ''
+  const prefix = `${TERMS_VERSION}:`
+  if (!saved.startsWith(prefix)) return false
+  const typed = saved.slice(prefix.length).toLowerCase().slice(0, 26)
+  const now = username.toLowerCase()
+  return !!typed && now.startsWith(typed) && /^\d*$/.test(now.slice(typed.length))
+}
 export const rememberAcceptance = (userId: string) => local.set(OK_KEY(userId), TERMS_VERSION)
 export const acceptedLocally = (userId: string) => local.get(OK_KEY(userId)) === TERMS_VERSION

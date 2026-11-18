@@ -26,6 +26,8 @@ export interface Profile {
   approval?: Approval
   terms_version?: string | null
   is_admin?: boolean
+  /** conta excluída: o perfil vira uma casca "Usuário excluído" que só assina as mensagens antigas */
+  deleted_at?: string | null
   created_at: string
 }
 
@@ -202,6 +204,8 @@ export interface Backend {
   // ---------- administração (só a conta do administrador) ----------
   adminListUsers(): Promise<AdminUser[]>
   adminSetApproval(userId: string, status: 'approved' | 'blocked'): Promise<void>
+  /** exclui a conta (sem argumento: a própria). O e-mail fica livre para um novo cadastro; as mensagens ficam. */
+  deleteAccount(userId?: string): Promise<void>
   /** Registra que a pessoa aceitou os Termos de Uso desta versão. Não falha se o banco ainda não tiver o recurso. */
   acceptTerms(version: string): Promise<void>
   onAdminUsersChange(cb: () => void): () => void

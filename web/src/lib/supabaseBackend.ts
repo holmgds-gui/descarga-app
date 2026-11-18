@@ -141,6 +141,15 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       }
     },
 
+    async deleteAccount(userId) {
+      const r = await sb.functions.invoke('excluir-conta', { body: userId ? { userId } : {} })
+      if (r.error || (r.data as { error?: string } | null)?.error) {
+        const msg = (r.data as { error?: string } | null)?.error ?? r.error?.message ?? ''
+        throw new Error(/administrador/.test(msg) ? t('A conta do administrador não pode ser excluída.') : msg || t('Não deu para excluir a conta.'))
+      }
+      if (!userId || userId === (await sb.auth.getUser()).data.user?.id) await sb.auth.signOut().catch(() => undefined)
+    },
+
     onAdminUsersChange(cb) {
       const ch = sb
         .channel('admin-users-' + crypto.randomUUID())

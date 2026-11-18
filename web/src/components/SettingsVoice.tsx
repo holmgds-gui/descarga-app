@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, BellOff, Droplets, Mic, Share, Waves } from 'lucide-react'
+import { Bell, BellOff, Copy, Droplets, Mic, Share, Waves } from 'lucide-react'
 import { backend } from '../lib/backend'
 import { disablePush, enablePush, getPushState, isIOS, type PushState } from '../lib/push'
-import { voice } from '../lib/voice/engine'
+import { clearDiagnostics, getDiagnostics, voice } from '../lib/voice/engine'
+import { copyText } from './ContextMenu'
 import { useVoice } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
 import { playJoin, playLeave } from '../lib/voice/sounds'
@@ -12,6 +13,7 @@ import { micErrorMessage } from '../lib/voice/micError'
 
 export function VoiceSettingsTab() {
   const call = useVoice()
+  const { toast } = useApp()
   const s = call.settings
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [testing, setTesting] = useState(false)
@@ -172,6 +174,19 @@ export function VoiceSettingsTab() {
         <div className="row-gap">
           <button type="button" className="btn btn-ghost btn-sm" onClick={playJoin}><Droplets size={16} /> {t('Ouvir entrada (gotas subindo)')}</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={playLeave}><Waves size={16} /> {t('Ouvir saída (gotas descendo)')}</button>
+        </div>
+
+        <div className="field">
+          <span className="field-label">{t('Diagnóstico das calls')}</span>
+          <span className="muted small hint">{t('Se uma call ou um compartilhamento de tela falhar, copie o diagnóstico e mande para o administrador. Ele fica só neste aparelho e não tem suas conversas.')}</span>
+          <div className="row-gap">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => copyText(getDiagnostics() || t('(vazio)'), toast)}>
+              <Copy size={16} /> {t('Copiar diagnóstico')}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { clearDiagnostics(); toast(t('Diagnóstico limpo')) }}>
+              {t('Limpar')}
+            </button>
+          </div>
         </div>
       </div>
     </>

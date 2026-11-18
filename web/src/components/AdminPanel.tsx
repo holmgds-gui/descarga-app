@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, X } from 'lucide-react'
+import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { AdminUser } from '../lib/types'
 import { useApp } from '../state'
@@ -61,6 +61,26 @@ export function AdminPanel() {
     if (ok) await set(u, 'blocked', t('Conta bloqueada'))
   }
 
+  const remove = async (u: AdminUser) => {
+    const ok = await ask({
+      title: t('Excluir a conta de {nome}', { nome: u.display_name || u.username }),
+      message: t('A conta, o perfil e os arquivos dessa pessoa são apagados e o e-mail {email} fica livre para um novo cadastro. As mensagens dela continuam, assinadas como "Usuário excluído". Não dá para desfazer. (Para só impedir o acesso, use Bloquear.)', { email: u.email }),
+      confirmLabel: t('Excluir conta'),
+      danger: true,
+    })
+    if (!ok) return
+    setBusyId(u.id)
+    try {
+      await backend.deleteAccount(u.id)
+      toast(t('Conta excluída'))
+      await load()
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   if (error) {
     return (
       <>
@@ -108,9 +128,14 @@ export function AdminPanel() {
       <h3 className="field-label admin-h">{t('Contas liberadas')} — {active.length}</h3>
       {active.map((u) => row(u, u.is_admin || u.id === me?.id
         ? <span className="muted small"><ShieldCheck size={14} /> {t('Você')}</span>
-        : <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void block(u)}>
-          <Ban size={16} /> {t('Bloquear')}
-        </button>))}
+        : <>
+          <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void block(u)}>
+            <Ban size={16} /> {t('Bloquear')}
+          </button>
+          <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void remove(u)}>
+            <Trash2 size={16} /> {t('Excluir')}
+          </button>
+        </>))}
 
       {blocked.length > 0 && (
         <>
@@ -118,6 +143,9 @@ export function AdminPanel() {
           {blocked.map((u) => row(u, <>
             <button className="btn btn-ghost btn-sm" disabled={busyId === u.id}
               onClick={() => void set(u, 'approved', t('Conta liberada'))}><RotateCcw size={16} /> {t('Liberar')}</button>
+            <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void remove(u)}>
+              <Trash2 size={16} /> {t('Excluir')}
+            </button>
           </>))}
         </>
       )}

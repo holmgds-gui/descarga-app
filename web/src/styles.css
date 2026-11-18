@@ -532,14 +532,15 @@ button.avatar { cursor: pointer; }
 .voice-panel-actions .btn.on { background: var(--accent-soft); color: var(--accent-text); }
 
 /* palco da call */
-.voice-stage { background: color-mix(in srgb, var(--bg-rail) 55%, var(--bg-chat)); }
+.voice-stage { background: color-mix(in srgb, var(--bg-rail) 55%, var(--bg-chat)); min-height: 0; overflow: hidden; }
 .voice-preview-people { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 4px 0 8px; }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; overflow: auto; }
-.stage-focus { flex: 1; min-height: 0; display: flex; }
-.stage-focus .tile { flex: 1; aspect-ratio: auto; min-height: 240px; }
+.stage.has-focus { overflow: hidden; }
+.stage-focus { flex: 1 1 0; min-height: 0; display: flex; }
+.stage-focus .tile { flex: 1 1 0; min-width: 0; min-height: 0; aspect-ratio: auto; }
 .stage-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); align-content: center; flex: 1; }
 .stage-grid.n1 { grid-template-columns: minmax(0, 720px); justify-content: center; }
-.stage-grid.strip { flex: 0 0 auto; display: flex; overflow-x: auto; }
+.stage-grid.strip { flex: 0 0 auto; display: flex; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; }
 .stage-grid.strip .tile { width: 200px; flex: 0 0 auto; }
 .tile {
   --tile-color: var(--accent);
@@ -548,7 +549,7 @@ button.avatar { cursor: pointer; }
 }
 .tile.speaking { box-shadow: 0 0 0 3px var(--success); }
 .tile.screen { background: #000; }
-.tile-video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.tile-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
 .tile-video.contain { object-fit: contain; }
 .tile-video.mirror { transform: scaleX(-1); }
 .tile-avatar, .tile-waiting { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #fff; }
@@ -908,3 +909,8 @@ button.avatar { cursor: pointer; }
 .terms-scroll { max-height: 42vh; overflow-y: auto; text-align: left; padding: 12px 14px; margin: 10px 0; border-radius: 10px; background: var(--bg-elev); }
 .terms-doc h3 { margin: 16px 0 6px; font-size: 1em; }
 .terms-doc p { margin: 0 0 8px; line-height: 1.5; font-size: .92em; }
+
+/* menu do botão direito */
+.ctx-menu { position: fixed; right: auto; bottom: auto; width: max-content; z-index: 3000; min-width: 200px; max-width: 280px; }
+.ctx-menu .dropdown-item { justify-content: flex-start; }
+.ctx-menu .dropdown-item { width: 100%; }

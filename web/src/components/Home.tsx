@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Check, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
+import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
 import type { Friendship, Profile } from '../lib/types'
 import { useApp } from '../state'
@@ -94,6 +95,7 @@ type Tab = 'online' | 'all' | 'pending' | 'add'
 /** Página de amigos: disponíveis, todos, pedidos e adicionar. */
 export function FriendsPage() {
   const { friendships, userId, profiles, openDmWith, toast, ask, refreshFriends, openProfile } = useApp()
+  const userMenu = useUserMenu()
   const incoming = friendships.filter((f) => f.status === 'pending' && f.addressee === userId)
   const [tab, setTab] = useState<Tab>(() => (incoming.length ? 'pending' : 'online'))
   const [q, setQ] = useState('')
@@ -108,7 +110,7 @@ export function FriendsPage() {
     .filter((f) => {
       const p = profiles[otherOf(f)]
       const query = q.trim().toLowerCase()
-      return !query || (p && (p.username.includes(query) || p.display_name.toLowerCase().includes(query)))
+      return !query || (p && (p.username.toLowerCase().includes(query) || p.display_name.toLowerCase().includes(query)))
     })
     .sort(sort)
 
@@ -172,7 +174,7 @@ export function FriendsPage() {
               const p = profiles[otherOf(f)]
               const isIncoming = f.status === 'pending' && f.addressee === userId
               return (
-                <div key={f.id} className="friend-row" role={f.status === 'accepted' ? 'button' : undefined} tabIndex={f.status === 'accepted' ? 0 : -1}
+                <div key={f.id} className="friend-row" onContextMenu={(e) => userMenu(e, p)} role={f.status === 'accepted' ? 'button' : undefined} tabIndex={f.status === 'accepted' ? 0 : -1}
                   aria-label={f.status === 'accepted' ? t('Conversar com {nome}', { nome: displayName(p) }) : undefined}
                   onClick={(e) => (f.status === 'accepted' ? void openDmWith([otherOf(f)]).catch((err) => toast((err as Error).message)) : openProfile(otherOf(f), e.currentTarget.getBoundingClientRect()))}
                   onKeyDown={(e) => e.key === 'Enter' && f.status === 'accepted' && void openDmWith([otherOf(f)])}>

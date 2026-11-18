@@ -14,7 +14,21 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
 const CALL_COOLDOWN_MS = 3 * 60 * 1000
-const MENTION = /@([a-z0-9_.]{2,32})/g
+// @Nome: qualquer coisa até um espaço ou outro @. Pontuação no fim ("@Gui,") é descartada na busca.
+const MENTION = /@([^\s@]{2,40})/g
+const mentionNames = (text: string) => {
+  const out = new Set<string>()
+  for (const m of text.matchAll(MENTION)) {
+    let n = m[1]
+    while (n.length >= 2) {
+      out.add(n)
+      const trimmed = n.replace(/[.,!?;:)\]}"'”…]+$/u, '')
+      if (trimmed === n) break
+      n = trimmed
+    }
+  }
+  return [...out]
+}
 
 type Payload = { title: string; body: string; tag: string; url: string; icon?: string }
 type Lang = 'pt' | 'en'
@@ -86,9 +100,9 @@ Deno.serve(async (req) => {
     const { data: members } = await admin.from('server_members').select('user_id').eq('server_id', serverId)
     const memberIds = new Set((members ?? []).map((m) => m.user_id as string))
 
-    const names = [...new Set([...msg.content.matchAll(MENTION)].map((m) => m[1]))]
+    const names = mentionNames(msg.content)
     if (names.length) {
-      const { data: mentioned } = await admin.from('profiles').select('id').in('username', names)
+      const { data: mentioned } = await admin.rpc('profiles_by_names', { names })
       for (const p of mentioned ?? []) if (memberIds.has(p.id)) recipients.push(p.id)
     }
     if (msg.reply_to) {

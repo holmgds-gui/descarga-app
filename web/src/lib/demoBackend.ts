@@ -9,6 +9,7 @@ import type {
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
 import { t } from './i18n'
+import { cleanUsername } from './username'
 
 interface DemoUser { id: string; email: string; password: string }
 interface Member { server_id: string; user_id: string; joined_at: string }
@@ -176,10 +177,10 @@ export function createDemoBackend(): Backend {
     db.members.some((m) => m.server_id === serverId && m.user_id === uid)
 
   const createAccount = (db: DB, email: string, password: string, username: string) => {
-    const clean = username.toLowerCase().replace(/[^a-z0-9_.]/g, '').slice(0, 26) || 'usuario'
+    const clean = cleanUsername(username).slice(0, 26) || 'usuario'
     let candidate = clean
     let n = 0
-    while (db.profiles.some((p) => p.username === candidate)) candidate = clean + ++n
+    while (db.profiles.some((p) => p.username.toLowerCase() === candidate.toLowerCase())) candidate = clean + ++n
     const uid = id()
     db.users.push({ id: uid, email: email.toLowerCase(), password })
     const profile = blankProfile(uid, candidate)
@@ -245,7 +246,7 @@ export function createDemoBackend(): Backend {
     async updateProfile(patch) {
       const db = load()
       const uid = me()
-      if (patch.username && db.profiles.some((p) => p.username === patch.username && p.id !== uid))
+      if (patch.username && db.profiles.some((p) => p.username.toLowerCase() === patch.username!.toLowerCase() && p.id !== uid))
         throw new Error(t('Esse nome de usuário já está em uso.'))
       const i = db.profiles.findIndex((p) => p.id === uid)
       db.profiles[i] = { ...db.profiles[i], ...patch }
@@ -271,7 +272,7 @@ export function createDemoBackend(): Backend {
       if (!mine?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
       const order = { pending: 0, approved: 1, blocked: 2 } as const
       return db.profiles
-        .filter((p) => p.id !== BOT_ID)
+        .filter((p) => p.id !== BOT_ID && !p.deleted_at)
         .map((p): AdminUser => ({
           id: p.id, email: db.users.find((u) => u.id === p.id)?.email ?? '', username: p.username,
           display_name: p.display_name, avatar_url: p.avatar_url, approval: p.approval ?? 'approved',
@@ -298,6 +299,31 @@ export function createDemoBackend(): Backend {
       save(db)
       emit({ type: 'profile', payload: db.profiles[i] })
       emit({ type: 'users' })
+    },
+    async deleteAccount(userId) {
+      const db = load()
+      const self = me()
+      const target = userId ?? self
+      const mine = db.profiles.find((p) => p.id === self)
+      if (!target) return
+      if (target !== self && !mine?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      const i = db.profiles.findIndex((p) => p.id === target)
+      if (i < 0) return
+      if (db.profiles[i].is_admin) throw new Error(t('A conta do administrador não pode ser excluída.'))
+      db.users = db.users.filter((u) => u.id !== target)
+      db.members = db.members.filter((m) => m.user_id !== target)
+      db.dmMembers = db.dmMembers.filter((m) => m.user_id !== target)
+      db.friendships = db.friendships.filter((f) => f.requester !== target && f.addressee !== target)
+      db.reactions = db.reactions.filter((r) => r.user_id !== target)
+      db.profiles[i] = {
+        ...db.profiles[i], username: 'excluido-' + target.replace(/-/g, '').slice(0, 12), display_name: 'Usuário excluído',
+        avatar_url: null, banner_url: null, bio: '', pronouns: '', city: '', links: [], custom_status: '', status: 'invisible',
+        approval: 'blocked', deleted_at: now(),
+      }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+      emit({ type: 'users' })
+      if (target === self) setSession(null)
     },
     onAdminUsersChange(cb) {
       return listen((e) => (e.type === 'users' || e.type === 'profile' || e.type === 'auth') && cb())
@@ -452,7 +478,7 @@ export function createDemoBackend(): Backend {
     async sendFriendRequest(username) {
       const db = load()
       const uid = me()
-      const other = db.profiles.find((p) => p.username === username.trim().toLowerCase().replace(/^@/, ''))
+      const other = db.profiles.find((p) => p.username.toLowerCase() === username.trim().replace(/^@/, '').toLowerCase())
       if (!other) throw new Error(t('Não achamos ninguém com esse nome de usuário.'))
       if (other.id === uid) throw new Error(t('Você não pode adicionar a si mesmo.'))
       const f = db.friendships.find((x) => (x.requester === uid && x.addressee === other.id) || (x.addressee === uid && x.requester === other.id))

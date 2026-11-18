@@ -3,9 +3,11 @@ import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import type { Profile } from '../lib/types'
 import { locale, t } from '../lib/i18n'
+import { useUserMenu } from './ContextMenu'
 
 export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string | null } = {}) {
   const { memberIds, profiles, servers, activeServerId, openProfile } = useApp()
+  const userMenu = useUserMenu()
   const server = servers.find((s) => s.id === activeServerId)
   const owner = ids ? ownerId : server?.owner_id
   const members = (ids ?? memberIds).map((id) => profiles[id]).filter((p): p is Profile => !!p)
@@ -15,7 +17,7 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
 
   const row = (p: Profile) => (
     <button key={p.id} className={`member ${p.status === 'invisible' ? 'offline' : ''}`}
-      onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())}>
+      onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())} onContextMenu={(e) => userMenu(e, p)}>
       <Avatar profile={p} size={34} showStatus />
       <span className="member-text">
         <span className="member-name truncate" style={{ color: p.status === 'invisible' ? undefined : p.accent_color }}>

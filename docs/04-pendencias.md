@@ -1,5 +1,15 @@
 # O que falta fazer
 
+## Concluído em 17 de novembro de 2026 (noite)
+
+- Nomes de usuário com maiúsculas, acentos e símbolos (sem espaços); "Gui" e "gui" são o mesmo nome (migração `0006`).
+- Excluir conta (administrador exclui qualquer conta; cada pessoa exclui a sua): libera o e-mail, apaga perfil e arquivos, mantém mensagens como "Usuário excluído" (migração `0007` + função `excluir-conta`). Bloquear continua reversível só pelo administrador.
+- Botão direito com menu próprio do app (mensagens, pessoas, canais, servidores, telas da call).
+- Layout do palco da call corrigido (tela compartilhada e faixa de pessoas não ficam mais cortadas).
+- Conexões da call: sinais agora são tratados em ordem (candidatos de rede não se perdem), nova tentativa automática aos 10 s, reinício da conexão aos ~22 s, botão "Tentar de novo" refaz do zero.
+- Compartilhar tela: som sem eco (`restrictOwnAudio`), mensagem clara quando o navegador não envia som; diário técnico em Configurações > Voz > Diagnóstico.
+- Função `notificar` (v5) reconhece @menções com maiúsculas e símbolos.
+
 ## Concluído em 5 de novembro de 2026 (noite)
 
 - Migrações `0003`, `0004` e `0005` aplicadas no Supabase.

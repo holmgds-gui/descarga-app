@@ -1,3 +1,4 @@
+import { ContextMenuHost } from './ContextMenu'
 import { useEffect, useState } from 'react'
 import { FriendsPage } from './Home'
 import { voice } from '../lib/voice/engine'
@@ -72,6 +73,7 @@ export function Shell() {
       {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
       <ProfilePopover />
       <SettingsModal />
+      <ContextMenuHost />
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
       {question && (
         <Modal title={question.title} onClose={() => question.resolve(false)}

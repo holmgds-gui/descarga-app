@@ -10,6 +10,7 @@ import type { Channel } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import { ChatHeader } from './ChatView'
+import { useUserMenu, type MenuItem } from './ContextMenu'
 import { t as tr } from '../lib/i18n'
 
 function VideoView({ stream, mirror = false, muted = true, contain = false }: { stream: MediaStream; mirror?: boolean; muted?: boolean; contain?: boolean }) {
@@ -34,6 +35,7 @@ interface Tile {
 export function VoiceStage({ channel, embedded = false }: { channel: Channel; embedded?: boolean }) {
   const call = useVoice()
   const { profiles, userId, ensureProfiles } = useApp()
+  const userMenu = useUserMenu()
   // nas conversas diretas, a sala de presença é a própria conversa
   const roomId = channel.server_id ?? channel.id
   const present = useVoicePresence(roomId).filter((m) => m.channelId === channel.id)
@@ -98,7 +100,21 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
     return (
       <div key={t.id} className={`tile ${big ? 'tile-big' : ''} ${speaking ? 'speaking' : ''} ${t.kind}`}
         style={{ ['--tile-color' as string]: p?.accent_color ?? 'var(--accent)' }}
-        onClick={() => setFocus(focusTile?.id === t.id ? null : t.id)}>
+        onClick={() => setFocus(focusTile?.id === t.id ? null : t.id)}
+        onContextMenu={(e) => {
+          const tile = e.currentTarget
+          const extra: MenuItem[] = [
+            { label: focusTile?.id === t.id ? tr('Tirar do destaque') : tr('Destacar'), icon: <Maximize2 size={16} />, onClick: () => setFocus(focusTile?.id === t.id ? null : t.id) },
+            ...(t.stream && !(t.mine && t.kind === 'screen')
+              ? [{ label: tr('Tela cheia'), icon: <Maximize2 size={16} />, onClick: () => void tile.requestFullscreen?.().catch(() => undefined) }] : []),
+            ...(t.mine && t.kind === 'screen' ? [{ label: tr('Parar de compartilhar'), icon: <MonitorOff size={16} />, danger: true, onClick: () => voice.stopScreen() }] : []),
+            ...(!t.mine && t.kind === 'person'
+              ? [{ label: vol === 0 ? tr('Voltar o volume dessa pessoa') : tr('Silenciar essa pessoa para mim'), icon: <VolumeX size={16} />,
+                onClick: () => voice.setUserVolume(t.member.userId, vol === 0 ? 1 : 0) }] : []),
+            ...((broken || pending) && !t.mine ? [{ label: tr('Tentar conectar de novo'), icon: <RefreshCw size={16} />, onClick: () => voice.retryPeer(t.member.sessionId) }] : []),
+          ]
+          userMenu(e, p, extra)
+        }}>
         {t.mine && t.kind === 'screen' ? (
           // não mostra a própria tela aqui dentro (evita o efeito de "tela dentro da tela")
           <div className="tile-waiting">

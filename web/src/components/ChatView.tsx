@@ -3,7 +3,7 @@ import {
   type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject,
 } from 'react'
 import {
-  Check, CornerUpLeft, Hash, Menu, Mic, Pencil, Phone, PlusCircle, Send, Smile, SmilePlus, Square, Trash2, Upload, UserPlus,
+  Check, Copy, CornerUpLeft, Hash, Menu, Mic, Pencil, Phone, PlusCircle, Send, Smile, SmilePlus, Square, Trash2, Upload, UserPlus,
   Users, Video, X,
 } from 'lucide-react'
 import { backend } from '../lib/backend'
@@ -22,6 +22,8 @@ import { AddToGroupModal, NewDmModal, RenameGroupModal } from './DmModals'
 import { EmojiPicker } from './EmojiPicker'
 import { VoiceStage } from './VoiceStage'
 import { t } from '../lib/i18n'
+import { mentionRegex } from '../lib/username'
+import { copyText, useUserMenu } from './ContextMenu'
 
 const GROUP_MS = 7 * 60 * 1000
 
@@ -84,6 +86,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   onToggleMembers: () => void
 }) {
   const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me } = useApp()
+  const userMenu = useUserMenu()
   const [messages, setMessages] = useState<Message[]>([])
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({})
   const [loading, setLoading] = useState(true)
@@ -208,7 +211,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   const afterSend = (m: Message) => {
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
     setReplyTo(null)
-    if (isDm || m.reply_to || /(^|\s)@[a-z0-9_.]{2,32}/.test(m.content)) void backend.notify({ type: 'message', messageId: m.id })
+    if (isDm || m.reply_to || /(^|\s)@[^\s@]{2,40}/u.test(m.content)) void backend.notify({ type: 'message', messageId: m.id })
   }
 
   const addFiles = (files: File[]) => {
@@ -332,7 +335,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
 
   const byId = new Map(messages.map((m) => [m.id, m]))
   const myName = profiles[userId]?.username
-  const mentionRe = myName ? new RegExp(`(^|\\s)@${myName.replace(/\./g, '\\.')}(?![a-z0-9_.])`) : null
+  const mentionRe = myName ? mentionRegex(myName) : null
   const isForMe = (m: Message) =>
     m.author_id !== userId && ((mentionRe?.test(m.content) ?? false) || (!!m.reply_to && byId.get(m.reply_to)?.author_id === userId))
 
@@ -422,7 +425,19 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
           return (
             <Fragment key={m.id}>
               {newDay && <div className="day-sep"><span>{formatLongDate(m.created_at)}</span></div>}
-              <article tabIndex={-1} className={`msg ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''}`}>
+              <article tabIndex={-1} className={`msg ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''}`}
+                onContextMenu={(e) => {
+                  if (editingId === m.id) return // editando: deixa o menu de texto do navegador
+                  const sel = window.getSelection()?.toString().trim()
+                  const text = sel || m.content
+                  userMenu(e, author, [
+                    { label: t('Responder'), icon: <CornerUpLeft size={16} />, onClick: () => setReplyTo(m) },
+                    { label: t('Adicionar reação'), icon: <SmilePlus size={16} />, onClick: () => setPicker({ anchor: new DOMRect(e.clientX, e.clientY, 0, 0), messageId: m.id }) },
+                    ...(text ? [{ label: sel ? t('Copiar seleção') : t('Copiar texto'), icon: <Copy size={16} />, onClick: () => copyText(text, toast) }] : []),
+                    ...(mine && !m.attachments.some((a) => a.voice) ? [{ label: t('Editar'), icon: <Pencil size={16} />, onClick: () => setEditingId(m.id) }] : []),
+                    ...(mine ? [{ label: t('Apagar'), icon: <Trash2 size={16} />, danger: true, onClick: () => void remove(m) }] : []),
+                  ])
+                }}>
                 {m.reply_to && (
                   <div className="msg-reply-ref">
                     <span className="reply-spine" />
@@ -711,14 +726,14 @@ function Composer({
       : mentionIds
           .map((id) => profiles[id])
           .filter((p): p is Profile => !!p && p.id !== userId)
-          .filter((p) => p.username.startsWith(query) || p.display_name.toLowerCase().startsWith(query))
+          .filter((p) => p.username.toLowerCase().startsWith(query) || p.display_name.toLowerCase().startsWith(query))
           .slice(0, 6)
 
   const readCaret = () => {
     const el = ref.current
     if (!el) return
     const before = el.value.slice(0, el.selectionStart ?? el.value.length)
-    const m = before.match(/(?:^|\s)@([a-z0-9_.]{0,32})$/i)
+    const m = before.match(/(?:^|\s)@([^\s@]{0,32})$/u)
     setQuery(m ? m[1].toLowerCase() : null)
     setPick(0)
   }
@@ -736,7 +751,7 @@ function Composer({
     const el = ref.current
     if (!el) return
     const caret = el.selectionStart ?? text.length
-    const before = text.slice(0, caret).replace(/@([a-z0-9_.]{0,32})$/i, `@${p.username} `)
+    const before = text.slice(0, caret).replace(/@([^\s@]{0,32})$/u, `@${p.username} `)
     const next = before + text.slice(caret)
     pendingCaret.current = before.length
     setText(next)

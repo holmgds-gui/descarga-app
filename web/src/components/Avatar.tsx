@@ -10,7 +10,7 @@ export const STATUS_LABEL: Record<Status, string> = {
 }
 
 export function displayName(p: Profile | null | undefined) {
-  return p ? p.display_name || p.username : t('Carregando…')
+  return p ? (p.deleted_at ? t('Usuário excluído') : p.display_name || p.username) : t('Carregando…')
 }
 
 export function StatusDot({ status, size = 12 }: { status: Status; size?: number }) {

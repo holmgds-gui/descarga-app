@@ -8,6 +8,7 @@ import { ProfileCardBody } from './ProfileCard'
 import { AdminPanel } from './AdminPanel'
 import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
+import { cleanUsername, isValidUsername } from '../lib/username'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
@@ -105,8 +106,8 @@ function ProfileEditor() {
 
   const save = async () => {
     setError(null)
-    if (!/^[a-z0-9_.]{2,32}$/.test(draft.username)) {
-      setError(tr('O nome de usuário pode ter letras minúsculas, números, ponto e _ (2 a 32).'))
+    if (!isValidUsername(draft.username)) {
+      setError(tr('O nome de usuário pode ter letras (maiúsculas e acentos também), números e símbolos, de 2 a 32 caracteres, sem espaços.'))
       return
     }
     const links = draft.links
@@ -149,7 +150,7 @@ function ProfileEditor() {
           </label>
           <label>
             {tr('Nome de usuário')}
-            <input value={draft.username} maxLength={32} onChange={(e) => set('username', e.target.value.toLowerCase())} />
+            <input value={draft.username} maxLength={32} onChange={(e) => set('username', cleanUsername(e.target.value))} />
           </label>
           <label>
             {tr('Pronomes')}
@@ -349,8 +350,22 @@ function AppearanceEditor() {
 }
 
 function AccountTab() {
-  const { me } = useApp()
+  const { me, ask, toast } = useApp()
   const [terms, setTerms] = useState(false)
+  const deleteMe = async () => {
+    const ok = await ask({
+      title: tr('Excluir minha conta'),
+      message: tr('Sua conta, seu perfil e seus arquivos serão apagados e seu e-mail poderá ser usado de novo num cadastro novo. Suas mensagens continuam, assinadas como "Usuário excluído". Não dá para desfazer.'),
+      confirmLabel: tr('Excluir minha conta'),
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await backend.deleteAccount()
+    } catch (err) {
+      toast((err as Error).message)
+    }
+  }
   return (
     <>
       <h2 className="settings-title">{tr('Conta')}</h2>
@@ -362,6 +377,9 @@ function AccountTab() {
       <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos de Uso')}</button>
       {terms && <TermsModal onClose={() => setTerms(false)} />}
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>
+      {!me?.is_admin && (
+        <button className="btn btn-ghost danger-text" onClick={() => void deleteMe()}><Trash2 size={16} /> {tr('Excluir minha conta')}</button>
+      )}
     </>
   )
 }

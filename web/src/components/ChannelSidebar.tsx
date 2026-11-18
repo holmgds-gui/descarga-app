@@ -10,6 +10,7 @@ import { backend } from '../lib/backend'
 import type { Channel, Status } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
+import { copyText, showContextMenu, useUserMenu } from './ContextMenu'
 import { CreateChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
 import { HomeSidebar } from './Home'
 import { t } from '../lib/i18n'
@@ -26,6 +27,7 @@ export function ChannelSidebar() {
   const inVoice = useVoicePresence(server?.id ?? null)
   const call = useVoice()
   const { profiles, ensureProfiles } = useApp()
+  const userMenu = useUserMenu()
   useEffect(() => {
     if (inVoice.length) ensureProfiles(inVoice.map((m) => m.userId))
   }, [inVoice, ensureProfiles])
@@ -107,6 +109,11 @@ export function ChannelSidebar() {
                     <button
                       className={`channel-item ${c.id === activeChannelId ? 'active' : ''} ${call.channelId === c.id ? 'in-call' : ''}`}
                       onClick={() => openChannel(c)}
+                      onContextMenu={(e) => showContextMenu(e, [
+                        { label: c.type === 'voice' ? t('Entrar na call') : t('Abrir canal'), onClick: () => openChannel(c) },
+                        { label: t('Convidar pessoas'), onClick: () => setInviting(true) },
+                        { label: t('Copiar nome do canal'), onClick: () => copyText(c.name, toast) },
+                      ])}
                     >
                       {c.type === 'text' ? <Hash size={20} /> : <Volume2 size={20} />}
                       <span className="truncate">{c.name}</span>
@@ -120,7 +127,7 @@ export function ChannelSidebar() {
                     {c.type === 'voice' && (
                       <div className="voice-members">
                         {inVoice.filter((m) => m.channelId === c.id).map((m) => (
-                          <button key={m.sessionId} className="voice-member"
+                          <button key={m.sessionId} className="voice-member" onContextMenu={(e) => userMenu(e, profiles[m.userId])}
                             onClick={(e) => openProfile(m.userId, e.currentTarget.getBoundingClientRect())}>
                             <span className={`speak-ring ${call.speaking[m.sessionId] ? 'on' : ''}`}>
                               <Avatar profile={profiles[m.userId]} size={24} />

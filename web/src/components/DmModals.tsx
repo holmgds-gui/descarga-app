@@ -27,7 +27,7 @@ function PeoplePicker({ people, selected, setSelected, locked = [], max }: {
 }) {
   const [q, setQ] = useState('')
   const query = q.trim().toLowerCase()
-  const list = people.filter((p) => !query || p.username.includes(query) || p.display_name.toLowerCase().includes(query))
+  const list = people.filter((p) => !query || p.username.toLowerCase().includes(query) || p.display_name.toLowerCase().includes(query))
   const toggle = (id: string) => {
     if (locked.includes(id)) return
     if (selected.includes(id)) setSelected(selected.filter((x) => x !== id))

@@ -3,9 +3,10 @@ import { Plus } from 'lucide-react'
 import { useApp } from '../state'
 import { ServerCreateModal } from './ServerModals'
 import { t } from '../lib/i18n'
+import { copyText, showContextMenu } from './ContextMenu'
 
 export function ServerRail() {
-  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId } = useApp()
+  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId, toast } = useApp()
   const homeBadge = unreadDms.size + friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const [creating, setCreating] = useState(false)
 
@@ -16,7 +17,11 @@ export function ServerRail() {
       </RailItem>
       <div className="rail-sep" />
       {servers.map((s) => (
-        <RailItem key={s.id} label={s.name} active={s.id === activeServerId} onClick={() => setActiveServerId(s.id)}>
+        <RailItem key={s.id} label={s.name} active={s.id === activeServerId} onClick={() => setActiveServerId(s.id)}
+          onContextMenu={(e) => showContextMenu(e, [
+            { label: t('Abrir servidor'), onClick: () => setActiveServerId(s.id) },
+            { label: t('Copiar nome do servidor'), onClick: () => copyText(s.name, toast) },
+          ])}>
           {s.icon_url ? (
             <img src={s.icon_url} alt="" />
           ) : (
@@ -48,6 +53,7 @@ function RailItem({
   children,
   variant,
   badge = 0,
+  onContextMenu,
 }: {
   label: string
   active?: boolean
@@ -55,6 +61,7 @@ function RailItem({
   children: ReactNode
   variant?: 'add'
   badge?: number
+  onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
     <div className={`rail-item ${active ? 'active' : ''}`}>
@@ -62,6 +69,7 @@ function RailItem({
       <button
         className={`rail-btn ${variant === 'add' ? 'rail-add' : ''}`}
         onClick={onClick}
+        onContextMenu={onContextMenu}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         data-tip={label}
