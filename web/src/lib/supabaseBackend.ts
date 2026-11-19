@@ -175,7 +175,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async joinServer(code) {
       const r = await sb.rpc('join_server', { code: code.trim() })
-      if (r.error) throw new Error(t('Convite inválido ou expirado.'))
+      if (r.error) throw new Error(/banido/.test(r.error.message) ? t('Você foi banido deste servidor.') : t('Convite inválido ou expirado.'))
       return r.data as Server
     },
 
