@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Suspense, lazy, useState, type FormEvent } from 'react'
 import { Bell, Check, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
@@ -10,6 +10,38 @@ import { ChatHeader } from './ChatView'
 import { DmAvatar, dmName } from './dm'
 import { NewDmModal } from './DmModals'
 import { NOVIDADES } from '../lib/novidades'
+import { mapaShare, useMapaShare, useMapPeople } from '../lib/mapa'
+
+const WorldMap = lazy(() => import('./WorldMap'))
+
+function MapaSection() {
+  const people = useMapPeople()
+  const share = useMapaShare()
+  const inCall = new Set(people.filter((p) => p.callId).map((p) => p.callId)).size
+  const asking = share.sharing && share.status === 'asking'
+  return (
+    <section className="map-section" aria-label={t('Mapa ao vivo')}>
+      <Suspense fallback={<div className="world-map world-map-loading" />}>
+        <WorldMap />
+      </Suspense>
+      <div className="map-bar">
+        <span className="map-stats">
+          <span className="map-live" /> {t('{n} no mapa', { n: people.length })}{inCall > 0 && <> · {t('{n} calls rolando', { n: inCall })}</>}
+        </span>
+        <label className="map-toggle">
+          <input type="checkbox" checked={share.sharing} onChange={(e) => (e.target.checked ? mapaShare.enable() : mapaShare.disable())} />
+          <span>{t('Mostrar minha localização no mapa')}</span>
+        </label>
+      </div>
+      <p className="muted small map-note">
+        {share.status === 'denied' ? t('O navegador bloqueou a localização. Libere nas permissões do site e ligue de novo.')
+          : share.status === 'unavailable' ? t('Não deu para descobrir sua localização agora.')
+            : asking ? t('Descobrindo sua localização…')
+              : t('Opcional e desligado por padrão. Sua posição é aproximada (cerca de 10 km), aparece só enquanto o app está aberto e não fica guardada.')}
+      </p>
+    </section>
+  )
+}
 import { getLang, locale, t } from '../lib/i18n'
 
 /** Barra lateral do Início: amigos e lista de conversas diretas. */
@@ -105,6 +137,7 @@ export function HomePage() {
     <section className="chat home-page">
       <ChatHeader icon={<House size={22} />} title={t('Início')} />
       <div className="home-body">
+        <MapaSection />
         <div className="home-hero">
           <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={96} height={96} />
           <h2>{me ? t('Bem-vindo(a), {nome}!', { nome: displayName(me) }) : t('Bem-vindo(a)!')}</h2>

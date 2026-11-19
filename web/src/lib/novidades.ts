@@ -11,6 +11,7 @@ export const NOVIDADES: Novidade[] = [
     date: '2026-11-19',
     title: { pt: 'Início, cargos e calls mais completas', en: 'Home, roles and better calls' },
     items: [
+      { pt: '🌍 Mapa-múndi ao vivo no topo do Início: quem quiser pode aparecer com um ponto roxo e, em call, um fio liga as pessoas. É opcional e a posição é aproximada.', en: '🌍 Live world map at the top of Home: opt in to appear as a purple dot, and a thread links people who are in a call. It is optional and the position is approximate.' },
       { pt: '🏠 Página inicial nova (esta aqui!) para avisos e novidades.', en: '🏠 New home page (this one!) for announcements and news.' },
       { pt: '🖱️ Passe o mouse no ícone de um servidor e o nome dele aparece.', en: '🖱️ Hover a server icon to see its name.' },
       { pt: '🔊 Na call, clique com o botão direito numa pessoa para ajustar o volume da voz e da tela dela, separados.', en: '🔊 In a call, right-click someone to adjust their voice and screen volume separately.' },

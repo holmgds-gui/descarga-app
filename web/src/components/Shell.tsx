@@ -8,6 +8,7 @@ import { ChannelSidebar } from './ChannelSidebar'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
 import { ResizeHandle } from './ResizeHandle'
+import { useMapaPublisher } from '../lib/mapa'
 import { Modal } from './Modal'
 import { ProfilePopover } from './ProfileCard'
 import { ServerRail } from './ServerRail'
@@ -17,6 +18,7 @@ import { local } from '../lib/storage'
 import { t } from '../lib/i18n'
 
 export function Shell() {
+  useMapaPublisher()
   const { homeSection, channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId } = useApp()
   const { error: voiceError } = useVoice()
   useEffect(() => {
