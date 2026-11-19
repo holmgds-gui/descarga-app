@@ -757,7 +757,7 @@ class VoiceEngine {
       this.set({ error: t('Este aparelho não permite compartilhar a tela pelo navegador. Use um computador.') })
       return
     }
-    const preset = SCREEN_PRESETS[quality]
+    const preset = SCREEN_PRESETS[quality] ?? SCREEN_PRESETS['1080p30']
     // do pedido mais completo ao mais simples: cada navegador aceita opções diferentes
     const attempts: DisplayMediaStreamOptions[] = [
       {
@@ -804,7 +804,7 @@ class VoiceEngine {
     }
     if (this.snap.screen) this.stopScreen()
     const video = screen.getVideoTracks()[0]
-    video.contentHint = quality === '1080p60' ? 'motion' : 'detail'
+    video.contentHint = 'detail'
     video.onended = () => {
       diag('tela: a captura terminou (o navegador ou o sistema parou o compartilhamento)')
       this.stopScreen()
