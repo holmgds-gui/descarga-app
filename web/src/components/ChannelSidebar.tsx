@@ -24,7 +24,9 @@ export function ChannelSidebar() {
   const [creating, setCreating] = useState<{ category: string; type: 'text' | 'voice' } | null>(null)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const { isOwner, canManage } = useServerRole(server)
+  const access = useServerRole(server)
+  const { isOwner, canManage } = access
+  const canChannels = access.can('manage_channels')
   const [settingsOpen, setServerSettingsOpen] = useState(false)
   const inVoice = useVoicePresence(server?.id ?? null)
   const call = useVoice()
@@ -77,7 +79,7 @@ export function ChannelSidebar() {
                     {t('Configurações do servidor')} <Cog size={16} />
                   </button>
                 )}
-                {canManage && (
+                {canChannels && (
                   <button className="dropdown-item" onClick={() => { setCreating({ category: 'Canais de texto', type: 'text' }); setMenuOpen(false) }}>
                     {t('Criar canal')} <Plus size={16} />
                   </button>
@@ -104,7 +106,7 @@ export function ChannelSidebar() {
                     {collapsed[category] ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                     <span>{t(category)}</span>
                   </button>
-                  {canManage && (
+                  {canChannels && (
                     <button className="icon-btn tiny" aria-label={t('Criar canal em {categoria}', { categoria: t(category) })} data-tip={t('Criar canal')}
                       onClick={() => setCreating({ category, type: list[0]?.type === 'voice' ? 'voice' : 'text' })}>
                       <Plus size={16} />
@@ -157,7 +159,7 @@ export function ChannelSidebar() {
             ))}
           </div>
           {inviting && <InviteModal server={server} onClose={() => setInviting(false)} />}
-          {settingsOpen && canManage && <ServerSettingsModal server={server} isOwner={isOwner} onClose={() => setServerSettingsOpen(false)} />}
+          {settingsOpen && canManage && <ServerSettingsModal server={server} access={access} onClose={() => setServerSettingsOpen(false)} />}
           {emojiOpen && <EmojiManagerModal server={server} onClose={() => setEmojiOpen(false)} />}
           {creating && (
             <CreateChannelModal serverId={server.id} defaultType={creating.type} defaultCategory={creating.category} onClose={() => setCreating(null)} />

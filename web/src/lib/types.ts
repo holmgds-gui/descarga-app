@@ -57,8 +57,29 @@ export interface Server {
   created_at: string
 }
 
-/** cargo dentro de um servidor (o dono é quem tem owner_id; moderadores editam servidor e canais) */
-export type ServerRole = 'member' | 'mod'
+/** o que um cargo permite fazer no servidor (o dono, quem tem owner_id, pode tudo) */
+export type Permission = 'manage_server' | 'manage_channels' | 'pin_messages' | 'kick' | 'ban'
+export const PERMISSIONS: Permission[] = ['manage_server', 'manage_channels', 'pin_messages', 'kick', 'ban']
+export interface RoleDef {
+  id: string
+  server_id: string
+  name: string
+  color: string
+  permissions: Permission[]
+}
+export interface RolePatch {
+  name?: string
+  color?: string
+  permissions?: Permission[]
+}
+export interface Ban {
+  server_id: string
+  user_id: string
+  username: string
+  display_name: string
+  reason: string
+  banned_at: string
+}
 export interface ServerPatch {
   name?: string
   icon_url?: string | null
@@ -194,9 +215,21 @@ export interface Backend {
   joinServer(code: string): Promise<Server>
   leaveServer(serverId: string): Promise<void>
   updateServer(serverId: string, patch: ServerPatch): Promise<Server>
-  listMemberRoles(serverId: string): Promise<Record<string, ServerRole>>
+  listRoles(serverId: string): Promise<RoleDef[]>
   /** só o dono */
-  setMemberRole(serverId: string, userId: string, role: ServerRole): Promise<void>
+  createRole(serverId: string, role: Required<RolePatch>): Promise<RoleDef>
+  updateRole(roleId: string, patch: RolePatch): Promise<RoleDef>
+  deleteRole(roleId: string): Promise<void>
+  /** cargo de cada membro (id do cargo, ou null se não tem) */
+  listMemberRoles(serverId: string): Promise<Record<string, string | null>>
+  /** só o dono: roleId null tira o cargo */
+  setMemberRole(serverId: string, userId: string, roleId: string | null): Promise<void>
+  kickMember(serverId: string, userId: string): Promise<void>
+  banMember(serverId: string, userId: string, reason: string): Promise<void>
+  unbanMember(serverId: string, userId: string): Promise<void>
+  listBans(serverId: string): Promise<Ban[]>
+  /** só o dono: apaga o servidor com canais e mensagens */
+  deleteServer(serverId: string): Promise<void>
   onServersChange(cb: () => void): () => void
 
   listChannels(serverId: string): Promise<Channel[]>

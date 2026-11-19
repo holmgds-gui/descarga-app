@@ -356,7 +356,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     }
   }
 
-  const canPin = isDm || role.canManage
+  const canPin = isDm || role.can('pin_messages')
   const pinned = new Set(pins.map((p) => p.message_id))
   const togglePin = async (m: Message) => {
     try {

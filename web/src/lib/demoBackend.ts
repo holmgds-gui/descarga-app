@@ -4,7 +4,7 @@
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
 import type {
-  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, ServerRole,
+  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, Ban, RoleDef, Permission, RolePatch,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
@@ -12,7 +12,7 @@ import { t } from './i18n'
 import { cleanUsername } from './username'
 
 interface DemoUser { id: string; email: string; password: string }
-interface Member { server_id: string; user_id: string; joined_at: string; role?: ServerRole }
+interface Member { server_id: string; user_id: string; joined_at: string; role_id?: string | null }
 interface DmMember { channel_id: string; user_id: string; joined_at: string; last_read_at: string | null }
 type DemoChannel = Channel & Partial<Pick<DmChannel, 'is_group' | 'title' | 'owner_id' | 'last_message_at'>>
 interface DB {
@@ -29,6 +29,8 @@ interface DB {
   pins: Pin[]
   receiptOff: { owner: string; peer: string }[]
   onceViews: { message_id: string; user_id: string; opened_at: string }[]
+  roles: RoleDef[]
+  bans: Ban[]
 }
 const FILE_PREFIX = 'descarga-demo-arquivo-'
 const DEMO_MAX_FILE = 1024 * 1024
@@ -105,6 +107,8 @@ function seed(): DB {
     pins: [],
     receiptOff: [],
     onceViews: [],
+    roles: [],
+    bans: [],
   }
 }
 
@@ -124,6 +128,8 @@ export function createDemoBackend(): Backend {
       db.pins ??= []
       db.receiptOff ??= []
       db.onceViews ??= []
+      db.roles ??= []
+      db.bans ??= []
       for (const m of db.messages) m.attachments ??= []
       for (const p of db.profiles) p.read_receipts ??= true
       return db
@@ -185,10 +191,20 @@ export function createDemoBackend(): Backend {
   }
   const isMember = (db: DB, serverId: string, uid: string) =>
     db.members.some((m) => m.server_id === serverId && m.user_id === uid)
-  /** dono ou moderador */
-  const canManage = (db: DB, serverId: string, uid: string) =>
-    db.servers.find((s) => s.id === serverId)?.owner_id === uid ||
-    db.members.some((m) => m.server_id === serverId && m.user_id === uid && m.role === 'mod')
+  const isOwner = (db: DB, serverId: string, uid: string) => db.servers.find((x) => x.id === serverId)?.owner_id === uid
+  /** o dono pode tudo; os outros, o que o cargo deles permite */
+  const has = (db: DB, serverId: string, uid: string, perm: Permission) => {
+    if (isOwner(db, serverId, uid)) return true
+    const rid = db.members.find((m) => m.server_id === serverId && m.user_id === uid)?.role_id
+    return !!rid && !!db.roles.find((r) => r.id === rid)?.permissions.includes(perm)
+  }
+  /** pode agir (expulsar/banir) sobre alguém: nunca no dono nem em si; só o dono age sobre quem tem poderes */
+  const canActOn = (db: DB, serverId: string, uid: string, target: string) => {
+    if (target === uid || isOwner(db, serverId, target)) return false
+    if (isOwner(db, serverId, uid)) return true
+    const rid = db.members.find((m) => m.server_id === serverId && m.user_id === target)?.role_id
+    return !(rid && (db.roles.find((r) => r.id === rid)?.permissions.length ?? 0) > 0)
+  }
 
   const createAccount = (db: DB, email: string, password: string, username: string) => {
     const clean = cleanUsername(username).slice(0, 26) || 'usuario'
@@ -377,6 +393,7 @@ export function createDemoBackend(): Backend {
       const clean = c.trim().split('/').pop() ?? ''
       const s = db.servers.find((x) => x.invite_code === clean)
       if (!s) throw new Error(t('Convite inválido ou expirado.'))
+      if (db.bans.some((b) => b.server_id === s.id && b.user_id === uid)) throw new Error(t('Você foi banido deste servidor.'))
       if (!isMember(db, s.id, uid)) db.members.push({ server_id: s.id, user_id: uid, joined_at: now() })
       save(db)
       emit({ type: 'servers' })
@@ -396,7 +413,7 @@ export function createDemoBackend(): Backend {
     async updateServer(serverId, patch) {
       const db = load()
       const s = db.servers.find((x) => x.id === serverId)
-      if (!s || !canManage(db, serverId, me())) throw new Error(t('Você não tem permissão para mudar este servidor.'))
+      if (!s || !has(db, serverId, me(), 'manage_server')) throw new Error(t('Você não tem permissão para mudar este servidor.'))
       if (patch.name !== undefined) s.name = patch.name
       if (patch.icon_url !== undefined) s.icon_url = patch.icon_url
       if (patch.banner_url !== undefined) s.banner_url = patch.banner_url
@@ -406,19 +423,93 @@ export function createDemoBackend(): Backend {
       return { ...s }
     },
 
-    async listMemberRoles(serverId) {
-      const db = load()
-      return Object.fromEntries(db.members.filter((m) => m.server_id === serverId).map((m) => [m.user_id, m.role ?? 'member' as ServerRole]))
+    async listRoles(serverId) {
+      return load().roles.filter((r) => r.server_id === serverId)
     },
-
-    async setMemberRole(serverId, userId, role) {
+    async createRole(serverId, role) {
       const db = load()
-      const s = db.servers.find((x) => x.id === serverId)
-      if (s?.owner_id !== me() || userId === me()) throw new Error(t('Só o dono do servidor pode escolher os moderadores.'))
-      const m = db.members.find((x) => x.server_id === serverId && x.user_id === userId)
-      if (m) m.role = role
+      if (!isOwner(db, serverId, me())) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+      const r: RoleDef = { id: id(), server_id: serverId, name: role.name, color: role.color, permissions: role.permissions }
+      db.roles.push(r)
       save(db)
       emit({ type: 'servers' })
+      return r
+    },
+    async updateRole(roleId, patch: RolePatch) {
+      const db = load()
+      const r = db.roles.find((x) => x.id === roleId)
+      if (!r || !isOwner(db, r.server_id, me())) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+      Object.assign(r, patch)
+      save(db)
+      emit({ type: 'servers' })
+      return { ...r }
+    },
+    async deleteRole(roleId) {
+      const db = load()
+      const r = db.roles.find((x) => x.id === roleId)
+      if (!r || !isOwner(db, r.server_id, me())) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+      db.roles = db.roles.filter((x) => x.id !== roleId)
+      for (const m of db.members) if (m.role_id === roleId) m.role_id = null
+      save(db)
+      emit({ type: 'servers' })
+    },
+    async listMemberRoles(serverId) {
+      const db = load()
+      return Object.fromEntries(db.members.filter((m) => m.server_id === serverId).map((m) => [m.user_id, m.role_id ?? null]))
+    },
+    async setMemberRole(serverId, userId, roleId) {
+      const db = load()
+      if (!isOwner(db, serverId, me()) || userId === me()) throw new Error(t('Só o dono do servidor pode escolher os cargos.'))
+      if (roleId && !db.roles.some((r) => r.id === roleId && r.server_id === serverId)) throw new Error(t('Só o dono do servidor pode escolher os cargos.'))
+      const m = db.members.find((x) => x.server_id === serverId && x.user_id === userId)
+      if (m) m.role_id = roleId
+      save(db)
+      emit({ type: 'servers' })
+    },
+    async kickMember(serverId, userId) {
+      const db = load()
+      if (!has(db, serverId, me(), 'kick') || !canActOn(db, serverId, me(), userId)) throw new Error(t('Você não pode expulsar essa pessoa.'))
+      db.members = db.members.filter((m) => !(m.server_id === serverId && m.user_id === userId))
+      save(db)
+      emit({ type: 'servers' })
+      emit({ type: 'channels' })
+    },
+    async banMember(serverId, userId, reason) {
+      const db = load()
+      if (!has(db, serverId, me(), 'ban') || !canActOn(db, serverId, me(), userId)) throw new Error(t('Você não pode banir essa pessoa.'))
+      const p = db.profiles.find((x) => x.id === userId)
+      db.bans = db.bans.filter((b) => !(b.server_id === serverId && b.user_id === userId))
+      db.bans.push({ server_id: serverId, user_id: userId, username: p?.username ?? '', display_name: p?.display_name ?? '', reason: reason.slice(0, 200), banned_at: now() })
+      db.members = db.members.filter((m) => !(m.server_id === serverId && m.user_id === userId))
+      save(db)
+      emit({ type: 'servers' })
+      emit({ type: 'channels' })
+    },
+    async unbanMember(serverId, userId) {
+      const db = load()
+      if (!has(db, serverId, me(), 'ban')) throw new Error(t('Você não pode desbanir pessoas aqui.'))
+      db.bans = db.bans.filter((b) => !(b.server_id === serverId && b.user_id === userId))
+      save(db)
+      emit({ type: 'servers' })
+    },
+    async listBans(serverId) {
+      const db = load()
+      if (!has(db, serverId, me(), 'ban')) return []
+      return db.bans.filter((b) => b.server_id === serverId)
+    },
+    async deleteServer(serverId) {
+      const db = load()
+      if (!isOwner(db, serverId, me())) throw new Error(t('Só o dono do servidor pode apagá-lo.'))
+      const chIds = new Set(db.channels.filter((c) => c.server_id === serverId).map((c) => c.id))
+      db.servers = db.servers.filter((x) => x.id !== serverId)
+      db.members = db.members.filter((m) => m.server_id !== serverId)
+      db.channels = db.channels.filter((c) => c.server_id !== serverId)
+      db.messages = db.messages.filter((m) => !chIds.has(m.channel_id))
+      db.roles = db.roles.filter((r) => r.server_id !== serverId)
+      db.bans = db.bans.filter((b) => b.server_id !== serverId)
+      save(db)
+      emit({ type: 'servers' })
+      emit({ type: 'channels' })
     },
 
     onServersChange(cb) {
@@ -436,7 +527,7 @@ export function createDemoBackend(): Backend {
     async createChannel(serverId, name, type, category) {
       const db = load()
       const uid = me()
-      if (!canManage(db, serverId, uid)) throw new Error(t('Só o dono e os moderadores podem criar canais.'))
+      if (!has(db, serverId, uid, 'manage_channels')) throw new Error(t('Só o dono e os moderadores podem criar canais.'))
       const c: Channel = {
         id: id(), server_id: serverId, name, type, category, topic: '',
         position: db.channels.filter((x) => x.server_id === serverId).length, created_at: now(),
@@ -450,7 +541,7 @@ export function createDemoBackend(): Backend {
     async renameChannel(channelId, name) {
       const db = load()
       const c = db.channels.find((x) => x.id === channelId)
-      if (!c?.server_id || !canManage(db, c.server_id, me())) throw new Error(t('Você não tem permissão para mudar este canal.'))
+      if (!c?.server_id || !has(db, c.server_id, me(), 'manage_channels')) throw new Error(t('Você não tem permissão para mudar este canal.'))
       c.name = name
       save(db)
       emit({ type: 'channels' })
@@ -459,7 +550,7 @@ export function createDemoBackend(): Backend {
     async deleteChannel(channelId) {
       const db = load()
       const c = db.channels.find((x) => x.id === channelId)
-      if (!c?.server_id || !canManage(db, c.server_id, me())) throw new Error(t('Você não tem permissão para apagar este canal.'))
+      if (!c?.server_id || !has(db, c.server_id, me(), 'manage_channels')) throw new Error(t('Você não tem permissão para apagar este canal.'))
       db.channels = db.channels.filter((x) => x.id !== channelId)
       db.messages = db.messages.filter((m) => m.channel_id !== channelId)
       save(db)
@@ -468,7 +559,7 @@ export function createDemoBackend(): Backend {
 
     async reorderChannels(serverId, orderedIds) {
       const db = load()
-      if (!canManage(db, serverId, me())) throw new Error(t('Você não tem permissão para mudar este canal.'))
+      if (!has(db, serverId, me(), 'manage_channels')) throw new Error(t('Você não tem permissão para mudar este canal.'))
       orderedIds.forEach((id, position) => {
         const c = db.channels.find((x) => x.id === id && x.server_id === serverId)
         if (c) c.position = position

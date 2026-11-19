@@ -1,4 +1,6 @@
-import { Crown } from 'lucide-react'
+import { Ban, Crown, LogOut } from 'lucide-react'
+import { backend } from '../lib/backend'
+import { useServerRole } from './ServerSettings'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import type { Profile } from '../lib/types'
@@ -6,28 +8,48 @@ import { locale, t } from '../lib/i18n'
 import { useUserMenu } from './ContextMenu'
 
 export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string | null } = {}) {
-  const { memberIds, profiles, servers, activeServerId, openProfile } = useApp()
+  const { memberIds, profiles, servers, activeServerId, openProfile, toast, ask } = useApp()
   const userMenu = useUserMenu()
-  const server = servers.find((s) => s.id === activeServerId)
+  const server = servers.find((s) => s.id === (ids ? undefined : activeServerId))
+  const access = useServerRole(server)
   const owner = ids ? ownerId : server?.owner_id
   const members = (ids ?? memberIds).map((id) => profiles[id]).filter((p): p is Profile => !!p)
   const sort = (a: Profile, b: Profile) => displayName(a).localeCompare(displayName(b), locale())
   const online = members.filter((m) => m.status !== 'invisible').sort(sort)
   const offline = members.filter((m) => m.status === 'invisible').sort(sort)
 
-  const row = (p: Profile) => (
+  const moderate = (p: Profile) => {
+    if (!server || !access.canActOn(p.id)) return []
+    const name = displayName(p)
+    return [
+      ...(access.can('kick') ? [{ label: t('Expulsar {nome}', { nome: name }), icon: <LogOut size={16} />, danger: true, onClick: () => void (async () => {
+        if (!(await ask({ title: t('Expulsar {nome}', { nome: name }), message: t('A pessoa sai do servidor, mas pode voltar com um convite.'), confirmLabel: t('Expulsar'), danger: true }))) return
+        try { await backend.kickMember(server.id, p.id); toast(t('{nome} foi expulso(a)', { nome: name })) } catch (err) { toast((err as Error).message) }
+      })() }] : []),
+      ...(access.can('ban') ? [{ label: t('Banir {nome}', { nome: name }), icon: <Ban size={16} />, danger: true, onClick: () => void (async () => {
+        if (!(await ask({ title: t('Banir {nome}', { nome: name }), message: t('A pessoa sai do servidor e não consegue voltar, nem com convite, até você desbanir.'), confirmLabel: t('Banir'), danger: true }))) return
+        try { await backend.banMember(server.id, p.id, ''); toast(t('{nome} foi banido(a)', { nome: name })) } catch (err) { toast((err as Error).message) }
+      })() }] : []),
+    ]
+  }
+
+  const row = (p: Profile) => {
+    const role = ids ? undefined : access.roleOf(p.id)
+    return (
     <button key={p.id} className={`member ${p.status === 'invisible' ? 'offline' : ''}`}
-      onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())} onContextMenu={(e) => userMenu(e, p)}>
+      onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())} onContextMenu={(e) => userMenu(e, p, moderate(p))}>
       <Avatar profile={p} size={34} showStatus />
       <span className="member-text">
         <span className="member-name truncate" style={{ color: p.status === 'invisible' ? undefined : p.accent_color }}>
           {displayName(p)}
           {owner === p.id && <Crown size={14} className="crown" aria-label={ids ? t('Dono do grupo') : t('Dono do servidor')} />}
+          {role && <span className="role-chip" style={{ borderColor: role.color, color: role.color }}>{role.name}</span>}
         </span>
         {p.custom_status && <span className="member-status truncate">{p.custom_status}</span>}
       </span>
     </button>
-  )
+    )
+  }
 
   return (
     <aside className="member-list" aria-label={t('Membros')}>

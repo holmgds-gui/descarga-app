@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   AdminUser,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
-  ServerEmoji, ServerRole, Attachment, OnceFile, Pin,
+  ServerEmoji, Ban, RoleDef, Attachment, OnceFile, Pin,
 } from './types'
 import { compressImage } from './image'
 import { getLang, t } from './i18n'
@@ -191,16 +191,61 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       return r.data as Server
     },
 
-    async listMemberRoles(serverId) {
-      const rows = must(
-        await sb.from('server_members').select('user_id, role').eq('server_id', serverId),
-      ) as { user_id: string; role: ServerRole }[]
-      return Object.fromEntries(rows.map((r) => [r.user_id, r.role]))
+    async listRoles(serverId) {
+      return must(await sb.from('server_roles').select('id, server_id, name, color, permissions').eq('server_id', serverId).order('created_at')) as RoleDef[]
     },
 
-    async setMemberRole(serverId, userId, role) {
-      const r = await sb.rpc('set_member_role', { s: serverId, target: userId, new_role: role })
-      if (r.error) throw new Error(t('Só o dono do servidor pode escolher os moderadores.'))
+    async createRole(serverId, role) {
+      const r = await sb.from('server_roles').insert({ server_id: serverId, ...role }).select('id, server_id, name, color, permissions').single()
+      if (r.error) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+      return r.data as RoleDef
+    },
+
+    async updateRole(roleId, patch) {
+      const r = await sb.from('server_roles').update(patch).eq('id', roleId).select('id, server_id, name, color, permissions').maybeSingle()
+      if (r.error || !r.data) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+      return r.data as RoleDef
+    },
+
+    async deleteRole(roleId) {
+      const r = await sb.from('server_roles').delete().eq('id', roleId).select('id')
+      if (r.error || !r.data?.length) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
+    },
+
+    async listMemberRoles(serverId) {
+      const rows = must(
+        await sb.from('server_members').select('user_id, role_id').eq('server_id', serverId),
+      ) as { user_id: string; role_id: string | null }[]
+      return Object.fromEntries(rows.map((r) => [r.user_id, r.role_id]))
+    },
+
+    async setMemberRole(serverId, userId, roleId) {
+      const r = await sb.rpc('set_member_role', { s: serverId, target: userId, rid: roleId })
+      if (r.error) throw new Error(t('Só o dono do servidor pode escolher os cargos.'))
+    },
+
+    async kickMember(serverId, userId) {
+      const r = await sb.rpc('kick_member', { s: serverId, target: userId })
+      if (r.error) throw new Error(t('Você não pode expulsar essa pessoa.'))
+    },
+
+    async banMember(serverId, userId, reason) {
+      const r = await sb.rpc('ban_member', { s: serverId, target: userId, why: reason })
+      if (r.error) throw new Error(t('Você não pode banir essa pessoa.'))
+    },
+
+    async unbanMember(serverId, userId) {
+      const r = await sb.rpc('unban_member', { s: serverId, target: userId })
+      if (r.error) throw new Error(t('Você não pode desbanir pessoas aqui.'))
+    },
+
+    async listBans(serverId) {
+      return must(await sb.from('server_bans').select('server_id, user_id, username, display_name, reason, banned_at').eq('server_id', serverId).order('banned_at', { ascending: false })) as Ban[]
+    },
+
+    async deleteServer(serverId) {
+      const r = await sb.rpc('delete_server', { s: serverId })
+      if (r.error) throw new Error(t('Só o dono do servidor pode apagá-lo.'))
     },
 
     onServersChange(cb) {
@@ -208,6 +253,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         .channel('my-servers')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_members' }, () => cb())
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'servers' }, () => cb())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'server_roles' }, () => cb())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'server_bans' }, () => cb())
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'servers' }, () => cb())
         .subscribe()
       return () => void sb.removeChannel(ch)
     },

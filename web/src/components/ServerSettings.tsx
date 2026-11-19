@@ -1,21 +1,33 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { ArrowDown, ArrowUp, Camera, Check, Hash, ImagePlus, Pencil, Shield, ShieldOff, Trash2, Volume2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Ban as BanIcon, Camera, Check, Hash, ImagePlus, LogOut, Pencil, Plus, Trash2, Undo2, Volume2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { Channel, Server, ServerRole } from '../lib/types'
+import { PERMISSIONS, type Ban, type Channel, type Permission, type RoleDef, type Server } from '../lib/types'
 import { useApp } from '../state'
 import { Modal } from './Modal'
 import { Avatar, displayName } from './Avatar'
 import { t } from '../lib/i18n'
 
-/** Quem é o dono ou moderador do servidor (para mostrar ou esconder as configurações). */
+export const PERMISSION_LABELS: Record<Permission, { name: string; hint: string }> = {
+  manage_server: { name: 'Gerenciar servidor', hint: 'Mudar nome, foto, banner e descrição.' },
+  manage_channels: { name: 'Gerenciar canais', hint: 'Criar, renomear, reorganizar e apagar canais.' },
+  pin_messages: { name: 'Fixar mensagens', hint: 'Fixar e desafixar mensagens nos canais.' },
+  kick: { name: 'Expulsar membros', hint: 'Tirar alguém do servidor (a pessoa pode voltar com um convite).' },
+  ban: { name: 'Banir membros', hint: 'Tirar alguém e impedir que volte. Também desbanir.' },
+}
+
+/** O que a pessoa pode fazer no servidor: o dono pode tudo; os outros, o que o cargo deles permite. */
 export function useServerRole(server: Server | undefined) {
   const { userId } = useApp()
-  const [roles, setRoles] = useState<Record<string, ServerRole>>({})
+  const [members, setMembers] = useState<Record<string, string | null>>({})
+  const [roleDefs, setRoleDefs] = useState<RoleDef[]>([])
   const serverId = server?.id
   useEffect(() => {
     if (!serverId) return
     let alive = true
-    const load = () => void backend.listMemberRoles(serverId).then((r) => alive && setRoles(r)).catch(() => undefined)
+    const load = () => {
+      void backend.listMemberRoles(serverId).then((r) => alive && setMembers(r)).catch(() => undefined)
+      void backend.listRoles(serverId).then((r) => alive && setRoleDefs(r)).catch(() => undefined)
+    }
     load()
     const off = backend.onServersChange(load)
     return () => {
@@ -24,19 +36,27 @@ export function useServerRole(server: Server | undefined) {
     }
   }, [serverId])
   const isOwner = !!server && server.owner_id === userId
-  const isMod = !isOwner && roles[userId] === 'mod'
-  return { isOwner, isMod, canManage: isOwner || isMod, roles }
+  const roleOf = (uid: string) => roleDefs.find((r) => r.id === members[uid])
+  const myRole = roleOf(userId)
+  const can = (perm: Permission) => isOwner || !!myRole?.permissions.includes(perm)
+  const canManage = isOwner || (myRole?.permissions.length ?? 0) > 0
+  /** dá para expulsar/banir essa pessoa? (nunca o dono nem você; só o dono age sobre quem tem poderes) */
+  const canActOn = (uid: string) =>
+    !!server && uid !== userId && uid !== server.owner_id && (isOwner || (roleOf(uid)?.permissions.length ?? 0) === 0)
+  return { isOwner, can, canManage, canActOn, members, roleDefs, roleOf }
 }
+export type ServerAccess = ReturnType<typeof useServerRole>
 
-type Tab = 'geral' | 'canais' | 'mods'
+type Tab = 'geral' | 'canais' | 'membros' | 'cargos'
 
-export function ServerSettingsModal({ server, isOwner, onClose }: { server: Server; isOwner: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>('geral')
+export function ServerSettingsModal({ server, access, onClose }: { server: Server; access: ServerAccess; onClose: () => void }) {
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'geral', label: t('Visão geral') },
-    { id: 'canais', label: t('Canais') },
-    ...(isOwner ? [{ id: 'mods' as Tab, label: t('Moderadores') }] : []),
+    ...(access.can('manage_server') ? [{ id: 'geral' as Tab, label: t('Visão geral') }] : []),
+    ...(access.can('manage_channels') ? [{ id: 'canais' as Tab, label: t('Canais') }] : []),
+    ...(access.can('kick') || access.can('ban') || access.isOwner ? [{ id: 'membros' as Tab, label: t('Membros') }] : []),
+    ...(access.isOwner ? [{ id: 'cargos' as Tab, label: t('Cargos') }] : []),
   ]
+  const [tab, setTab] = useState<Tab>(tabs[0]?.id ?? 'geral')
   return (
     <Modal title={t('Configurações de {nome}', { nome: server.name })} onClose={onClose} wide>
       <div className="srv-tabs" role="tablist">
@@ -46,14 +66,15 @@ export function ServerSettingsModal({ server, isOwner, onClose }: { server: Serv
           </button>
         ))}
       </div>
-      {tab === 'geral' && <OverviewTab server={server} onClose={onClose} />}
+      {tab === 'geral' && <OverviewTab server={server} isOwner={access.isOwner} onClose={onClose} />}
       {tab === 'canais' && <ChannelsTab server={server} />}
-      {tab === 'mods' && isOwner && <ModsTab server={server} />}
+      {tab === 'membros' && <MembersTab server={server} access={access} />}
+      {tab === 'cargos' && access.isOwner && <RolesTab server={server} access={access} />}
     </Modal>
   )
 }
 
-function OverviewTab({ server, onClose }: { server: Server; onClose: () => void }) {
+function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: boolean; onClose: () => void }) {
   const { refreshServers, toast } = useApp()
   const [name, setName] = useState(server.name)
   const [description, setDescription] = useState(server.description ?? '')
@@ -132,7 +153,45 @@ function OverviewTab({ server, onClose }: { server: Server; onClose: () => void 
         <button type="button" className="btn btn-ghost" onClick={onClose}>{t('Cancelar')}</button>
         <button className="btn btn-primary" disabled={busy || !changed || !name.trim()}>{t('Salvar alterações')}</button>
       </div>
+      {isOwner && <DeleteServerBox server={server} onDone={onClose} />}
     </form>
+  )
+}
+
+/** Apagar o servidor: só o dono, e só depois de digitar o nome. */
+function DeleteServerBox({ server, onDone }: { server: Server; onDone: () => void }) {
+  const { refreshServers, toast } = useApp()
+  const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    setBusy(true)
+    try {
+      await backend.deleteServer(server.id)
+      await refreshServers()
+      toast(t('Servidor apagado'))
+      onDone()
+    } catch (err) {
+      toast((err as Error).message)
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="srv-danger">
+      <h3 className="field-label">{t('Zona de perigo')}</h3>
+      {!open ? (
+        <button type="button" className="btn btn-ghost danger-text" onClick={() => setOpen(true)}><Trash2 size={16} /> {t('Apagar servidor')}</button>
+      ) : (
+        <div className="stack">
+          <p className="small">{t('Isso apaga o servidor, todos os canais e todas as mensagens para todo mundo. Não dá para desfazer. Digite o nome do servidor para confirmar:')} <strong>{server.name}</strong></p>
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} aria-label={t('Nome do servidor')} placeholder={server.name} />
+          <div className="row-end">
+            <button type="button" className="btn btn-ghost" onClick={() => { setOpen(false); setTyped('') }}>{t('Cancelar')}</button>
+            <button type="button" className="btn btn-danger" disabled={busy || typed.trim() !== server.name} onClick={() => void run()}>{t('Apagar para sempre')}</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -237,34 +296,33 @@ function ChannelsTab({ server }: { server: Server }) {
   )
 }
 
-function ModsTab({ server }: { server: Server }) {
-  const { profiles, ensureProfiles, userId, toast } = useApp()
-  const [roles, setRoles] = useState<Record<string, ServerRole>>({})
+function MembersTab({ server, access }: { server: Server; access: ServerAccess }) {
+  const { profiles, ensureProfiles, userId, toast, ask } = useApp()
+  const [bans, setBans] = useState<Ban[]>([])
   const [busy, setBusy] = useState<string | null>(null)
+  const ids = Object.keys(access.members).filter((id) => id !== userId)
 
   useEffect(() => {
+    ensureProfiles(Object.keys(access.members))
+  }, [access.members, ensureProfiles])
+
+  const canBan = access.can('ban')
+  useEffect(() => {
+    if (!canBan) return
     let alive = true
-    const load = () =>
-      void backend.listMemberRoles(server.id).then((r) => {
-        if (!alive) return
-        setRoles(r)
-        ensureProfiles(Object.keys(r))
-      }).catch(() => undefined)
+    const load = () => void backend.listBans(server.id).then((b) => alive && setBans(b)).catch(() => undefined)
     load()
     const off = backend.onServersChange(load)
     return () => {
       alive = false
       off()
     }
-  }, [server.id, ensureProfiles])
+  }, [server.id, canBan])
 
-  const toggle = async (id: string) => {
-    const next: ServerRole = roles[id] === 'mod' ? 'member' : 'mod'
+  const run = async (id: string, fn: () => Promise<void>) => {
     setBusy(id)
     try {
-      await backend.setMemberRole(server.id, id, next)
-      setRoles((r) => ({ ...r, [id]: next }))
-      toast(next === 'mod' ? t('Agora é moderador') : t('Não é mais moderador'))
+      await fn()
     } catch (err) {
       toast((err as Error).message)
     } finally {
@@ -272,21 +330,121 @@ function ModsTab({ server }: { server: Server }) {
     }
   }
 
-  const others = Object.keys(roles).filter((id) => id !== userId && id !== server.owner_id)
+  const kick = async (id: string) => {
+    const name = displayName(profiles[id])
+    const ok = await ask({ title: t('Expulsar {nome}', { nome: name }), message: t('A pessoa sai do servidor, mas pode voltar com um convite.'), confirmLabel: t('Expulsar'), danger: true })
+    if (ok) await run(id, async () => { await backend.kickMember(server.id, id); toast(t('{nome} foi expulso(a)', { nome: name })) })
+  }
+
+  const ban = async (id: string) => {
+    const name = displayName(profiles[id])
+    const ok = await ask({ title: t('Banir {nome}', { nome: name }), message: t('A pessoa sai do servidor e não consegue voltar, nem com convite, até você desbanir.'), confirmLabel: t('Banir'), danger: true })
+    if (ok) await run(id, async () => { await backend.banMember(server.id, id, ''); toast(t('{nome} foi banido(a)', { nome: name })) })
+  }
+
   return (
     <div className="srv-mods">
-      <p className="muted small">{t('Moderadores podem mudar o nome, a foto, o banner e os canais do servidor. Só você escolhe quem é moderador.')}</p>
-      {!others.length && <p className="muted small">{t('Ainda não há outros membros no servidor.')}</p>}
-      {others.map((id) => (
-        <div key={id} className="srv-channel-row">
-          <Avatar profile={profiles[id]} size={28} />
-          <span className="truncate flex-1">{displayName(profiles[id])}</span>
-          {roles[id] === 'mod' && <span className="live-badge mod-badge">{t('Moderador')}</span>}
-          <button className="btn btn-ghost btn-sm" disabled={busy === id} onClick={() => void toggle(id)}>
-            {roles[id] === 'mod' ? <><ShieldOff size={16} /> {t('Remover cargo')}</> : <><Shield size={16} /> {t('Tornar moderador')}</>}
-          </button>
+      {!ids.length && <p className="muted small">{t('Ainda não há outros membros no servidor.')}</p>}
+      {ids.map((id) => {
+        const role = access.roleOf(id)
+        const acts = access.canActOn(id)
+        return (
+          <div key={id} className="srv-channel-row">
+            <Avatar profile={profiles[id]} size={28} />
+            <span className="truncate flex-1">{displayName(profiles[id])}</span>
+            {access.isOwner ? (
+              <select className="srv-role-select" aria-label={t('Cargo de {nome}', { nome: displayName(profiles[id]) })} value={access.members[id] ?? ''} disabled={busy === id}
+                onChange={(e) => void run(id, () => backend.setMemberRole(server.id, id, e.target.value || null))}>
+                <option value="">{t('Sem cargo')}</option>
+                {access.roleDefs.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            ) : role && <span className="role-chip" style={{ borderColor: role.color, color: role.color }}>{role.name}</span>}
+            {acts && access.can('kick') && (
+              <button className="btn btn-ghost btn-sm" disabled={busy === id} onClick={() => void kick(id)}><LogOut size={16} /> {t('Expulsar')}</button>
+            )}
+            {acts && access.can('ban') && (
+              <button className="btn btn-ghost btn-sm danger-text" disabled={busy === id} onClick={() => void ban(id)}><BanIcon size={16} /> {t('Banir')}</button>
+            )}
+          </div>
+        )
+      })}
+      {access.can('ban') && (
+        <section className="srv-bans">
+          <h3 className="field-label">{t('Banidos')} — {bans.length}</h3>
+          {!bans.length && <p className="muted small">{t('Ninguém foi banido.')}</p>}
+          {bans.map((b) => (
+            <div key={b.user_id} className="srv-channel-row">
+              <span className="truncate flex-1">{b.display_name || b.username || b.user_id}{b.username && <span className="muted small"> @{b.username}</span>}</span>
+              <button className="btn btn-ghost btn-sm" disabled={busy === b.user_id} onClick={() => void run(b.user_id, async () => { await backend.unbanMember(server.id, b.user_id); setBans((x) => x.filter((y) => y.user_id !== b.user_id)); toast(t('Desbanido(a)')) })}>
+                <Undo2 size={16} /> {t('Desbanir')}
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
+  )
+}
+
+function RolesTab({ server, access }: { server: Server; access: ServerAccess }) {
+  const { toast } = useApp()
+  const [busy, setBusy] = useState(false)
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    try {
+      await fn()
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="srv-roles">
+      <p className="muted small">{t('Cargos dão permissões a quem você escolher na aba Membros. Só você cria cargos e escolhe quem tem cada um.')}</p>
+      {access.roleDefs.map((r) => <RoleCard key={r.id} role={r} busy={busy} run={run} />)}
+      <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void run(async () => {
+        await backend.createRole(server.id, { name: t('Novo cargo'), color: '#7B3FE4', permissions: [] })
+        toast(t('Cargo criado'))
+      })}><Plus size={16} /> {t('Criar cargo')}</button>
+    </div>
+  )
+}
+
+function RoleCard({ role, busy, run }: { role: RoleDef; busy: boolean; run: (fn: () => Promise<void>) => Promise<void> }) {
+  const { toast, ask } = useApp()
+  const [name, setName] = useState(role.name)
+  const [color, setColor] = useState(role.color)
+  const [perms, setPerms] = useState<Permission[]>(role.permissions)
+  const changed = name.trim() !== role.name || color !== role.color || perms.join() !== role.permissions.join()
+  const toggle = (p: Permission) => setPerms((cur) => PERMISSIONS.filter((x) => (x === p ? !cur.includes(x) : cur.includes(x))))
+  return (
+    <div className="role-card">
+      <div className="role-card-head">
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label={t('Cor do cargo')} />
+        <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label={t('Nome do cargo')} />
+        <button className="icon-btn tiny danger" aria-label={t('Apagar cargo {nome}', { nome: role.name })} disabled={busy} onClick={() => void (async () => {
+          const ok = await ask({ title: t('Apagar cargo'), message: t('Quem tem o cargo {nome} fica sem cargo.', { nome: role.name }), confirmLabel: t('Apagar'), danger: true })
+          if (ok) await run(async () => { await backend.deleteRole(role.id); toast(t('Cargo apagado')) })
+        })()}><Trash2 size={16} /></button>
+      </div>
+      <div className="role-perms">
+        {PERMISSIONS.map((p) => (
+          <label key={p} className="check-row">
+            <input type="checkbox" checked={perms.includes(p)} onChange={() => toggle(p)} />
+            <span><strong>{t(PERMISSION_LABELS[p].name)}</strong><br /><span className="muted small">{t(PERMISSION_LABELS[p].hint)}</span></span>
+          </label>
+        ))}
+      </div>
+      {changed && (
+        <div className="row-end">
+          <button className="btn btn-ghost btn-sm" onClick={() => { setName(role.name); setColor(role.color); setPerms(role.permissions) }}>{t('Desfazer')}</button>
+          <button className="btn btn-primary btn-sm" disabled={busy || !name.trim()} onClick={() => void run(async () => {
+            await backend.updateRole(role.id, { name: name.trim(), color, permissions: perms })
+            toast(t('Cargo salvo'))
+          })}><Check size={16} /> {t('Salvar')}</button>
         </div>
-      ))}
+      )}
     </div>
   )
 }

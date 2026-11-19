@@ -997,3 +997,15 @@ button.avatar { cursor: pointer; }
 
 .receipt-people { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .receipt-person { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; min-width: 0; }
+
+/* ---------- cargos, expulsar, banir ---------- */
+.role-chip { display: inline-flex; align-items: center; margin-left: 6px; padding: 0 6px; border: 1px solid; border-radius: 10px; font-size: .68rem; font-weight: 700; line-height: 1.5; vertical-align: middle; }
+.srv-role-select { background: var(--bg-input); color: var(--text); border-radius: 6px; padding: 4px 8px; max-width: 150px; }
+.srv-bans { margin-top: 16px; display: flex; flex-direction: column; gap: 4px; }
+.srv-roles { display: flex; flex-direction: column; gap: 12px; }
+.role-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 8px; background: var(--bg-elev); }
+.role-card-head { display: flex; align-items: center; gap: 8px; }
+.role-card-head input[type=color] { width: 36px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; flex-shrink: 0; }
+.role-card-head input:not([type=color]) { flex: 1; min-width: 0; }
+.role-perms { display: flex; flex-direction: column; gap: 8px; }
+.srv-danger { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--bg-active); display: flex; flex-direction: column; gap: 8px; }

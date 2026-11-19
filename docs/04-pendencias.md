@@ -1,5 +1,13 @@
 # O que falta fazer
 
+## Concluído em 18 de novembro de 2026
+
+- Login com Google no ar (ver "Pendências antigas"); servidor TURN grátis (ExpressTURN) funcionando; app do Windows fica na bandeja ao fechar (precisa reinstalar `Descarga-Setup.exe` para testar).
+- Configurações do servidor (nome, foto, banner, descrição, canais) — migração `0008`.
+- Chat: responder arrastando (dedo no celular, mouse no PC fora do texto), encaminhar para várias conversas/canais ("Encaminhada"), fixar mensagens, "fulano está digitando…", fotos e vídeos de visualização única em DMs e grupos (função `unica-vez`), confirmação de leitura por pessoa (recíproca, estilo WhatsApp) — migrações `0009` e `0010`.
+- Servidor: cargos com permissões (gerenciar servidor, gerenciar canais, fixar, expulsar, banir), expulsar, banir/desbanir, apagar servidor (só o dono, digitando o nome) — migração `0011`. Antigos moderadores viram o cargo "Moderador" (servidor, canais e fixar).
+- Limites honestos: visualização única não impede captura de tela; a regra recíproca da confirmação de leitura é aplicada pelo app (não pelo banco); apagar canal/servidor apaga as mensagens, mas arquivos enviados podem ficar no armazenamento.
+
 ## Concluído em 17 de novembro de 2026 (noite)
 
 - Nomes de usuário com maiúsculas, acentos e símbolos (sem espaços); "Gui" e "gui" são o mesmo nome (migração `0006`).
