@@ -26,8 +26,25 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      # versão = 1.0.<número da execução>: o atualizador só instala se a versão for maior que a instalada
+      - name: Definir a versão
+        shell: bash
+        run: |
+          v="1.0.${{ github.run_number }}"
+          node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.version='$v';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+          echo "VERSAO=$v" >> "$GITHUB_ENV"
       - name: Criar o instalador
-        run: npx --yes @tauri-apps/cli@2 build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            npx --yes @tauri-apps/cli@2 build
+          else
+            echo "Sem a chave de assinatura (TAURI_SIGNING_PRIVATE_KEY): criando o instalador sem atualização automática."
+            npx --yes @tauri-apps/cli@2 build --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          fi
       - name: Publicar em Releases
         shell: bash
         env:
@@ -35,8 +52,20 @@ jobs:
         run: |
           f=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe | head -n 1)
           cp "$f" Descarga-Setup.exe
+          files="Descarga-Setup.exe"
+          if [ -f "$f.sig" ]; then
+            node -e "
+              const fs=require('fs');
+              const sig=fs.readFileSync('$f.sig','utf8').trim();
+              const url='https://github.com/holmgds-gui/descarga-app/releases/download/desktop-latest/Descarga-Setup.exe';
+              fs.writeFileSync('latest.json',JSON.stringify({version:process.env.VERSAO,notes:'Atualização do Descarga para Windows',pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:sig,url}}},null,2));
+            "
+            files="$files latest.json"
+          else
+            echo "Sem arquivo de assinatura: publicando só o instalador."
+          fi
           gh release delete desktop-latest --yes --cleanup-tag || true
-          gh release create desktop-latest Descarga-Setup.exe \
+          gh release create desktop-latest $files \
             --title "Descarga para Windows" \
-            --notes "Instalador do Descarga para Windows. Baixe o Descarga-Setup.exe e abra. O app sempre mostra a versão mais nova do site, sem precisar reinstalar." \
+            --notes "Instalador do Descarga para Windows. Baixe o Descarga-Setup.exe e abra. O conteúdo do app sempre mostra a versão mais nova do site; a casca do app se atualiza sozinha ao abrir." \
             --target "${{ github.sha }}"
