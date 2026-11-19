@@ -408,7 +408,7 @@ function RolesTab({ server, access }: { server: Server; access: ServerAccess }) 
           holders={Object.keys(access.members).filter((id) => access.members[id]?.includes(r.id))} />
       ))}
       <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void run(async () => {
-        await backend.createRole(server.id, { name: t('Novo cargo'), color: '#7B3FE4', permissions: [] })
+        await backend.createRole(server.id, { name: t('Novo cargo'), color: '#7B3FE4', permissions: [], hoist: true })
         toast(t('Cargo criado'))
       })}><Plus size={16} /> {t('Criar cargo')}</button>
     </div>
@@ -420,7 +420,8 @@ function RoleCard({ role, busy, run, access, holders }: { role: RoleDef; busy: b
   const [name, setName] = useState(role.name)
   const [color, setColor] = useState(role.color)
   const [perms, setPerms] = useState<Permission[]>(role.permissions)
-  const changed = name.trim() !== role.name || color !== role.color || perms.join() !== role.permissions.join()
+  const [hoist, setHoist] = useState(role.hoist !== false)
+  const changed = name.trim() !== role.name || color !== role.color || perms.join() !== role.permissions.join() || hoist !== (role.hoist !== false)
   const locked = !access.isOwner && !role.permissions.every((p) => access.can(p))
   const toggle = (p: Permission) => setPerms((cur) => PERMISSIONS.filter((x) => (x === p ? !cur.includes(x) : cur.includes(x))))
   return (
@@ -433,6 +434,10 @@ function RoleCard({ role, busy, run, access, holders }: { role: RoleDef; busy: b
           if (ok) await run(async () => { await backend.deleteRole(role.id); toast(t('Cargo apagado')) })
         })()}><Trash2 size={16} /></button>
       </div>
+      <label className="check-row">
+        <input type="checkbox" checked={hoist} disabled={locked} onChange={(e) => setHoist(e.target.checked)} />
+        <span><strong>{t('Mostrar separado na lista de membros')}</strong><br /><span className="muted small">{t('Quem tem este cargo aparece num grupo próprio, com o nome do cargo.')}</span></span>
+      </label>
       <div className="role-perms">
         {PERMISSIONS.map((p) => (
           <label key={p} className="check-row">
@@ -458,9 +463,9 @@ function RoleCard({ role, busy, run, access, holders }: { role: RoleDef; busy: b
       </details>
       {changed && (
         <div className="row-end">
-          <button className="btn btn-ghost btn-sm" onClick={() => { setName(role.name); setColor(role.color); setPerms(role.permissions) }}>{t('Desfazer')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setName(role.name); setColor(role.color); setPerms(role.permissions); setHoist(role.hoist !== false) }}>{t('Desfazer')}</button>
           <button className="btn btn-primary btn-sm" disabled={busy || !name.trim()} onClick={() => void run(async () => {
-            await backend.updateRole(role.id, { name: name.trim(), color, permissions: perms })
+            await backend.updateRole(role.id, { name: name.trim(), color, permissions: perms, hoist })
             toast(t('Cargo salvo'))
           })}><Check size={16} /> {t('Salvar')}</button>
         </div>

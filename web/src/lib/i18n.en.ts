@@ -773,4 +773,6 @@ export const EN: Record<string, string> = {
   'Mostrar': "Show",
   "Quem tem este cargo": "Who has this role",
   "Ninguém tem este cargo ainda. Clique com o botão direito em uma pessoa e escolha Cargos.": "Nobody has this role yet. Right-click a person and choose Roles.",
+  "Mostrar separado na lista de membros": "Show separately in the member list",
+  "Quem tem este cargo aparece num grupo próprio, com o nome do cargo.": "People with this role appear in their own group, labeled with the role name.",
 }

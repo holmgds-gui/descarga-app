@@ -288,7 +288,7 @@ export function ContextMenuHost() {
           {it.separator && i > 0 && <div className="dropdown-sep" />}
           <button role="menuitem" aria-haspopup={it.children ? 'menu' : undefined} aria-expanded={it.children ? sub === i : undefined}
             className={`dropdown-item ${it.danger ? 'danger' : ''}`} disabled={it.disabled}
-            onClick={() => { if (it.children) { setSub(sub === i ? null : i); return } closeContextMenu(); it.onClick?.() }}>
+            onClick={() => { if (it.children) { setSub(i); return } closeContextMenu(); it.onClick?.() }}>
             {it.icon}{it.color && <span className="ctx-dot" style={{ background: it.color }} />}
             <span className="ctx-label">{it.label}</span>
             {it.checked && <Check size={15} className="ctx-check" />}

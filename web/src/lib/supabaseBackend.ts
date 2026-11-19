@@ -192,17 +192,17 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     async listRoles(serverId) {
-      return must(await sb.from('server_roles').select('id, server_id, name, color, permissions').eq('server_id', serverId).order('created_at')) as RoleDef[]
+      return must(await sb.from('server_roles').select('id, server_id, name, color, permissions, hoist').eq('server_id', serverId).order('created_at')) as RoleDef[]
     },
 
     async createRole(serverId, role) {
-      const r = await sb.from('server_roles').insert({ server_id: serverId, ...role }).select('id, server_id, name, color, permissions').single()
+      const r = await sb.from('server_roles').insert({ server_id: serverId, ...role }).select('id, server_id, name, color, permissions, hoist').single()
       if (r.error) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
       return r.data as RoleDef
     },
 
     async updateRole(roleId, patch) {
-      const r = await sb.from('server_roles').update(patch).eq('id', roleId).select('id, server_id, name, color, permissions').maybeSingle()
+      const r = await sb.from('server_roles').update(patch).eq('id', roleId).select('id, server_id, name, color, permissions, hoist').maybeSingle()
       if (r.error || !r.data) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
       return r.data as RoleDef
     },

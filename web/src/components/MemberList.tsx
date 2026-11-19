@@ -16,8 +16,24 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
   const owner = ids ? ownerId : server?.owner_id
   const members = (ids ?? memberIds).map((id) => profiles[id]).filter((p): p is Profile => !!p)
   const sort = (a: Profile, b: Profile) => displayName(a).localeCompare(displayName(b), locale())
-  const online = members.filter((m) => m.status !== 'invisible').sort(sort)
+  const live = members.filter((m) => m.status !== 'invisible')
   const offline = members.filter((m) => m.status === 'invisible').sort(sort)
+  // grupos por cargo (só em servidores): o cargo de maior poder entre os que aparecem separados
+  const hoisted = ids ? [] : access.roleDefs.filter((r) => r.hoist !== false)
+  const groups = new Map<string, Profile[]>()
+  const online: Profile[] = []
+  for (const m of live) {
+    const top = topRole(hoisted, access.members[m.id])
+    if (top) groups.set(top.id, [...(groups.get(top.id) ?? []), m])
+    else online.push(m)
+  }
+  online.sort(sort)
+  // seções na ordem de poder (mais permissões primeiro; empate: o cargo mais antigo)
+  const roleSections = [...hoisted]
+    .map((r, i) => ({ r, i }))
+    .sort((x, y) => y.r.permissions.length - x.r.permissions.length || x.i - y.i)
+    .map(({ r }) => ({ role: r, list: (groups.get(r.id) ?? []).sort(sort) }))
+    .filter((g) => g.list.length > 0)
 
   const moderate = (p: Profile) => {
     if (!server || !access.canActOn(p.id)) return []
@@ -53,6 +69,12 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
 
   return (
     <aside className="member-list" aria-label={t('Membros')}>
+      {roleSections.map(({ role, list }) => (
+        <section key={role.id}>
+          <h3 className="member-group" title={role.name}>{role.name} — {list.length}</h3>
+          {list.map(row)}
+        </section>
+      ))}
       {online.length > 0 && <h3 className="member-group">{t('Disponíveis')} — {online.length}</h3>}
       {online.map(row)}
       {offline.length > 0 && <h3 className="member-group">{t('Offline')} — {offline.length}</h3>}

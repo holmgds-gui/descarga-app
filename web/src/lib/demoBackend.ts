@@ -439,7 +439,7 @@ export function createDemoBackend(): Backend {
     async createRole(serverId, role) {
       const db = load()
       if (!canTouchRole(db, serverId, me(), role.permissions)) throw new Error(t('Só o dono do servidor pode mexer nos cargos.'))
-      const r: RoleDef = { id: id(), server_id: serverId, name: role.name, color: role.color, permissions: role.permissions }
+      const r: RoleDef = { id: id(), server_id: serverId, name: role.name, color: role.color, permissions: role.permissions, hoist: role.hoist }
       db.roles.push(r)
       save(db)
       emit({ type: 'servers' })

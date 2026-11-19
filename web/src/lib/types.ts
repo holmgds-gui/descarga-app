@@ -78,11 +78,14 @@ export interface RoleDef {
   name: string
   color: string
   permissions: Permission[]
+  /** mostra os membros deste cargo como seção própria na lista de membros (padrão: sim) */
+  hoist?: boolean
 }
 export interface RolePatch {
   name?: string
   color?: string
   permissions?: Permission[]
+  hoist?: boolean
 }
 export interface Ban {
   server_id: string
