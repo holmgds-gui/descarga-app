@@ -192,6 +192,7 @@ export const EN: Record<string, string> = {
   'Bem-vindo(a)!': 'Welcome!',
   'Aqui é a sua página inicial do Descarga.': 'This is your Descarga home page.',
   'Avisos': 'Announcements',
+  'Novidades': 'News',
   'Nenhum aviso por enquanto. As novidades do Descarga vão aparecer aqui.': 'No announcements yet. Descarga news will show up here.',
   'Pedidos de amizade': 'Friend requests',
   '{n} pedidos esperando você': '{n} requests waiting for you',

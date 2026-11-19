@@ -9,7 +9,8 @@ import { Avatar, STATUS_LABEL, displayName } from './Avatar'
 import { ChatHeader } from './ChatView'
 import { DmAvatar, dmName } from './dm'
 import { NewDmModal } from './DmModals'
-import { locale, t } from '../lib/i18n'
+import { NOVIDADES } from '../lib/novidades'
+import { getLang, locale, t } from '../lib/i18n'
 
 /** Barra lateral do Início: amigos e lista de conversas diretas. */
 export function HomeSidebar() {
@@ -105,13 +106,8 @@ export function HomePage() {
       <ChatHeader icon={<House size={22} />} title={t('Início')} />
       <div className="home-body">
         <div className="home-hero">
-          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={132} height={132} />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={96} height={96} />
           <h2>{me ? t('Bem-vindo(a), {nome}!', { nome: displayName(me) }) : t('Bem-vindo(a)!')}</h2>
-          <p className="muted">{t('Aqui é a sua página inicial do Descarga.')}</p>
-        </div>
-        <div className="home-card">
-          <h3><Bell size={18} /> {t('Avisos')}</h3>
-          <p className="muted">{t('Nenhum aviso por enquanto. As novidades do Descarga vão aparecer aqui.')}</p>
         </div>
         {incoming > 0 && (
           <button className="home-card home-card-link" onClick={() => setHomeSection('amigos')}>
@@ -119,6 +115,34 @@ export function HomePage() {
             <p className="muted">{t('{n} pedidos esperando você', { n: incoming })}</p>
           </button>
         )}
+        <div className="news-feed" aria-label={t('Avisos')}>
+          <h3 className="news-title"><Bell size={18} /> {t('Avisos')}</h3>
+          {NOVIDADES.map((n) => {
+            const d = new Date(`${n.date}T12:00:00`)
+            const long = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
+            const short = d.toLocaleDateString(locale())
+            const lang = getLang()
+            return (
+              <div key={n.date}>
+                <div className="news-day"><span>{long}</span></div>
+                <article className="news-post">
+                  <img className="news-avatar" src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={40} height={40} />
+                  <div className="news-main">
+                    <div className="news-head">
+                      <strong>Descarga</strong>
+                      <span className="news-tag">{t('Novidades')}</span>
+                      <time dateTime={n.date} className="muted small">{short}</time>
+                    </div>
+                    <p className="news-headline">{n.title[lang]}</p>
+                    <ul>
+                      {n.items.map((it, i) => <li key={i}>{it[lang]}</li>)}
+                    </ul>
+                  </div>
+                </article>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
