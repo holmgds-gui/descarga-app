@@ -153,26 +153,19 @@ export function HomePage() {
           {NOVIDADES.map((n) => {
             const d = new Date(`${n.date}T12:00:00`)
             const long = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
-            const short = d.toLocaleDateString(locale())
             const lang = getLang()
             return (
-              <div key={n.date}>
-                <div className="news-day"><span>{long}</span></div>
-                <article className="news-post">
-                  <img className="news-avatar" src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={40} height={40} />
-                  <div className="news-main">
-                    <div className="news-head">
-                      <strong>Descarga</strong>
-                      <span className="news-tag">{t('Novidades')}</span>
-                      <time dateTime={n.date} className="muted small">{short}</time>
-                    </div>
-                    <p className="news-headline">{n.title[lang]}</p>
-                    <ul>
-                      {n.items.map((it, i) => <li key={i}>{it[lang]}</li>)}
-                    </ul>
-                  </div>
-                </article>
-              </div>
+              <section key={n.date} className="news-day-block">
+                <h4 className="news-date"><time dateTime={n.date}>{long}</time></h4>
+                <div className="news-grid">
+                  {n.items.map((it, i) => (
+                    <article key={i} className="news-card">
+                      <h5>{it.title[lang]}</h5>
+                      <p>{it.text[lang]}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
             )
           })}
         </div>

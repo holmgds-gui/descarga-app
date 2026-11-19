@@ -1,54 +1,52 @@
-/** Avisos da página inicial: o que mudou no Descarga. Mais novo primeiro. Para avisar algo novo, é só incluir uma entrada no topo. */
+/** Avisos da página inicial: o que mudou no Descarga, um bloco por novidade. Mais novo primeiro. Para avisar algo novo, é só incluir no topo. */
 interface L { pt: string; en: string }
 export interface Novidade {
   date: string // AAAA-MM-DD
-  title: L
-  items: L[]
+  items: { title: L; text: L }[]
 }
+
+const n = (tp: string, te: string, xp: string, xe: string) => ({ title: { pt: tp, en: te }, text: { pt: xp, en: xe } })
 
 export const NOVIDADES: Novidade[] = [
   {
     date: '2026-11-19',
-    title: { pt: 'Início, cargos e calls mais completas', en: 'Home, roles and better calls' },
     items: [
-      { pt: '🌍 Mapa-múndi ao vivo no topo do Início: quem quiser pode aparecer com um ponto roxo e, em call, um fio liga as pessoas. É opcional e a posição é aproximada.', en: '🌍 Live world map at the top of Home: opt in to appear as a purple dot, and a thread links people who are in a call. It is optional and the position is approximate.' },
-      { pt: '🏠 Página inicial nova (esta aqui!) para avisos e novidades.', en: '🏠 New home page (this one!) for announcements and news.' },
-      { pt: '🖱️ Passe o mouse no ícone de um servidor e o nome dele aparece.', en: '🖱️ Hover a server icon to see its name.' },
-      { pt: '🔊 Na call, clique com o botão direito numa pessoa para ajustar o volume da voz e da tela dela, separados.', en: '🔊 In a call, right-click someone to adjust their voice and screen volume separately.' },
-      { pt: '↔️ Arraste a borda da barra lateral e da lista de membros para mudar a largura.', en: '↔️ Drag the edge of the sidebar and member list to resize them.' },
-      { pt: '👥 Lista de membros dividida por cargo, como no Discord (cada cargo pode aparecer separado ou não).', en: '👥 Member list split by role, like Discord (each role can be shown separately or not).' },
-      { pt: '🎭 Vários cargos por pessoa, a cor do nome vem do cargo mais poderoso, cargos que criam cargos e novas permissões.', en: '🎭 Several roles per person, name color from the most powerful role, roles that can create roles, and new permissions.' },
-      { pt: '📋 Menu de botão direito completo em pessoas e servidores (perfil, mensagem, nota, apelido, ignorar, silenciar servidor…).', en: '📋 Full right-click menu on people and servers (profile, message, note, nickname, ignore, mute server…).' },
-      { pt: '🖼️ Editor para posicionar e dar zoom nas fotos de perfil, de servidor e nos banners.', en: '🖼️ Editor to position and zoom profile pictures, server icons and banners.' },
-      { pt: '🛠️ Corrigidos: criar canal, tela “Algo deu errado” e compartilhar tela sem a opção de 60fps.', en: '🛠️ Fixed: creating channels, the “Something went wrong” screen, and screen sharing without the 60fps option.' },
+      n('Mapa ao vivo', 'Live map', 'Pontos roxos de quem quiser aparecer e fios ligando quem está em call. Opcional e com posição aproximada.', 'Purple dots for people who opt in, and threads linking people in a call. Optional, with approximate position.'),
+      n('Página inicial', 'Home page', 'O ícone da privada agora abre esta página, com o mapa e os avisos.', 'The toilet icon now opens this page, with the map and announcements.'),
+      n('Nome do servidor', 'Server name', 'Passe o mouse no ícone de um servidor e o nome dele aparece.', 'Hover a server icon and its name shows up.'),
+      n('Volume na call', 'Call volume', 'Botão direito numa pessoa na call ajusta o volume da voz e o da tela, separados.', 'Right-click someone in a call to adjust their voice and screen volume separately.'),
+      n('Abas redimensionáveis', 'Resizable panels', 'Arraste a borda da barra lateral e da lista de membros para mudar a largura.', 'Drag the edge of the sidebar and member list to resize them.'),
+      n('Membros por cargo', 'Members by role', 'A lista de membros é dividida por cargo, como no Discord. Cada cargo pode aparecer separado ou não.', 'The member list is split by role, like Discord. Each role can be shown separately or not.'),
+      n('Cargos', 'Roles', 'Vários cargos por pessoa, nome com a cor do cargo mais poderoso, cargos que criam cargos e novas permissões.', 'Several roles per person, name colored by the most powerful role, roles that can create roles, and new permissions.'),
+      n('Menu de botão direito', 'Right-click menu', 'Perfil, mensagem, nota, apelido, ignorar e silenciar servidor, em pessoas e em servidores.', 'Profile, message, note, nickname, ignore and mute server, on people and servers.'),
+      n('Fotos e banners', 'Pictures and banners', 'Editor para posicionar e dar zoom na foto de perfil, na foto do servidor e nos banners.', 'Editor to position and zoom profile pictures, server icons and banners.'),
+      n('Correções', 'Fixes', 'Criar canal, tela "Algo deu errado" e compartilhar tela sem a opção de 60fps.', 'Creating channels, the "Something went wrong" screen, and screen sharing without the 60fps option.'),
     ],
   },
   {
     date: '2026-11-18',
-    title: { pt: 'Servidores, chat e app do Windows', en: 'Servers, chat and the Windows app' },
     items: [
-      { pt: '🛡️ Servidores com cargos e permissões, expulsar, banir e apagar servidor; nome, foto, banner e descrição nas configurações.', en: '🛡️ Servers with roles and permissions, kick, ban and delete server; name, picture, banner and description in settings.' },
-      { pt: '💬 Chat: responder arrastando, encaminhar, fixar mensagens, “digitando…”, visualização única e “visto” por pessoa.', en: '💬 Chat: swipe to reply, forward, pin messages, “typing…”, view-once and per-person “seen”.' },
-      { pt: '🖥️ App do Windows: ao fechar, vai para a bandeja e continua rodando; atualiza sozinho.', en: '🖥️ Windows app: closing sends it to the tray and keeps it running; updates itself.' },
-      { pt: '🔐 Login com Google e páginas de Termos e Privacidade.', en: '🔐 Google sign-in and public Terms and Privacy pages.' },
-      { pt: '🚫 Aviso claro para quem foi banido ao tentar usar um convite.', en: '🚫 Clear message for banned people who try to use an invite.' },
+      n('Servidores', 'Servers', 'Cargos com permissões, expulsar, banir e apagar servidor. Nome, foto, banner e descrição nas configurações.', 'Roles with permissions, kick, ban and delete server. Name, picture, banner and description in settings.'),
+      n('Chat', 'Chat', 'Responder arrastando, encaminhar, fixar mensagens, "digitando…", visualização única e "visto" por pessoa.', 'Swipe to reply, forward, pin messages, "typing…", view-once and per-person "seen".'),
+      n('App do Windows', 'Windows app', 'Ao fechar, vai para a bandeja e continua rodando. Atualiza sozinho.', 'Closing sends it to the tray and keeps it running. Updates itself.'),
+      n('Login com Google', 'Google sign-in', 'Entre com a conta Google. Termos e Privacidade publicados.', 'Sign in with your Google account. Terms and Privacy published.'),
+      n('Banidos', 'Banned people', 'Mensagem clara para quem foi banido ao tentar usar um convite.', 'Clear message for banned people who try to use an invite.'),
     ],
   },
   {
     date: '2026-11-17',
-    title: { pt: 'App para Windows e calls melhores', en: 'Windows app and better calls' },
     items: [
-      { pt: '🪟 Chegou o app para Windows, com instalador e link nas configurações.', en: '🪟 The Windows app is here, with an installer and a link in settings.' },
-      { pt: '🎞️ Calls: modo galeria, prévia da sua própria tela e contador de quem está assistindo (dá para parar de assistir).', en: '🎞️ Calls: gallery mode, preview of your own screen and a counter of who is watching (you can stop watching).' },
-      { pt: '✏️ Nomes de usuário livres, excluir conta, menu de botão direito e conexão das calls mais firme.', en: '✏️ Free-form usernames, delete account, right-click menu and a steadier call connection.' },
+      n('App para Windows', 'Windows app', 'Instalador e link nas configurações.', 'Installer and a link in settings.'),
+      n('Galeria na call', 'Call gallery', 'Modo galeria para ver todos e prévia da sua própria tela.', 'Gallery mode to see everyone, and a preview of your own screen.'),
+      n('Quem está assistindo', 'Who is watching', 'Contador de quem vê a sua tela e opção de parar de assistir a de alguém.', 'A counter of who sees your screen, and an option to stop watching someone else\'s.'),
+      n('Contas e menus', 'Accounts and menus', 'Nomes de usuário livres, excluir conta, menu de botão direito e conexão das calls mais firme.', 'Free-form usernames, delete account, right-click menu and a steadier call connection.'),
     ],
   },
   {
     date: '2026-11-16',
-    title: { pt: 'Microfone e tela mais confiáveis', en: 'More reliable microphone and screen' },
     items: [
-      { pt: '🎤 Se o microfone guardado sumir, o app usa o padrão e mostra o motivo real do erro.', en: '🎤 If the saved microphone disappears, the app uses the default one and shows the real reason for the error.' },
-      { pt: '🖥️ Compartilhar tela: avisa na hora quando o navegador bloqueia e explica o que aconteceu.', en: '🖥️ Screen sharing: tells you right away when the browser blocks it and explains why.' },
+      n('Microfone', 'Microphone', 'Se o microfone guardado sumir, o app usa o padrão e mostra o motivo real do erro.', 'If the saved microphone disappears, the app uses the default one and shows the real reason for the error.'),
+      n('Compartilhar tela', 'Screen sharing', 'Avisa na hora quando o navegador bloqueia e explica o que aconteceu.', 'Tells you right away when the browser blocks it and explains why.'),
     ],
   },
 ]

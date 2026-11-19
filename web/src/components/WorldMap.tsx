@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../state'
 import { WORLD_BORDERS, WORLD_LAND } from '../lib/worldPaths'
 import { WORLD_H, WORLD_W } from '../lib/worldMeta'
+
+/** Espaço em volta do mapa (o fundo "infinito"): o desenho fica no centro e as bordas somem. */
+const PAD_Y = 34
+const VIEW_H = WORLD_H + PAD_Y * 2
 import { projectPoint, useMapPeople } from '../lib/mapa'
 import { t } from '../lib/i18n'
 import { displayName } from './Avatar'
@@ -47,7 +51,7 @@ export default function WorldMap() {
 
   return (
     <div className="world-map">
-      <svg viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} role="img" aria-label={t('Mapa-múndi com quem está online')}>
+      <svg viewBox={`0 ${-PAD_Y} ${WORLD_W} ${VIEW_H}`} role="img" aria-label={t('Mapa-múndi com quem está online')}>
         <defs>
           <radialGradient id="wm-halo">
             <stop offset="0%" stopColor="#9b6bff" stopOpacity="0.45" />
@@ -72,7 +76,7 @@ export default function WorldMap() {
         ))}
       </svg>
       {hovered && (
-        <div className="wm-tip" style={{ left: `${(hovered.xy[0] / WORLD_W) * 100}%`, top: `${(hovered.xy[1] / WORLD_H) * 100}%` }}>
+        <div className="wm-tip" style={{ left: `${(hovered.xy[0] / WORLD_W) * 100}%`, top: `${((hovered.xy[1] + PAD_Y) / VIEW_H) * 100}%` }}>
           {displayName(profiles[hovered.userId])}{hovered.callId ? ` · ${t('em call')}` : ''}
         </div>
       )}
