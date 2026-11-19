@@ -718,4 +718,12 @@ export const EN: Record<string, string> = {
   "Tirar alguém do servidor (a pessoa pode voltar com um convite).": "Remove someone from the server (they can come back with an invite).",
   "Banir membros": "Ban members",
   "Tirar alguém e impedir que volte. Também desbanir.": "Remove someone and stop them from coming back. Also unban.",
+  "Ajustar imagem": "Adjust image",
+  "Arraste a imagem para posicionar. Use o zoom (ou a roda do mouse) para aproximar.": "Drag the image to position it. Use the zoom (or mouse wheel) to get closer.",
+  "Menos zoom": "Zoom out",
+  "Mais zoom": "Zoom in",
+  "Zoom": "Zoom",
+  "Preencher": "Fill",
+  "Mostrar inteira": "Show whole image",
+  "Usar imagem": "Use image",
 }

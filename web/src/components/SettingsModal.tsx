@@ -11,6 +11,7 @@ import { AdminPanel } from './AdminPanel'
 import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { cleanUsername, isValidUsername } from '../lib/username'
+import { useCropPick } from './ImageCropper'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
@@ -84,6 +85,14 @@ function ProfileEditor() {
   const [saving, setSaving] = useState(false)
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
+  const cropper = useCropPick(async (f, kind) => {
+    try {
+      const url = await backend.uploadImage(f, kind === 'avatar' ? 'avatar' : 'banner')
+      setDraft((d) => (d ? { ...d, [kind === 'avatar' ? 'avatar_url' : 'banner_url']: url } : d))
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  })
 
   useEffect(() => {
     if (me && !draft) setDraft(me)
@@ -93,15 +102,7 @@ function ProfileEditor() {
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => setDraft({ ...draft, [k]: v })
   const dirty = JSON.stringify(draft) !== JSON.stringify(me)
 
-  const upload = async (f: File | undefined, kind: 'avatar' | 'banner') => {
-    if (!f) return
-    try {
-      const url = await backend.uploadImage(f, kind)
-      set(kind === 'avatar' ? 'avatar_url' : 'banner_url', url)
-    } catch (err) {
-      setError((err as Error).message)
-    }
-  }
+  const upload = (f: File | undefined, kind: 'avatar' | 'banner') => cropper.open(f, kind)
 
   const setLink = (i: number, patch: Partial<ProfileLink>) =>
     set('links', draft.links.map((l, j) => (j === i ? { ...l, ...patch } : l)))
@@ -165,7 +166,7 @@ function ProfileEditor() {
               <button type="button" className="btn btn-primary btn-sm" onClick={() => avatarRef.current?.click()}><ImagePlus size={16} /> {tr('Trocar foto')}</button>
               {draft.avatar_url && <button type="button" className="btn btn-ghost btn-sm" onClick={() => set('avatar_url', null)}>{tr('Remover')}</button>}
             </div>
-            <input ref={avatarRef} type="file" accept="image/*" hidden onChange={(e) => void upload(e.target.files?.[0], 'avatar')} />
+            <input ref={avatarRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0], 'avatar'); e.target.value = '' }} />
           </div>
 
           <div className="field">
@@ -174,7 +175,8 @@ function ProfileEditor() {
               <button type="button" className="btn btn-primary btn-sm" onClick={() => bannerRef.current?.click()}><ImagePlus size={16} /> {tr('Trocar banner')}</button>
               {draft.banner_url && <button type="button" className="btn btn-ghost btn-sm" onClick={() => set('banner_url', null)}>{tr('Remover')}</button>}
             </div>
-            <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => void upload(e.target.files?.[0], 'banner')} />
+            <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0], 'banner'); e.target.value = '' }} />
+            {cropper.node}
           </div>
 
           <div className="field">

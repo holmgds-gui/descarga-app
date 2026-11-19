@@ -6,6 +6,7 @@ import { useApp } from '../state'
 import { Modal } from './Modal'
 import { Avatar, displayName } from './Avatar'
 import { t } from '../lib/i18n'
+import { useCropPick } from './ImageCropper'
 
 export const PERMISSION_LABELS: Record<Permission, { name: string; hint: string }> = {
   manage_server: { name: 'Gerenciar servidor', hint: 'Mudar nome, foto, banner e descrição.' },
@@ -85,17 +86,17 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
   const iconRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
 
-  const pick = async (f: File | undefined, kind: 'server' | 'banner') => {
-    if (!f) return
+  const cropper = useCropPick(async (f, kind) => {
     setError(null)
     try {
-      const url = await backend.uploadImage(f, kind)
+      const url = await backend.uploadImage(f, kind === 'server' ? 'server' : 'banner')
       if (kind === 'server') setIcon(url)
       else setBanner(url)
     } catch (err) {
       setError((err as Error).message)
     }
-  }
+  })
+  const pick = (f: File | undefined, kind: 'server' | 'banner') => cropper.open(f, kind)
 
   const changed =
     name.trim() !== server.name || description !== (server.description ?? '') || icon !== server.icon_url || banner !== server.banner_url
@@ -128,13 +129,14 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
             <X size={16} /> {t('Remover banner')}
           </button>
         )}
-        <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], 'banner'); e.target.value = '' }} />
+        <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files?.[0], 'banner'); e.target.value = '' }} />
+        {cropper.node}
       </div>
       <div className="srv-icon-row">
         <button type="button" className="icon-upload" onClick={() => iconRef.current?.click()} aria-label={t('Escolher ícone')}>
           {icon ? <img src={icon} alt="" /> : <><Camera size={22} /><span>{t('Ícone')}</span></>}
         </button>
-        <input ref={iconRef} type="file" accept="image/*" hidden onChange={(e) => { void pick(e.target.files?.[0], 'server'); e.target.value = '' }} />
+        <input ref={iconRef} type="file" accept="image/*" hidden onChange={(e) => { pick(e.target.files?.[0], 'server'); e.target.value = '' }} />
         {icon && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setIcon(null)}>{t('Remover ícone')}</button>
         )}

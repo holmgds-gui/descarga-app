@@ -211,7 +211,9 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
 .rail-initials { font-weight: 800; font-size: 15px; }
 .rail-add { color: var(--success); }
 .rail-add:hover { background: var(--success) !important; color: #fff !important; }
-.rail-home { padding: 0; }
+.rail-btn:has(.rail-home), .rail-btn:has(.rail-home):hover { background: transparent; overflow: visible; }
+.rail-btn .rail-home { padding: 0; object-fit: contain; transform: scale(1.12); filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); transition: transform .15s; }
+.rail-btn:hover .rail-home, .rail-item.active .rail-home { transform: scale(1.22) rotate(-4deg); }
 .rail-sep { width: 32px; height: 2px; border-radius: 2px; background: var(--bg-active); flex-shrink: 0; }
 
 /* barra de canais */
@@ -1009,3 +1011,17 @@ button.avatar { cursor: pointer; }
 .role-card-head input:not([type=color]) { flex: 1; min-width: 0; }
 .role-perms { display: flex; flex-direction: column; gap: 8px; }
 .srv-danger { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--bg-active); display: flex; flex-direction: column; gap: 8px; }
+
+/* ---------- editor de posição da imagem ---------- */
+.crop-backdrop { position: fixed; inset: 0; z-index: 95; background: rgba(0,0,0,.72); display: grid; place-items: center; padding: 16px; animation: fade .15s; }
+.crop-box { width: min(440px, 100%); max-height: 100%; overflow: auto; background: var(--bg-float); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+.crop-box h2 { margin: 0; font-size: 1.15em; }
+.crop-box p { margin: 0; }
+.crop-frame { position: relative; overflow: hidden; margin: 0 auto; border-radius: 10px; background: #0d0720; touch-action: none; cursor: grab; user-select: none; }
+.crop-frame:active { cursor: grabbing; }
+.crop-frame img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; user-select: none; transform-origin: center; }
+.crop-frame.round::after { content: ''; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(0,0,0,.6); outline: 2px solid rgba(255,255,255,.7); outline-offset: -2px; pointer-events: none; }
+.crop-frame:not(.round)::after { content: ''; position: absolute; inset: 0; border-radius: 10px; outline: 2px solid rgba(255,255,255,.55); outline-offset: -2px; pointer-events: none; }
+.crop-zoom { display: flex; align-items: center; gap: 8px; }
+.crop-zoom input[type=range] { flex: 1; accent-color: var(--accent); }
+.crop-presets { justify-content: center; }

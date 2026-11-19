@@ -5,6 +5,7 @@ import type { ChannelType, Server, ServerEmoji } from '../lib/types'
 import { useApp } from '../state'
 import { Modal } from './Modal'
 import { t } from '../lib/i18n'
+import { useCropPick } from './ImageCropper'
 
 export function ServerCreateModal({ onClose }: { onClose: () => void }) {
   const { me, refreshServers, setActiveServerId, toast } = useApp()
@@ -51,13 +52,15 @@ export function ServerCreateModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const pickIcon = async (f: File | undefined) => {
-    if (!f) return
+  const cropper = useCropPick(async (f) => {
     try {
       setIcon(await backend.uploadImage(f, 'server'))
     } catch (err) {
       setError((err as Error).message)
     }
+  })
+  const pickIcon = (f: File | undefined) => {
+    cropper.open(f, 'server')
   }
 
   if (step === 'choose')
@@ -83,7 +86,8 @@ export function ServerCreateModal({ onClose }: { onClose: () => void }) {
           <button type="button" className="icon-upload" onClick={() => fileRef.current?.click()} aria-label={t('Escolher ícone')}>
             {icon ? <img src={icon} alt="" /> : <><Camera size={22} /><span>{t('Ícone')}</span></>}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => void pickIcon(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { pickIcon(e.target.files?.[0]); e.target.value = '' }} />
+          {cropper.node}
           <label>
             {t('Nome do servidor')}
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required autoFocus />

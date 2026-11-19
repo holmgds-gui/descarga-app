@@ -13,7 +13,7 @@ export function ServerRail() {
   return (
     <nav className="server-rail" aria-label={t('Servidores')}>
       <RailItem label={t('Início')} active={activeServerId === null} onClick={() => setActiveServerId(null)} badge={homeBadge}>
-        <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="rail-home" />
+        <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="rail-home" />
       </RailItem>
       <div className="rail-sep" />
       {servers.map((s) => (
