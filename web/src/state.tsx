@@ -127,7 +127,7 @@ export function applyAppearance(a: Appearance) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', c.rail)
 }
 
-const lastChannelKey = (serverId: string) => `descarga-ultimo-canal-${serverId}`
+export const lastChannelKey = (serverId: string) => `descarga-ultimo-canal-${serverId}`
 export const SERVER_KEY = 'descarga-ultimo-servidor'
 export const DM_KEY = 'descarga-ultima-dm'
 /** vem do aviso "novo pedido para entrar": abre o painel de administração */

@@ -237,6 +237,19 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       must(await sb.from('server_prefs').upsert({ user_id: me, server_id: serverId, level: p.level, muted_until: p.muted_until }))
     },
 
+    async getNotice() {
+      const r = await sb.from('app_notice').select('body, updated_at').eq('id', 1).maybeSingle()
+      if (r.error || !r.data || !r.data.body.trim()) return null
+      return r.data as { body: string; updated_at: string }
+    },
+    async setNotice(body) {
+      const text = body.trim().slice(0, 500)
+      if (!text) {
+        must(await sb.from('app_notice').delete().eq('id', 1))
+        return
+      }
+      must(await sb.from('app_notice').upsert({ id: 1, body: text, updated_at: new Date().toISOString(), updated_by: await uid() }))
+    },
     async listUserNotes() {
       const rows = must(await sb.from('user_notes').select('target_id, note, nickname')) as { target_id: string; note: string; nickname: string }[]
       return Object.fromEntries(rows.map((r) => [r.target_id, { note: r.note, nickname: r.nickname }]))

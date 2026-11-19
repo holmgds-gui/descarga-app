@@ -31,6 +31,7 @@ interface DB {
   onceViews: { message_id: string; user_id: string; opened_at: string }[]
   roles: RoleDef[]
   bans: Ban[]
+  notice?: { body: string; updated_at: string } | null
   notes?: { owner: string; target: string; note: string; nickname: string }[]
   prefs?: { user: string; server: string; level: ServerPrefs['level']; muted_until: string | null }[]
 }
@@ -494,6 +495,16 @@ export function createDemoBackend(): Backend {
       const db = load()
       db.prefs = (db.prefs ?? []).filter((x) => !(x.user === me() && x.server === serverId))
       db.prefs.push({ user: me(), server: serverId, level: p.level, muted_until: p.muted_until })
+      save(db)
+    },
+    async getNotice() {
+      return load().notice ?? null
+    },
+    async setNotice(body) {
+      const db = load()
+      if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      const text = body.trim().slice(0, 500)
+      db.notice = text ? { body: text, updated_at: new Date().toISOString() } : null
       save(db)
     },
     async listUserNotes() {

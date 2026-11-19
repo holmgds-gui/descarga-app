@@ -241,6 +241,10 @@ export interface Backend {
   setMemberRole(serverId: string, userId: string, roleId: string, on: boolean): Promise<void>
   listServerPrefs(): Promise<Record<string, ServerPrefs>>
   setServerPrefs(serverId: string, p: ServerPrefs): Promise<void>
+  /** recado fixado do administrador (null quando não há) */
+  getNotice(): Promise<{ body: string; updated_at: string } | null>
+  /** só o administrador; texto vazio apaga o recado */
+  setNotice(body: string): Promise<void>
   listUserNotes(): Promise<Record<string, UserNote>>
   setUserNote(targetId: string, n: UserNote): Promise<void>
   kickMember(serverId: string, userId: string): Promise<void>

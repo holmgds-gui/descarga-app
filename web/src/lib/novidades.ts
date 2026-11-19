@@ -11,6 +11,7 @@ export const NOVIDADES: Novidade[] = [
   {
     date: '2026-11-19',
     items: [
+      n('Início com blocos', 'Home with blocks', 'Recado fixado do administrador, "Para você" (pedidos, conversas novas) e "Ativo agora" (calls rolando e amigos disponíveis).', 'Pinned administrator note, "For you" (requests, new conversations) and "Active now" (calls going on and available friends).'),
       n('Mapa ao vivo', 'Live map', 'Pontos roxos de quem quiser aparecer e fios ligando quem está em call. Opcional e com posição aproximada.', 'Purple dots for people who opt in, and threads linking people in a call. Optional, with approximate position.'),
       n('Página inicial', 'Home page', 'O ícone da privada agora abre esta página, com o mapa e os avisos.', 'The toilet icon now opens this page, with the map and announcements.'),
       n('Nome do servidor', 'Server name', 'Passe o mouse no ícone de um servidor e o nome dele aparece.', 'Hover a server icon and its name shows up.'),

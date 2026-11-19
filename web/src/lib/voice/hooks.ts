@@ -25,3 +25,28 @@ export function useVoicePresence(serverId: string | null) {
   }, [serverId])
   return members
 }
+
+/** Quem está em call em vários lugares ao mesmo tempo (para o "Ativo agora" do Início): uma sala de presença por servidor/conversa. */
+export function useActiveCalls(roomIds: string[]) {
+  const [byRoom, setByRoom] = useState<Record<string, CallMember[]>>({})
+  const key = roomIds.slice(0, 30).join(',')
+  useEffect(() => {
+    const ids = key ? key.split(',') : []
+    const offs = ids.map((id) => {
+      const { room, release } = acquireRoom(`voz:${id}`)
+      const off = room.onPresence((list) => {
+        const members = list.filter((e) => typeof e.sessionId === 'string' && e.channelId) as unknown as CallMember[]
+        setByRoom((cur) => ({ ...cur, [id]: members }))
+      })
+      return () => {
+        off()
+        release()
+      }
+    })
+    return () => {
+      offs.forEach((f) => f())
+      setByRoom({})
+    }
+  }, [key])
+  return byRoom
+}
