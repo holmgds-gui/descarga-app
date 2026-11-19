@@ -250,7 +250,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     onServersChange(cb) {
       const ch = sb
-        .channel('my-servers')
+        .channel('my-servers-' + crypto.randomUUID())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_members' }, () => cb())
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'servers' }, () => cb())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_roles' }, () => cb())
@@ -299,7 +299,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     onChannelsChange(serverId, cb) {
       const ch = sb
-        .channel(`channels-${serverId}`)
+        .channel(`channels-${serverId}-${crypto.randomUUID()}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'channels', filter: `server_id=eq.${serverId}` },
@@ -354,7 +354,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     subscribeMessages(channelId, h) {
       const ch = sb
-        .channel(`messages-${channelId}`)
+        .channel(`messages-${channelId}-${crypto.randomUUID()}`)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
