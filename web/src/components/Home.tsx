@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState, type FormEvent } from 'react'
-import { Bell, Check, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
+import { Bell, Check, Globe, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
 import type { Friendship, Profile } from '../lib/types'
@@ -21,6 +21,7 @@ function MapaSection() {
   const asking = share.sharing && share.status === 'asking'
   return (
     <section className="map-section" aria-label={t('Mapa ao vivo')}>
+      <h3 className="news-title map-title"><Globe size={18} /> {t('Mapa ao vivo')}</h3>
       <Suspense fallback={<div className="world-map world-map-loading" />}>
         <WorldMap />
       </Suspense>
@@ -137,9 +138,8 @@ export function HomePage() {
     <section className="chat home-page">
       <ChatHeader icon={<House size={22} />} title={t('Início')} />
       <div className="home-body">
-        <MapaSection />
         <div className="home-hero">
-          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={96} height={96} />
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={56} height={56} />
           <h2>{me ? t('Bem-vindo(a), {nome}!', { nome: displayName(me) }) : t('Bem-vindo(a)!')}</h2>
         </div>
         {incoming > 0 && (
@@ -169,6 +169,7 @@ export function HomePage() {
             )
           })}
         </div>
+        <MapaSection />
       </div>
     </section>
   )

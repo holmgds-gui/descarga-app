@@ -1065,8 +1065,8 @@ body:has(.resize-handle.dragging) { cursor: col-resize; user-select: none; -webk
 
 /* ---------- página inicial ---------- */
 .home-body { flex: 1; overflow-y: auto; padding: 24px 20px 40px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
-.home-hero { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 20px 0 6px; }
-.home-hero h2 { font-size: 1.5em; font-weight: 800; }
+.home-hero { width: min(1100px, 100%); display: flex; align-items: center; gap: 14px; padding: 4px 2px 0; }
+.home-hero h2 { font-size: 1.35em; font-weight: 800; }
 .home-card { width: min(640px, 100%); background: var(--bg-elev); border-radius: 12px; padding: 16px 18px; text-align: left; color: var(--text); }
 .home-card h3 { display: flex; align-items: center; gap: 8px; font-size: 1em; font-weight: 800; margin-bottom: 6px; }
 .home-card-link { cursor: pointer; transition: background .12s; }
@@ -1091,7 +1091,7 @@ body:has(.resize-handle.dragging) { cursor: col-resize; user-select: none; -webk
 .news-card p { margin: 0; color: var(--text-2); line-height: 1.4; font-size: .9em; }
 
 /* ---------- mapa-múndi ao vivo ---------- */
-.map-section { width: min(1400px, calc(100% + 40px)); margin: -24px -20px 0; display: flex; flex-direction: column; gap: 6px; align-self: center; }
+.map-section { width: min(1400px, calc(100% + 40px)); margin: 18px -20px -34px; display: flex; flex-direction: column; gap: 6px; align-self: center; }
 .world-map { position: relative; width: 100%; aspect-ratio: 1000 / 519; overflow: hidden; background: transparent;
   -webkit-mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 52%, transparent 100%);
   mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 52%, transparent 100%); }
@@ -1117,3 +1117,5 @@ body:has(.resize-handle.dragging) { cursor: col-resize; user-select: none; -webk
 .map-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
 @media (max-width: 767px) { .map-section { width: calc(100% + 40px); } .map-bar { margin-top: -10px; } }
 @media (prefers-reduced-motion: reduce) { .wm-pulse, .wm-wire-flow { animation: none; } }
+
+.map-title { width: min(1100px, calc(100% - 40px)); align-self: center; margin-bottom: 0; }
