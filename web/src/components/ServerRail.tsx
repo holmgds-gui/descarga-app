@@ -139,7 +139,7 @@ function RailItem({
 }) {
   // o nome aparece 0,6 s depois de parar o mouse em cima (só onde existe mouse)
   const [tip, setTip] = useState<{ top: number; left: number } | null>(null)
-  const timer = useRef<number>()
+  const timer = useRef<number | undefined>(undefined)
   const showSoon = (el: HTMLElement) => {
     window.clearTimeout(timer.current)
     if (!window.matchMedia('(hover: hover)').matches) return
