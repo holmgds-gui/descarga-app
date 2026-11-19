@@ -1,18 +1,33 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Download, ExternalLink, FileText, Pause, Play, X } from 'lucide-react'
+import { Check, Download, ExternalLink, EyeOff, FileText, Flame, Pause, Play, X } from 'lucide-react'
+import { backend } from '../lib/backend'
 import { formatBytes, formatDuration, useAttachmentUrl } from '../lib/files'
-import type { Attachment } from '../lib/types'
+import type { Attachment, OnceFile } from '../lib/types'
+import { useApp } from '../state'
 import { t } from '../lib/i18n'
 
+/** Dados da mensagem, só para os arquivos de visualização única. */
+export interface OnceContext {
+  messageId: string
+  mine: boolean
+  /** quem já abriu (para quem enviou: todos; para os outros: só eu) */
+  views: string[]
+  onOpened: () => void
+}
+
 /** Arquivos de uma mensagem: imagens em grade, vídeos, mensagens de voz e arquivos comuns. */
-export function Attachments({ list }: { list: Attachment[] }) {
+export function Attachments({ list, once }: { list: Attachment[]; once?: OnceContext }) {
   const [viewing, setViewing] = useState<Attachment | null>(null)
   if (!list.length) return null
-  const images = list.filter((a) => a.kind === 'image')
-  const others = list.filter((a) => a.kind !== 'image')
+  // visualização única nunca passa pelo carregador normal: o arquivo só sai pela função do servidor
+  const onceList = list.filter((a) => a.once)
+  const normal = list.filter((a) => !a.once)
+  const images = normal.filter((a) => a.kind === 'image')
+  const others = normal.filter((a) => a.kind !== 'image')
   return (
     <div className="attachments">
+      {onceList.length > 0 && once && <OnceCard list={onceList} ctx={once} />}
       {images.length > 0 && (
         <div className={`att-images n${Math.min(images.length, 4)}`}>
           {images.map((a) => <ImageThumb key={a.path} a={a} single={images.length === 1} onOpen={() => setViewing(a)} />)}
@@ -162,6 +177,94 @@ function Lightbox({ a, onClose }: { a: Attachment; onClose: () => void }) {
           <ExternalLink size={14} /> {t('Abrir no navegador')}
         </a>
       )}
+    </div>,
+    document.body,
+  )
+}
+
+
+/** Foto ou vídeo de visualização única: cada pessoa abre uma vez, depois o arquivo some. */
+function OnceCard({ list, ctx }: { list: Attachment[]; ctx: OnceContext }) {
+  const { userId, toast } = useApp()
+  const [files, setFiles] = useState<OnceFile[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const gone = list.every((a) => a.gone)
+  const iOpened = ctx.views.includes(userId)
+  const video = list.every((a) => a.kind === 'video')
+  const what = list.length > 1 ? t('Fotos e vídeos') : video ? t('Vídeo') : t('Foto')
+
+  const open = async () => {
+    setBusy(true)
+    try {
+      const got = await backend.openOnce(ctx.messageId)
+      ctx.onOpened()
+      if (!got || !got.length) toast(t('Esta mídia já foi aberta.'))
+      else setFiles(got)
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const close = () => {
+    setFiles(null)
+    void backend.finishOnce(ctx.messageId).catch(() => undefined)
+  }
+
+  // se a pessoa fechar a aba com a mídia aberta, avisa mesmo assim
+  useEffect(() => {
+    if (!files) return
+    const end = () => void backend.finishOnce(ctx.messageId).catch(() => undefined)
+    window.addEventListener('pagehide', end)
+    return () => window.removeEventListener('pagehide', end)
+  }, [files, ctx.messageId])
+
+  let label: string
+  let state: 'open' | 'done' | 'wait' = 'wait'
+  if (ctx.mine) {
+    const n = ctx.views.length
+    label = gone || n ? (n > 1 ? t('{what} de visualização única · aberta por {n}', { what, n }) : t('{what} de visualização única · aberta', { what })) : t('{what} de visualização única · não aberta', { what })
+    state = gone || n ? 'done' : 'wait'
+  } else if (gone || iOpened) {
+    label = t('{what} de visualização única · aberta', { what })
+    state = 'done'
+  } else {
+    label = t('{what} de visualização única · toque para abrir', { what })
+    state = 'open'
+  }
+
+  return (
+    <>
+      <button type="button" className={`once-card ${state}`} disabled={state !== 'open' || busy} onClick={() => void open()} aria-label={label}>
+        <span className="once-icon">{state === 'done' ? <Check size={20} /> : state === 'open' ? <Flame size={20} /> : <EyeOff size={20} />}</span>
+        <span className="once-text">{label}</span>
+      </button>
+      {files && <OnceViewer files={files} onClose={close} />}
+    </>
+  )
+}
+
+function OnceViewer({ files, onClose }: { files: OnceFile[]; onClose: () => void }) {
+  const [i, setI] = useState(0)
+  const f = files[i]
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return createPortal(
+    <div className="lightbox once-viewer" role="dialog" aria-modal="true" aria-label={t('Visualização única')} onContextMenu={(e) => e.preventDefault()}>
+      <div className="lightbox-bar">
+        <span className="once-note"><Flame size={16} /> {t('Visualização única: some depois que você fechar')}</span>
+        {files.length > 1 && <span className="muted small">{i + 1} / {files.length}</span>}
+        <button className="icon-btn" aria-label={t('Fechar')} onClick={onClose}><X size={22} /></button>
+      </div>
+      <div className="lightbox-stage" onClick={() => files.length > 1 && setI((i + 1) % files.length)}>
+        {f.kind === 'video'
+          ? <video key={f.path} src={f.url} controls autoPlay playsInline controlsList="nodownload noremoteplayback" disablePictureInPicture />
+          : <img key={f.path} src={f.url} alt="" draggable={false} />}
+      </div>
     </div>,
     document.body,
   )

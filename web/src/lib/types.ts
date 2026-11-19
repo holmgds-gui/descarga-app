@@ -107,6 +107,10 @@ export interface Attachment {
   /** mensagem de voz gravada no app: formato da onda (0 a 1) */
   waveform?: number[]
   voice?: boolean
+  /** foto ou vídeo de visualização única (só em DMs): cada pessoa abre uma vez */
+  once?: boolean
+  /** visualização única já consumida: o arquivo foi apagado */
+  gone?: boolean
 }
 
 export interface Message {
@@ -118,6 +122,29 @@ export interface Message {
   edited_at: string | null
   created_at: string
   attachments: Attachment[]
+  forwarded?: boolean
+}
+
+export interface Pin {
+  message_id: string
+  channel_id: string
+  pinned_by: string | null
+  pinned_at: string
+}
+
+/** quem desligou a confirmação de leitura: `mine` = pessoas para quem eu desliguei, `theirs` = pessoas que desligaram para mim */
+export interface ReceiptOff {
+  mine: string[]
+  theirs: string[]
+}
+
+/** arquivo liberado por um link temporário na visualização única */
+export interface OnceFile {
+  path: string
+  url: string
+  name: string
+  type: string
+  kind: AttachmentKind
 }
 
 export interface Friendship {
@@ -203,6 +230,27 @@ export interface Backend {
   leaveDm(channelId: string): Promise<void>
   markRead(channelId: string): Promise<void>
   onDmsChange(cb: () => void): () => void
+
+  // ---------- encaminhar, fixar, leitura por pessoa e visualização única ----------
+  /** manda uma cópia da mensagem (com os arquivos) para várias conversas e canais */
+  forwardMessage(messageId: string, targetChannelIds: string[]): Promise<void>
+  /** busca mensagens pelo id (para mostrar as fixadas, mesmo as antigas) */
+  getMessages(ids: string[]): Promise<Message[]>
+  listPins(channelId: string): Promise<Pin[]>
+  pinMessage(messageId: string, channelId: string): Promise<void>
+  unpinMessage(messageId: string): Promise<void>
+  subscribePins(channelId: string, h: { onAdd: (p: Pin) => void; onRemove: (p: Pin) => void }): () => void
+  listReceiptOff(): Promise<ReceiptOff>
+  /** desliga (ou liga) a confirmação de leitura entre mim e essa pessoa, nos dois sentidos */
+  setReceiptOff(peerId: string, off: boolean): Promise<void>
+  onReceiptOffChange(cb: () => void): () => void
+  /** abre uma mensagem de visualização única: devolve os arquivos uma única vez (null se já foi aberta) */
+  openOnce(messageId: string): Promise<OnceFile[] | null>
+  /** avisa que terminou de ver (quando todos abriram, o arquivo é apagado) */
+  finishOnce(messageId: string): Promise<void>
+  /** quem já abriu cada mensagem: eu mesmo, ou todos se a mensagem é minha */
+  listOnceViews(messageIds: string[]): Promise<Record<string, string[]>>
+  onOnceViewsChange(cb: () => void): () => void
 
   // ---------- reações e emojis ----------
   listReactions(channelId: string, messageIds: string[]): Promise<Reaction[]>

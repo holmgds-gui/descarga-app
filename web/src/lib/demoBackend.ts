@@ -4,7 +4,7 @@
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
 import type {
-  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, ServerRole,
+  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, ServerRole,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
@@ -26,6 +26,9 @@ interface DB {
   dmMembers: DmMember[]
   reactions: Reaction[]
   emojis: ServerEmoji[]
+  pins: Pin[]
+  receiptOff: { owner: string; peer: string }[]
+  onceViews: { message_id: string; user_id: string; opened_at: string }[]
 }
 const FILE_PREFIX = 'descarga-demo-arquivo-'
 const DEMO_MAX_FILE = 1024 * 1024
@@ -40,7 +43,8 @@ type Event =
   | { type: 'msg-delete'; payload: string }
   | { type: 'servers' | 'channels' | 'auth' }
   | { type: 'profile'; payload: Profile }
-  | { type: 'friends' | 'dms' | 'emojis' | 'users' }
+  | { type: 'friends' | 'dms' | 'emojis' | 'users' | 'receipts' | 'once' }
+  | { type: 'pin-add' | 'pin-remove'; payload: Pin }
   | { type: 'reaction-add' | 'reaction-remove'; payload: Reaction }
 
 // no modo demonstração a conta do administrador é a deste e-mail; a aprovação só é exigida quando
@@ -98,6 +102,9 @@ function seed(): DB {
     dmMembers: [],
     reactions: [],
     emojis: [],
+    pins: [],
+    receiptOff: [],
+    onceViews: [],
   }
 }
 
@@ -114,6 +121,9 @@ export function createDemoBackend(): Backend {
       db.dmMembers ??= []
       db.reactions ??= []
       db.emojis ??= []
+      db.pins ??= []
+      db.receiptOff ??= []
+      db.onceViews ??= []
       for (const m of db.messages) m.attachments ??= []
       for (const p of db.profiles) p.read_receipts ??= true
       return db
@@ -644,6 +654,130 @@ export function createDemoBackend(): Backend {
     },
     onDmsChange(cb) {
       return listen((e) => e.type === 'dms' && cb())
+    },
+
+    // ---------- encaminhar, fixar, leitura por pessoa e visualização única ----------
+    async forwardMessage(messageId, targetChannelIds) {
+      const db = load()
+      const src = db.messages.find((x) => x.id === messageId)
+      if (!src) throw new Error(t('Mensagem não encontrada.'))
+      const uid = me()
+      for (const target of targetChannelIds) {
+        const atts: Attachment[] = []
+        for (const a of src.attachments) {
+          if (a.once || a.gone) continue
+          const path = `${target}/${uid}/${id()}-${a.name}`
+          const data = local.get(FILE_PREFIX + a.path)
+          if (data) local.set(FILE_PREFIX + path, data)
+          atts.push({ ...a, path })
+        }
+        if (!src.content && !atts.length) continue
+        const m: Message = {
+          id: id(), channel_id: target, author_id: uid, content: src.content, reply_to: null, edited_at: null,
+          created_at: now(), attachments: atts, forwarded: true,
+        }
+        db.messages.push(m)
+        const ch = db.channels.find((c) => c.id === target)
+        if (ch?.type === 'dm') ch.last_message_at = m.created_at
+        save(db)
+        emit({ type: 'msg-insert', payload: m })
+        if (ch?.type === 'dm') emit({ type: 'dms' })
+      }
+    },
+    async getMessages(ids) {
+      const set = new Set(ids)
+      return load().messages.filter((m) => set.has(m.id))
+    },
+    async listPins(channelId) {
+      return load().pins.filter((p) => p.channel_id === channelId)
+    },
+    async pinMessage(messageId, channelId) {
+      const db = load()
+      if (db.pins.some((p) => p.message_id === messageId)) return
+      const p: Pin = { message_id: messageId, channel_id: channelId, pinned_by: me(), pinned_at: now() }
+      db.pins.push(p)
+      save(db)
+      emit({ type: 'pin-add', payload: p })
+    },
+    async unpinMessage(messageId) {
+      const db = load()
+      const p = db.pins.find((x) => x.message_id === messageId)
+      if (!p) return
+      db.pins = db.pins.filter((x) => x !== p)
+      save(db)
+      emit({ type: 'pin-remove', payload: p })
+    },
+    subscribePins(channelId, h) {
+      return listen((e) => {
+        if (e.type === 'pin-add' && e.payload.channel_id === channelId) h.onAdd(e.payload)
+        if (e.type === 'pin-remove' && e.payload.channel_id === channelId) h.onRemove(e.payload)
+      })
+    },
+    async listReceiptOff() {
+      const uid = me()
+      const rows = load().receiptOff
+      return { mine: rows.filter((r) => r.owner === uid).map((r) => r.peer), theirs: rows.filter((r) => r.peer === uid).map((r) => r.owner) }
+    },
+    async setReceiptOff(peerId, off) {
+      const db = load()
+      const uid = me()
+      db.receiptOff = db.receiptOff.filter((r) => !(r.owner === uid && r.peer === peerId))
+      if (off) db.receiptOff.push({ owner: uid, peer: peerId })
+      save(db)
+      emit({ type: 'receipts' })
+    },
+    onReceiptOffChange(cb) {
+      return listen((e) => e.type === 'receipts' && cb())
+    },
+    async openOnce(messageId) {
+      const db = load()
+      const uid = me()
+      const m = db.messages.find((x) => x.id === messageId)
+      if (!m || m.author_id === uid) return null
+      if (!m.attachments.some((a) => a.once && !a.gone)) return null
+      if (db.onceViews.some((v) => v.message_id === messageId && v.user_id === uid)) return null
+      db.onceViews.push({ message_id: messageId, user_id: uid, opened_at: now() })
+      save(db)
+      emit({ type: 'once' })
+      const files: OnceFile[] = []
+      for (const a of m.attachments) {
+        if (!a.once || a.gone) continue
+        const url = local.get(FILE_PREFIX + a.path)
+        if (url) files.push({ path: a.path, url, name: a.name, type: a.type, kind: a.kind })
+      }
+      return files
+    },
+    async finishOnce(messageId) {
+      const db = load()
+      const uid = me()
+      const m = db.messages.find((x) => x.id === messageId)
+      if (!m || !db.onceViews.some((v) => v.message_id === messageId && v.user_id === uid)) return
+      const recipients = db.dmMembers.filter((d) => d.channel_id === m.channel_id && d.user_id !== m.author_id).map((d) => d.user_id)
+      const opened = new Set(db.onceViews.filter((v) => v.message_id === messageId).map((v) => v.user_id))
+      if (!recipients.every((r) => opened.has(r))) return
+      for (const a of m.attachments) {
+        if (a.once) {
+          local.remove(FILE_PREFIX + a.path)
+          a.gone = true
+        }
+      }
+      save(db)
+      emit({ type: 'msg-update', payload: m })
+    },
+    async listOnceViews(messageIds) {
+      const uid = me()
+      const db = load()
+      const out: Record<string, string[]> = {}
+      for (const mid of messageIds) {
+        const m = db.messages.find((x) => x.id === mid)
+        if (!m) continue
+        const views = db.onceViews.filter((v) => v.message_id === mid && (m.author_id === uid || v.user_id === uid))
+        if (views.length) out[mid] = views.map((v) => v.user_id)
+      }
+      return out
+    },
+    onOnceViewsChange(cb) {
+      return listen((e) => e.type === 'once' && cb())
     },
 
     // ---------- reações e emojis ----------

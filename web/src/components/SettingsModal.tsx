@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
 import { THEMES, customTheme, type ThemeDef } from '../lib/themes'
 import { ProfileCardBody } from './ProfileCard'
+import { Avatar, displayName } from './Avatar'
+import { useReceiptOff } from '../lib/receipts'
 import { AdminPanel } from './AdminPanel'
 import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
@@ -413,6 +415,32 @@ function PrivacySettings() {
         </span>
         <input type="checkbox" className="toggle" disabled={busy} checked={me.read_receipts !== false} onChange={(e) => void toggle(e.target.checked)} />
       </label>
+      <ReceiptPeople disabled={me.read_receipts === false} />
+    </div>
+  )
+}
+
+/** Confirmação de leitura por pessoa: desligar para alguém vale nos dois sentidos, como no WhatsApp. */
+function ReceiptPeople({ disabled }: { disabled: boolean }) {
+  const { dms, profiles, ensureProfiles, userId, toast } = useApp()
+  const rc = useReceiptOff()
+  const ids = useMemo(() => [...new Set(dms.filter((d) => !d.is_group).flatMap((d) => d.member_ids).filter((id) => id !== userId))], [dms, userId])
+  useEffect(() => ensureProfiles(ids), [ids, ensureProfiles])
+  if (!ids.length) return null
+  return (
+    <div className="receipt-people">
+      <h4 className="field-label">{tr('Por pessoa')}</h4>
+      <p className="muted small">{tr('Desligue para alguém e vocês dois deixam de ver quando o outro leu.')}</p>
+      {ids.map((id) => {
+        const on = !rc.off.mine.includes(id)
+        return (
+          <label key={id} className="toggle-row">
+            <span className="receipt-person"><Avatar profile={profiles[id]} size={28} /><strong className="truncate">{displayName(profiles[id])}</strong></span>
+            <input type="checkbox" className="toggle" disabled={disabled} checked={on} aria-label={displayName(profiles[id])}
+              onChange={(e) => void rc.set(id, !e.target.checked).catch((err: Error) => toast(err.message))} />
+          </label>
+        )
+      })}
     </div>
   )
 }

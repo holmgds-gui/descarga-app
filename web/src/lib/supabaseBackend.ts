@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   AdminUser,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
-  ServerEmoji, ServerRole,
+  ServerEmoji, ServerRole, Attachment, OnceFile, Pin,
 } from './types'
 import { compressImage } from './image'
 import { getLang, t } from './i18n'
@@ -410,6 +410,107 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       return () => void sb.removeChannel(ch)
     },
 
+    // ---------- encaminhar, fixar, leitura por pessoa e visualização única ----------
+    async forwardMessage(messageId, targetChannelIds) {
+      const me = await uid()
+      const m = must(await sb.from('messages').select('content, attachments').eq('id', messageId).single()) as Pick<Message, 'content' | 'attachments'>
+      const atts = (m.attachments ?? []).filter((a) => !a.once)
+      for (const target of targetChannelIds) {
+        // os arquivos ficam numa pasta por conversa: copia para a pasta do destino
+        const copied: Attachment[] = []
+        for (const a of atts) {
+          const safe = a.path.split('/').pop() ?? 'arquivo'
+          const path = `${target}/${me}/${crypto.randomUUID()}-${safe.replace(/^[0-9a-f-]{36}-/, '')}`
+          const r = await sb.storage.from('anexos').copy(a.path, path, { destinationBucket: 'anexos' })
+          if (r.error) throw new Error(t('Não deu para copiar os arquivos para a outra conversa.'))
+          copied.push({ ...a, path })
+        }
+        must(await sb.from('messages').insert({ channel_id: target, author_id: me, content: m.content, reply_to: null, attachments: copied, forwarded: true }))
+      }
+    },
+
+    async getMessages(ids) {
+      if (!ids.length) return []
+      return must(await sb.from('messages').select('*').in('id', ids)) as Message[]
+    },
+
+    async listPins(channelId) {
+      return must(await sb.from('message_pins').select('message_id, channel_id, pinned_by, pinned_at').eq('channel_id', channelId).order('pinned_at', { ascending: false })) as Pin[]
+    },
+
+    async pinMessage(messageId, channelId) {
+      const me = await uid()
+      const r = await sb.from('message_pins').insert({ message_id: messageId, channel_id: channelId, pinned_by: me })
+      if (r.error && r.error.code !== '23505') throw new Error(t('Você não pode fixar mensagens aqui.'))
+    },
+
+    async unpinMessage(messageId) {
+      must(await sb.from('message_pins').delete().eq('message_id', messageId))
+    },
+
+    subscribePins(channelId, h) {
+      const ch = sb
+        .channel(`pins-${channelId}-${crypto.randomUUID()}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_pins', filter: `channel_id=eq.${channelId}` }, (p) => h.onAdd(p.new as Pin))
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_pins' }, (p) => {
+          const x = p.old as Pin
+          if (x.channel_id === channelId) h.onRemove(x)
+        })
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    async listReceiptOff() {
+      const me = await uid()
+      const rows = must(await sb.from('read_receipt_off').select('owner, peer')) as { owner: string; peer: string }[]
+      return { mine: rows.filter((r) => r.owner === me).map((r) => r.peer), theirs: rows.filter((r) => r.peer === me).map((r) => r.owner) }
+    },
+
+    async setReceiptOff(peerId, off) {
+      const me = await uid()
+      if (off) {
+        const r = await sb.from('read_receipt_off').insert({ owner: me, peer: peerId })
+        if (r.error && r.error.code !== '23505') throw new Error(r.error.message)
+      } else {
+        must(await sb.from('read_receipt_off').delete().eq('owner', me).eq('peer', peerId))
+      }
+    },
+
+    onReceiptOffChange(cb) {
+      const ch = sb
+        .channel('receipt-off-' + crypto.randomUUID())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'read_receipt_off' }, () => cb())
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
+    async openOnce(messageId) {
+      const r = await sb.functions.invoke('unica-vez', { body: { action: 'open', messageId } })
+      if (r.error) throw new Error(t('Não deu para abrir agora. Tente de novo.'))
+      const d = r.data as { already?: boolean; files?: OnceFile[] }
+      return d.already ? null : (d.files ?? [])
+    },
+
+    async finishOnce(messageId) {
+      await sb.functions.invoke('unica-vez', { body: { action: 'done', messageId } })
+    },
+
+    async listOnceViews(messageIds) {
+      if (!messageIds.length) return {}
+      const rows = must(await sb.from('once_views').select('message_id, user_id').in('message_id', messageIds)) as { message_id: string; user_id: string }[]
+      const out: Record<string, string[]> = {}
+      for (const r of rows) (out[r.message_id] ??= []).push(r.user_id)
+      return out
+    },
+
+    onOnceViewsChange(cb) {
+      const ch = sb
+        .channel('once-views-' + crypto.randomUUID())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'once_views' }, () => cb())
+        .subscribe()
+      return () => void sb.removeChannel(ch)
+    },
+
     // ---------- reações e emojis ----------
     async listReactions(channelId, messageIds) {
       if (!messageIds.length) return []
@@ -479,7 +580,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const me = await uid()
       if (file.size > 50 * 1024 * 1024) throw new Error(t('O arquivo passa de 50 MB.'))
       const safe = (meta.name || 'arquivo').normalize('NFD').replace(/[^\w.-]+/g, '_').slice(-80)
-      const path = `${channelId}/${me}/${crypto.randomUUID()}-${safe}`
+      // visualização única: pasta "once", que só a função de servidor consegue liberar
+      const path = `${channelId}/${me}/${meta.once ? 'once/' : ''}${crypto.randomUUID()}-${safe}`
       const type = meta.type || file.type || 'application/octet-stream'
       const r = await sb.storage.from('anexos').upload(path, file, { contentType: type, upsert: false })
       if (r.error) throw new Error(/exceeded|too large|payload/i.test(r.error.message) ? t('O arquivo passa de 50 MB.') : r.error.message)

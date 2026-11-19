@@ -1,10 +1,10 @@
 import {
-  Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState,
+  Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
   type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject,
 } from 'react'
 import {
-  Check, Copy, CornerUpLeft, Hash, Menu, Mic, Pencil, Phone, PlusCircle, Send, Smile, SmilePlus, Square, Trash2, Upload, UserPlus,
-  Users, Video, X,
+  Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
+  Square, Trash2, Upload, UserPlus, Users, Video, X,
 } from 'lucide-react'
 import { backend } from '../lib/backend'
 import { EmojiGlyph, formatLongDate, formatTime, formatTimestamp, renderMessage } from '../lib/format'
@@ -13,7 +13,7 @@ import { MAX_FILES_PER_MESSAGE, formatBytes, formatDuration, kindOf, readMeta, s
 import { MAX_VOICE_SECONDS, VoiceRecorder, canRecordVoice } from '../lib/recorder'
 import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
-import type { Attachment, Channel, DmChannel, Message, Profile, Reaction } from '../lib/types'
+import type { Attachment, Channel, DmChannel, Message, Pin, Profile, Reaction } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import { Attachments } from './Attachments'
@@ -24,6 +24,12 @@ import { VoiceStage } from './VoiceStage'
 import { t } from '../lib/i18n'
 import { mentionRegex } from '../lib/username'
 import { copyText, useUserMenu } from './ContextMenu'
+import { ForwardModal } from './ForwardModal'
+import { PinsModal } from './PinsModal'
+import { useServerRole } from './ServerSettings'
+import { swipeHandlers } from '../lib/swipe'
+import { useTyping } from '../lib/typing'
+import { useReceiptOff } from '../lib/receipts'
 
 const GROUP_MS = 7 * 60 * 1000
 
@@ -75,6 +81,8 @@ export interface PendingFile {
   id: string
   file: File
   preview: string | null
+  /** foto ou vídeo de visualização única (só em conversas diretas) */
+  once?: boolean
 }
 
 type PickerTarget = { anchor: DOMRect; messageId: string | null }
@@ -85,7 +93,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   membersOpen: boolean
   onToggleMembers: () => void
 }) {
-  const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me } = useApp()
+  const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me, servers } = useApp()
   const userMenu = useUserMenu()
   const [messages, setMessages] = useState<Message[]>([])
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({})
@@ -98,6 +106,16 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   const [dragging, setDragging] = useState(false)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
   const [dialog, setDialog] = useState<'add' | 'rename' | 'newGroup' | null>(null)
+  const [pins, setPins] = useState<Pin[]>([])
+  const [pinsOpen, setPinsOpen] = useState(false)
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
+  const [onceViews, setOnceViews] = useState<Record<string, string[]>>({})
+  const [flashId, setFlashId] = useState<string | null>(null)
+  const server = servers.find((s) => s.id === channel.server_id)
+  const role = useServerRole(server)
+  const rc = useReceiptOff()
+  const { typingIds, ping, stop, clear } = useTyping(channel.id, userId)
+  const messagesRef = useRef<Message[]>([])
   const listRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
   const prevHeight = useRef<number | null>(null)
@@ -114,6 +132,9 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     setReplyTo(null)
     setEditingId(null)
     setPending([])
+    setPins([])
+    setPinsOpen(false)
+    setOnceViews({})
     stickToBottom.current = true
     const loadReactions = (ids: string[]) =>
       void backend.listReactions(channel.id, ids).then((list) => {
@@ -133,7 +154,10 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
       if (list.length) loadReactions(list.map((m) => m.id))
     })
     const off = backend.subscribeMessages(channel.id, {
-      onInsert: (m) => setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m])),
+      onInsert: (m) => {
+        clear(m.author_id)
+        setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
+      },
       onUpdate: (m) => setMessages((prev) => prev.map((x) => (x.id === m.id ? m : x))),
       onDelete: (id) => setMessages((prev) => prev.filter((x) => x.id !== id)),
     })
@@ -148,12 +172,34 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
         [r.message_id]: (prev[r.message_id] ?? []).filter((x) => !(x.user_id === r.user_id && x.emoji === r.emoji)),
       })),
     })
+    void backend.listPins(channel.id).then((list) => alive && setPins(list)).catch(() => undefined)
+    const offP = backend.subscribePins(channel.id, {
+      onAdd: (p) => setPins((prev) => (prev.some((x) => x.message_id === p.message_id) ? prev : [p, ...prev])),
+      onRemove: (p) => setPins((prev) => prev.filter((x) => x.message_id !== p.message_id)),
+    })
     return () => {
       alive = false
       off()
       offR()
+      offP()
     }
-  }, [channel.id])
+  }, [channel.id, clear])
+
+  // quem já abriu cada mensagem de visualização única
+  messagesRef.current = messages
+  const onceIds = useMemo(() => messages.filter((m) => m.attachments?.some((a) => a.once)).map((m) => m.id).join(','), [messages])
+  useEffect(() => {
+    if (!onceIds) return
+    const ids = onceIds.split(',')
+    let alive = true
+    const load = () => void backend.listOnceViews(ids).then((v) => alive && setOnceViews((prev) => ({ ...prev, ...v }))).catch(() => undefined)
+    load()
+    const off = backend.onOnceViewsChange(load)
+    return () => {
+      alive = false
+      off()
+    }
+  }, [onceIds])
 
   useEffect(() => {
     ensureProfiles([...messages.map((m) => m.author_id), ...Object.values(reactions).flat().map((r) => r.user_id)])
@@ -211,6 +257,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   const afterSend = (m: Message) => {
     setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
     setReplyTo(null)
+    stop()
     if (isDm || m.reply_to || /(^|\s)@[^\s@]{2,40}/u.test(m.content)) void backend.notify({ type: 'message', messageId: m.id })
   }
 
@@ -240,8 +287,8 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
         setSending(files.length > 1 ? t('Enviando {i} de {n}…', { i: i + 1, n: files.length }) : t('Enviando…'))
         const p = files[i]
         const meta = await readMeta(p.file)
-        const a = await backend.uploadAttachment(channel.id, p.file, meta)
-        if (p.preview) seedAttachmentUrl(a.path, p.preview)
+        const a = await backend.uploadAttachment(channel.id, p.file, p.once ? { ...meta, once: true } : meta)
+        if (p.preview && !p.once) seedAttachmentUrl(a.path, p.preview)
         atts.push(a)
       }
       afterSend(await backend.sendMessage(channel.id, content, replyTo?.id ?? null, atts))
@@ -309,6 +356,53 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     }
   }
 
+  const canPin = isDm || role.canManage
+  const pinned = new Set(pins.map((p) => p.message_id))
+  const togglePin = async (m: Message) => {
+    try {
+      if (pinned.has(m.id)) {
+        setPins((prev) => prev.filter((p) => p.message_id !== m.id))
+        await backend.unpinMessage(m.id)
+        toast(t('Mensagem desafixada'))
+      } else {
+        setPins((prev) => [{ message_id: m.id, channel_id: channel.id, pinned_by: userId, pinned_at: new Date().toISOString() }, ...prev])
+        await backend.pinMessage(m.id, channel.id)
+        toast(t('Mensagem fixada'))
+      }
+    } catch (err) {
+      toast((err as Error).message)
+      void backend.listPins(channel.id).then(setPins).catch(() => undefined)
+    }
+  }
+
+  /** rola até uma mensagem, carregando as antigas se for preciso */
+  const jumpTo = async (id: string) => {
+    for (let i = 0; i < 40; i++) {
+      const el = listRef.current?.querySelector<HTMLElement>(`[data-mid="${id}"]`)
+      if (el) {
+        stickToBottom.current = false
+        el.scrollIntoView({ block: 'center' })
+        setFlashId(id)
+        window.setTimeout(() => setFlashId(null), 2200)
+        return
+      }
+      const cur = messagesRef.current
+      if (!cur.length) break
+      const older = await backend.listMessages(channel.id, cur[0].created_at)
+      if (!older.length) break
+      stickToBottom.current = false
+      setMessages((prev) => [...older.filter((o) => !prev.some((p) => p.id === o.id)), ...prev])
+      setHasMore(older.length >= 50)
+      void backend.listReactions(channel.id, older.map((m) => m.id)).then((list) => setReactions((prev) => {
+        const next = { ...prev }
+        for (const r of list) next[r.message_id] = [...(next[r.message_id] ?? []), r]
+        return next
+      })).catch(() => undefined)
+      await new Promise((r) => window.setTimeout(r, 80))
+    }
+    toast(t('Não achei essa mensagem.'))
+  }
+
   // arrastar arquivos para o chat
   const hasFiles = (e: DragEvent) => [...e.dataTransfer.types].includes('Files')
   const dragHandlers = {
@@ -350,7 +444,8 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   const myLast = dm ? [...messages].reverse().find((m) => m.author_id === userId) : undefined
   let seenLabel: string | null = null
   if (dm && myLast && me?.read_receipts !== false) {
-    const others = otherIds(dm, userId)
+    // só conta quem não desligou comigo e para quem eu não desliguei
+    const others = otherIds(dm, userId).filter((id) => rc.active(id))
     const readers = others.filter((id) => (dm.reads[id] ?? '') >= myLast.created_at)
     if (readers.length) {
       seenLabel = !dm.is_group ? t('Visto') : readers.length === others.length ? t('Visto por todos') : t('Visto por {n}', { n: readers.length })
@@ -364,6 +459,14 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     if (video && !voice.getSnapshot().camera && voice.getSnapshot().channelId === dm.id) await voice.toggleCamera()
   }
 
+  const peerId = dm && !dm.is_group ? otherIds(dm, userId)[0] : undefined
+  const receiptOffForPeer = !!peerId && rc.off.mine.includes(peerId)
+  const pinsBtn = (
+    <button className={`icon-btn ${pins.length ? 'on' : ''}`} aria-label={t('Mensagens fixadas')} data-tip={t('Mensagens fixadas')} onClick={() => setPinsOpen(true)}>
+      <PinIcon size={20} />
+      {pins.length > 0 && <span className="pin-count">{pins.length}</span>}
+    </button>
+  )
   const header = dm ? (
     <ChatHeader
       icon={<DmAvatar dm={dm} profiles={profiles} me={userId} size={24} />}
@@ -374,6 +477,15 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
       membersOpen={membersOpen}
       onToggleMembers={onToggleMembers}
       actions={<>
+        {peerId && (
+          <button className="icon-btn" aria-pressed={receiptOffForPeer}
+            aria-label={receiptOffForPeer ? t('Ligar a confirmação de leitura com {nome}', { nome: title }) : t('Desligar a confirmação de leitura com {nome}', { nome: title })}
+            data-tip={receiptOffForPeer ? t('Confirmação de leitura desligada com {nome}', { nome: title }) : t('Confirmação de leitura ligada com {nome}', { nome: title })}
+            onClick={() => void rc.set(peerId, !receiptOffForPeer).then(() => toast(receiptOffForPeer ? t('Confirmação de leitura ligada com {nome}', { nome: title }) : t('Confirmação de leitura desligada com {nome}', { nome: title }))).catch((err: Error) => toast(err.message))}>
+            {receiptOffForPeer ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        )}
+        {pinsBtn}
         <button className="icon-btn" aria-label={t('Começar chamada de voz')} data-tip={t('Começar chamada de voz')}
           disabled={call.channelId === dm.id} onClick={() => void startCall(false)}><Phone size={20} /></button>
         <button className="icon-btn" aria-label={t('Começar chamada de vídeo')} data-tip={t('Começar chamada de vídeo')}
@@ -384,7 +496,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     />
   ) : (
     <ChatHeader icon={<Hash size={22} />} title={channel.name} topic={channel.topic} showMembersToggle
-      membersOpen={membersOpen} onToggleMembers={onToggleMembers} />
+      membersOpen={membersOpen} onToggleMembers={onToggleMembers} actions={pinsBtn} />
   )
 
   const welcome = dm ? (
@@ -425,7 +537,9 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
           return (
             <Fragment key={m.id}>
               {newDay && <div className="day-sep"><span>{formatLongDate(m.created_at)}</span></div>}
-              <article tabIndex={-1} className={`msg ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''}`}
+              <article tabIndex={-1} data-mid={m.id}
+                className={`msg ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''} ${flashId === m.id ? 'flash' : ''}`}
+                {...swipeHandlers(() => setReplyTo(m), editingId !== m.id)}
                 onContextMenu={(e) => {
                   if (editingId === m.id) return // editando: deixa o menu de texto do navegador
                   const sel = window.getSelection()?.toString().trim()
@@ -433,11 +547,14 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                   userMenu(e, author, [
                     { label: t('Responder'), icon: <CornerUpLeft size={16} />, onClick: () => setReplyTo(m) },
                     { label: t('Adicionar reação'), icon: <SmilePlus size={16} />, onClick: () => setPicker({ anchor: new DOMRect(e.clientX, e.clientY, 0, 0), messageId: m.id }) },
+                    ...(!m.attachments.some((a) => a.once) ? [{ label: t('Encaminhar'), icon: <Forward size={16} />, onClick: () => setForwardMsg(m) }] : []),
+                    ...(canPin ? [{ label: pinned.has(m.id) ? t('Desafixar') : t('Fixar mensagem'), icon: pinned.has(m.id) ? <PinOff size={16} /> : <PinIcon size={16} />, onClick: () => void togglePin(m) }] : []),
                     ...(text ? [{ label: sel ? t('Copiar seleção') : t('Copiar texto'), icon: <Copy size={16} />, onClick: () => copyText(text, toast) }] : []),
                     ...(mine && !m.attachments.some((a) => a.voice) ? [{ label: t('Editar'), icon: <Pencil size={16} />, onClick: () => setEditingId(m.id) }] : []),
                     ...(mine ? [{ label: t('Apagar'), icon: <Trash2 size={16} />, danger: true, onClick: () => void remove(m) }] : []),
                   ])
                 }}>
+                <span className="swipe-hint" aria-hidden><CornerUpLeft size={20} /></span>
                 {m.reply_to && (
                   <div className="msg-reply-ref">
                     <span className="reply-spine" />
@@ -471,6 +588,12 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                       <time>{formatTimestamp(m.created_at)}</time>
                     </div>
                   )}
+                  {(m.forwarded || pinned.has(m.id)) && (
+                    <div className="msg-tags">
+                      {m.forwarded && <span className="msg-tag"><Forward size={12} /> {t('Encaminhada')}</span>}
+                      {pinned.has(m.id) && <span className="msg-tag"><PinIcon size={12} /> {t('Fixada')}</span>}
+                    </div>
+                  )}
                   {editingId === m.id ? (
                     <EditBox initial={m.content} onCancel={() => setEditingId(null)} onSave={(c) => void saveEdit(m, c)} />
                   ) : (
@@ -481,7 +604,11 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                       </div>
                     )
                   )}
-                  <Attachments list={m.attachments ?? []} />
+                  <Attachments list={m.attachments ?? []}
+                    once={m.attachments?.some((a) => a.once) ? {
+                      messageId: m.id, mine, views: onceViews[m.id] ?? [],
+                      onOpened: () => setOnceViews((prev) => ({ ...prev, [m.id]: [...new Set([...(prev[m.id] ?? []), userId])] })),
+                    } : undefined} />
                   <ReactionRow list={reactions[m.id] ?? []} me={userId} profiles={profiles}
                     onToggle={(e) => void toggleReaction(m, e)}
                     onAdd={(anchor) => setPicker({ anchor, messageId: m.id })} />
@@ -503,6 +630,17 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                     <button className="icon-btn tiny" aria-label={t('Responder')} data-tip={t('Responder')} onClick={() => setReplyTo(m)}>
                       <CornerUpLeft size={18} />
                     </button>
+                    {!m.attachments.some((a) => a.once) && (
+                      <button className="icon-btn tiny" aria-label={t('Encaminhar')} data-tip={t('Encaminhar')} onClick={() => setForwardMsg(m)}>
+                        <Forward size={18} />
+                      </button>
+                    )}
+                    {canPin && (
+                      <button className="icon-btn tiny" aria-label={pinned.has(m.id) ? t('Desafixar') : t('Fixar mensagem')}
+                        data-tip={pinned.has(m.id) ? t('Desafixar') : t('Fixar mensagem')} onClick={() => void togglePin(m)}>
+                        {pinned.has(m.id) ? <PinOff size={18} /> : <PinIcon size={18} />}
+                      </button>
+                    )}
                     {mine && (
                       <>
                         {!m.attachments.some((a) => a.voice) && (
@@ -522,7 +660,13 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
           )
         })}
       </div>
+      <div className="typing-line" aria-live="polite">
+        {typingIds.length > 0 && <TypingText ids={typingIds} />}
+      </div>
       <Composer
+        canOnce={isDm}
+        onTyping={ping}
+        onStopTyping={stop}
         placeholder={placeholder}
         mentionIds={dm ? dm.member_ids : memberIds}
         replyTo={replyTo ? { name: displayName(profiles[replyTo.author_id]) } : null}
@@ -554,11 +698,27 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
             if (m && !(reactions[m.id] ?? []).some((r) => r.user_id === userId && r.emoji === e)) void toggleReaction(m, e)
           }} />
       )}
+      {forwardMsg && <ForwardModal message={forwardMsg} onClose={() => setForwardMsg(null)} />}
+      {pinsOpen && (
+        <PinsModal pins={pins} loaded={messages} canPin={canPin} onJump={(id) => void jumpTo(id)}
+          onUnpin={(id) => { const m = messagesRef.current.find((x) => x.id === id); if (m) void togglePin(m); else { setPins((prev) => prev.filter((p) => p.message_id !== id)); void backend.unpinMessage(id) } }}
+          onClose={() => setPinsOpen(false)} />
+      )}
       {dm && dialog === 'add' && <AddToGroupModal dm={dm} onClose={() => setDialog(null)} />}
       {dm && dialog === 'rename' && <RenameGroupModal dm={dm} onClose={() => setDialog(null)} />}
       {dm && dialog === 'newGroup' && <NewDmModal preselect={otherIds(dm, userId)} onClose={() => setDialog(null)} />}
     </section>
   )
+}
+
+function TypingText({ ids }: { ids: string[] }) {
+  const { profiles, ensureProfiles } = useApp()
+  useEffect(() => ensureProfiles(ids), [ids, ensureProfiles])
+  const names = ids.map((id) => displayName(profiles[id]))
+  const text = names.length === 1 ? t('{nome} está digitando…', { nome: names[0] })
+    : names.length === 2 ? t('{a} e {b} estão digitando…', { a: names[0], b: names[1] })
+      : t('Várias pessoas estão digitando…')
+  return <span className="typing-text"><span className="typing-dots"><span /><span /><span /></span>{text}</span>
 }
 
 function quickReactions() {
@@ -677,7 +837,11 @@ function AutoTextarea({
 
 function Composer({
   placeholder, mentionIds, replyTo, onCancelReply, onSend, onSendVoice, onEditLast, pending, setPending, addFiles, sending,
+  canOnce, onTyping, onStopTyping,
 }: {
+  canOnce: boolean
+  onTyping: () => void
+  onStopTyping: () => void
   placeholder: string
   mentionIds: string[]
   replyTo: { name: string } | null
@@ -838,6 +1002,13 @@ function Composer({
                 {p.preview ? <img src={p.preview} alt="" /> : <span className="pending-icon">{p.file.name.split('.').pop()?.slice(0, 4).toUpperCase() || '?'}</span>}
                 <span className="pending-name truncate" title={p.file.name}>{p.file.name}</span>
                 <span className="muted small">{formatBytes(p.file.size)}</span>
+                {canOnce && ['image', 'video'].includes(kindOf(p.file.type)) && (
+                  <button type="button" className={`once-toggle ${p.once ? 'on' : ''}`} aria-pressed={!!p.once} disabled={!!sending}
+                    data-tip={t('A pessoa abre uma vez e o arquivo some')}
+                    onClick={() => setPending((prev) => prev.map((x) => (x.id === p.id ? { ...x, once: !x.once } : x)))}>
+                    <Flame size={14} /> {t('Visualização única')}
+                  </button>
+                )}
                 <button className="icon-btn tiny danger pending-remove" aria-label={t('Tirar {nome}', { nome: p.file.name })} disabled={!!sending}
                   onClick={() => setPending((prev) => prev.filter((x) => x.id !== p.id))}><Trash2 size={16} /></button>
               </div>
@@ -864,7 +1035,7 @@ function Composer({
               disabled={!!sending} onClick={() => fileRef.current?.click()}>
               <PlusCircle size={22} />
             </button>
-            <AutoTextarea value={text} onChange={setText} placeholder={placeholder} inputRef={ref} onCaret={readCaret} onPaste={onPaste}
+            <AutoTextarea value={text} onChange={(v) => { setText(v); if (v.trim()) onTyping(); else onStopTyping() }} placeholder={placeholder} inputRef={ref} onCaret={readCaret} onPaste={onPaste}
               onKeyDown={(e) => {
                 if (suggestions.length) {
                   if (e.key === 'ArrowDown') { e.preventDefault(); setPick((pick + 1) % suggestions.length); return }
