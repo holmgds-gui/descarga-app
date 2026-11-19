@@ -1119,3 +1119,8 @@ body:has(.resize-handle.dragging) { cursor: col-resize; user-select: none; -webk
 @media (prefers-reduced-motion: reduce) { .wm-pulse, .wm-wire-flow { animation: none; } }
 
 .map-title { width: min(1100px, calc(100% - 40px)); align-self: center; margin-bottom: 0; }
+
+/* subtítulo pequeno que identifica o que são as atualizações */
+.news-sub { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin: 4px 0 0; padding: 2px 8px 2px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text-2); font-size: .72em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.news-sub svg { color: var(--accent); }

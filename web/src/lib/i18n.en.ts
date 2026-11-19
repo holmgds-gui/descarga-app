@@ -193,6 +193,7 @@ export const EN: Record<string, string> = {
   'Aqui é a sua página inicial do Descarga.': 'This is your Descarga home page.',
   'Avisos': 'Announcements',
   'Novidades': 'News',
+  'Atualizações': 'Updates',
   'Mapa ao vivo': 'Live map',
   'Mapa-múndi com quem está online': 'World map showing who is online',
   'em call': 'in a call',

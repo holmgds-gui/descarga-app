@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState, type FormEvent } from 'react'
-import { Bell, Check, Globe, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
+import { Asterisk, Bell, Check, Globe, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
 import type { Friendship, Profile } from '../lib/types'
@@ -150,6 +150,7 @@ export function HomePage() {
         )}
         <div className="news-feed" aria-label={t('Avisos')}>
           <h3 className="news-title"><Bell size={18} /> {t('Avisos')}</h3>
+          <h4 className="news-sub"><Asterisk size={14} /> {t('Atualizações')}</h4>
           {NOVIDADES.map((n) => {
             const d = new Date(`${n.date}T12:00:00`)
             const long = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
