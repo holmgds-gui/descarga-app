@@ -385,7 +385,10 @@ function MembersTab({ server, access }: { server: Server; access: ServerAccess }
 }
 
 function RolesTab({ server, access }: { server: Server; access: ServerAccess }) {
-  const { toast } = useApp()
+  const { toast, ensureProfiles } = useApp()
+  useEffect(() => {
+    ensureProfiles(Object.keys(access.members))
+  }, [access.members, ensureProfiles])
   const [busy, setBusy] = useState(false)
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -400,7 +403,10 @@ function RolesTab({ server, access }: { server: Server; access: ServerAccess }) 
   return (
     <div className="srv-roles">
       <p className="muted small">{t('Cargos dão permissões e cor ao nome. Para dar ou tirar cargos, clique com o botão direito na pessoa e escolha Cargos. Uma pessoa pode ter quantos cargos quiser; o nome fica com a cor do cargo que tem mais permissões.')}</p>
-      {access.roleDefs.map((r) => <RoleCard key={r.id} role={r} busy={busy} run={run} access={access} />)}
+      {access.roleDefs.map((r) => (
+        <RoleCard key={r.id} role={r} busy={busy} run={run} access={access}
+          holders={Object.keys(access.members).filter((id) => access.members[id]?.includes(r.id))} />
+      ))}
       <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void run(async () => {
         await backend.createRole(server.id, { name: t('Novo cargo'), color: '#7B3FE4', permissions: [] })
         toast(t('Cargo criado'))
@@ -409,8 +415,8 @@ function RolesTab({ server, access }: { server: Server; access: ServerAccess }) 
   )
 }
 
-function RoleCard({ role, busy, run, access }: { role: RoleDef; busy: boolean; run: (fn: () => Promise<void>) => Promise<void>; access: ServerAccess }) {
-  const { toast, ask } = useApp()
+function RoleCard({ role, busy, run, access, holders }: { role: RoleDef; busy: boolean; run: (fn: () => Promise<void>) => Promise<void>; access: ServerAccess; holders: string[] }) {
+  const { toast, ask, profiles } = useApp()
   const [name, setName] = useState(role.name)
   const [color, setColor] = useState(role.color)
   const [perms, setPerms] = useState<Permission[]>(role.permissions)
@@ -435,6 +441,21 @@ function RoleCard({ role, busy, run, access }: { role: RoleDef; busy: boolean; r
           </label>
         ))}
       </div>
+      <details className="role-holders">
+        <summary>{t('Quem tem este cargo')} — {holders.length}</summary>
+        {holders.length === 0 ? (
+          <p className="muted small">{t('Ninguém tem este cargo ainda. Clique com o botão direito em uma pessoa e escolha Cargos.')}</p>
+        ) : (
+          <ul>
+            {holders.map((id) => (
+              <li key={id}>
+                <Avatar profile={profiles[id]} size={22} />
+                <span className="truncate" style={{ color: role.color }}>{displayName(profiles[id])}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
       {changed && (
         <div className="row-end">
           <button className="btn btn-ghost btn-sm" onClick={() => { setName(role.name); setColor(role.color); setPerms(role.permissions) }}>{t('Desfazer')}</button>

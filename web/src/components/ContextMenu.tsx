@@ -161,7 +161,8 @@ export function useUserMenu() {
     }
 
     // cargos: dono ou quem tem "gerenciar cargos"; só em quem é do servidor e não é o dono
-    const showRoles = !!server && !mine && p.id !== server.owner_id && access.can('manage_roles') && p.id in access.members
+    // (o dono pode se dar cargos, por exemplo para ter a cor do nome; ninguém mais mexe nos próprios cargos nem nos do dono)
+    const showRoles = !!server && access.can('manage_roles') && p.id in access.members && (mine ? access.isOwner : p.id !== server.owner_id)
     const roleItems: MenuItem[] = access.roleDefs.length
       ? access.roleDefs.map((r) => {
           const has = !!access.members[p.id]?.includes(r.id)

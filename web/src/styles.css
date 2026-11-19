@@ -1038,3 +1038,8 @@ button.avatar { cursor: pointer; }
 .rail-btn.rail-muted:hover { opacity: .85; }
 .msg-ignored { margin: 2px 16px; padding: 6px 10px; border-radius: 8px; font-size: .85em; color: var(--text-3); background: color-mix(in srgb, var(--bg-elev) 60%, transparent); display: flex; align-items: center; gap: 8px; }
 .msg-ignored button { color: var(--accent-text, var(--accent)); font-weight: 700; }
+.role-holders { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.role-holders summary { cursor: pointer; font-weight: 700; font-size: .85em; color: var(--text-2); }
+.role-holders ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.role-holders li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px; background: var(--bg-elev); font-weight: 700; font-size: .85em; max-width: 100%; }
+.role-holders p { margin: 8px 0 0; }

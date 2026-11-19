@@ -471,7 +471,8 @@ export function createDemoBackend(): Backend {
       const db = load()
       const role = db.roles.find((r) => r.id === roleId && r.server_id === serverId)
       const denied = new Error(t('Você não pode mexer nos cargos dessa pessoa.'))
-      if (!role || !has(db, serverId, me(), 'manage_roles') || userId === me() || isOwner(db, serverId, userId)) throw denied
+      const selfOk = userId === me() && isOwner(db, serverId, me()) // o dono pode se dar cargos (só enfeite)
+      if (!role || !has(db, serverId, me(), 'manage_roles') || (!selfOk && (userId === me() || isOwner(db, serverId, userId)))) throw denied
       if (!isOwner(db, serverId, me())) {
         const mine = permsOf(db, serverId, me())
         if (!role.permissions.every((p) => mine.includes(p)) || !permsOf(db, serverId, userId).every((p) => mine.includes(p))) throw denied

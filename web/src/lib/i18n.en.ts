@@ -771,4 +771,6 @@ export const EN: Record<string, string> = {
   'Copiar ID do servidor': "Copy server ID",
   'Mensagem de uma pessoa que você ignorou': "Message from someone you ignored",
   'Mostrar': "Show",
+  "Quem tem este cargo": "Who has this role",
+  "Ninguém tem este cargo ainda. Clique com o botão direito em uma pessoa e escolha Cargos.": "Nobody has this role yet. Right-click a person and choose Roles.",
 }
