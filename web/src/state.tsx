@@ -41,6 +41,11 @@ interface AppState {
   /** conversa direta aberta no Início (null = página de amigos) */
   activeDmId: string | null
   setActiveDmId: (id: string | null) => void
+  /** página aberta no Início quando nenhuma conversa está aberta */
+  homeSection: 'inicio' | 'amigos'
+  setHomeSection: (s: 'inicio' | 'amigos') => void
+  /** vai para a página inicial (não para a última conversa) */
+  goHome: () => void
   /** abre (ou cria) a conversa com essas pessoas e mostra na tela */
   openDmWith: (userIds: string[], groupTitle?: string | null) => Promise<void>
   /** nota e apelido que EU dei a cada pessoa (só eu vejo) */
@@ -154,6 +159,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [dms, setDms] = useState<DmChannel[]>([])
   const [dmsLoaded, setDmsLoaded] = useState(false)
   const [activeDmId, setActiveDmIdRaw] = useState<string | null>(() => local.get(DM_KEY))
+  const [homeSection, setHomeSection] = useState<'inicio' | 'amigos'>('inicio')
   const [seen, setSeen] = useState<Record<string, string>>(() => readJson(SEEN_KEY, {}))
   const [hiddenDms, setHidden] = useState<Record<string, string>>(() => readJson(HIDDEN_KEY, {}))
   const [emojis, setEmojis] = useState<ServerEmoji[]>([])
@@ -299,6 +305,11 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
         return next
       })
   }, [])
+
+  const goHome = useCallback(() => {
+    setHomeSection('inicio')
+    setActiveDmId(null)
+  }, [setActiveDmId])
 
   // a conversa aberta some (saiu do grupo): volta para os amigos
   useEffect(() => {
@@ -489,6 +500,9 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       refreshDms,
       activeDmId,
       setActiveDmId,
+      homeSection,
+      setHomeSection,
+      goHome,
       openDmWith,
       notes,
       setNote,
@@ -524,7 +538,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     }),
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
       activeChannelId, setActiveChannelId, memberIds, friendships, refreshFriends, dms, refreshDms, activeDmId,
-      setActiveDmId, openDmWith, notes, setNote, serverPrefs, setServerPrefs, ignored, toggleIgnored, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
+      setActiveDmId, homeSection, goHome, openDmWith, notes, setNote, serverPrefs, setServerPrefs, ignored, toggleIgnored, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
       requestedTab, openAdminPanel, adminPending, mobilePane, toast, toastMsg, question],
   )
 

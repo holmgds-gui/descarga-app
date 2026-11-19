@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Check, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
+import { Bell, Check, House, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
 import type { Friendship, Profile } from '../lib/types'
@@ -13,7 +13,7 @@ import { locale, t } from '../lib/i18n'
 
 /** Barra lateral do Início: amigos e lista de conversas diretas. */
 export function HomeSidebar() {
-  const { dms, activeDmId, setActiveDmId, profiles, userId, unreadDms, friendships, hideDm, hiddenDms, ask, toast, refreshDms } = useApp()
+  const { homeSection, setHomeSection, dms, activeDmId, setActiveDmId, profiles, userId, unreadDms, friendships, hideDm, hiddenDms, ask, toast, refreshDms } = useApp()
   const [creating, setCreating] = useState(false)
   const call = useVoice()
   const incoming = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
@@ -49,7 +49,13 @@ export function HomeSidebar() {
         <button className="find-dm" onClick={() => setCreating(true)}>{t('Encontre ou comece uma conversa')}</button>
       </div>
       <div className="channel-list">
-        <button className={`channel-item home-item ${activeDmId === null ? 'active' : ''}`} onClick={() => setActiveDmId(null)}>
+        <button className={`channel-item home-item ${activeDmId === null && homeSection === 'inicio' ? 'active' : ''}`}
+          onClick={() => { setHomeSection('inicio'); setActiveDmId(null) }}>
+          <House size={22} />
+          <span className="truncate">{t('Início')}</span>
+        </button>
+        <button className={`channel-item home-item ${activeDmId === null && homeSection === 'amigos' ? 'active' : ''}`}
+          onClick={() => { setHomeSection('amigos'); setActiveDmId(null) }}>
           <Users size={22} />
           <span className="truncate">{t('Amigos')}</span>
           {incoming > 0 && <span className="badge" aria-label={t('{n} pedidos de amizade', { n: incoming })}>{incoming}</span>}
@@ -87,6 +93,34 @@ export function HomeSidebar() {
       </div>
       {creating && <NewDmModal onClose={() => setCreating(false)} />}
     </>
+  )
+}
+
+/** Página inicial: espaço reservado para avisos e novidades do Descarga. */
+export function HomePage() {
+  const { me, friendships, userId, setHomeSection } = useApp()
+  const incoming = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
+  return (
+    <section className="chat home-page">
+      <ChatHeader icon={<House size={22} />} title={t('Início')} />
+      <div className="home-body">
+        <div className="home-hero">
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={132} height={132} />
+          <h2>{me ? t('Bem-vindo(a), {nome}!', { nome: displayName(me) }) : t('Bem-vindo(a)!')}</h2>
+          <p className="muted">{t('Aqui é a sua página inicial do Descarga.')}</p>
+        </div>
+        <div className="home-card">
+          <h3><Bell size={18} /> {t('Avisos')}</h3>
+          <p className="muted">{t('Nenhum aviso por enquanto. As novidades do Descarga vão aparecer aqui.')}</p>
+        </div>
+        {incoming > 0 && (
+          <button className="home-card home-card-link" onClick={() => setHomeSection('amigos')}>
+            <h3><Users size={18} /> {t('Pedidos de amizade')}</h3>
+            <p className="muted">{t('{n} pedidos esperando você', { n: incoming })}</p>
+          </button>
+        )}
+      </div>
+    </section>
   )
 }
 

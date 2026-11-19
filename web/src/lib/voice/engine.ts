@@ -668,8 +668,9 @@ class VoiceEngine {
     for (const peer of this.peers.values()) {
       const member = this.snap.members.find((m) => m.sessionId === peer.sessionId)
       const v = Math.max(0, Math.min(1, this.snap.settings.volumes[member?.userId ?? ''] ?? 1))
+      const sv = Math.max(0, Math.min(1, this.snap.settings.screenVolumes?.[member?.userId ?? ''] ?? 1))
       for (const a of peer.audio.values()) {
-        a.el.volume = v
+        a.el.volume = a.el.dataset.descarga === 'screen' ? sv : v
         // a tela que parei de assistir também fica sem som
         a.el.muted = this.snap.deafened || (a.el.dataset.descarga === 'screen' && this.snap.stopped.includes(peer.sessionId))
       }
@@ -894,6 +895,10 @@ class VoiceEngine {
 
   setUserVolume(userId: string, volume: number) {
     this.updateSettings({ volumes: { ...this.snap.settings.volumes, [userId]: volume } })
+  }
+
+  setScreenVolume(userId: string, volume: number) {
+    this.updateSettings({ screenVolumes: { ...this.snap.settings.screenVolumes, [userId]: volume } })
   }
 
   clearError() {

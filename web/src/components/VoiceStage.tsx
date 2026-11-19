@@ -126,6 +126,13 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
             ...(t.stream && !notWatching
               ? [{ label: tr('Tela cheia'), icon: <Maximize2 size={16} />, onClick: () => void tile.requestFullscreen?.().catch(() => undefined) }] : []),
             ...(t.mine && t.kind === 'screen' ? [{ label: tr('Parar de compartilhar'), icon: <MonitorOff size={16} />, danger: true, onClick: () => voice.stopScreen() }] : []),
+            ...(!t.mine
+              ? [{ label: tr('Volume da voz'), icon: <Volume2 size={16} />, separator: true,
+                slider: { value: vol, onChange: (n: number) => voice.setUserVolume(t.member.userId, n / 100) } } as MenuItem,
+                ...(t.member.screen
+                  ? [{ label: tr('Volume da tela'), icon: <Monitor size={16} />,
+                    slider: { value: Math.round(Math.min(1, call.settings.screenVolumes?.[t.member.userId] ?? 1) * 100), onChange: (n: number) => voice.setScreenVolume(t.member.userId, n / 100) } } as MenuItem]
+                  : [])] : []),
             ...(!t.mine && t.kind === 'person'
               ? [{ label: vol === 0 ? tr('Voltar o volume dessa pessoa') : tr('Silenciar essa pessoa para mim'), icon: <VolumeX size={16} />,
                 onClick: () => voice.setUserVolume(t.member.userId, vol === 0 ? 1 : 0) }] : []),

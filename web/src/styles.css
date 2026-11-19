@@ -189,7 +189,7 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
 .app { display: flex; height: 100%; height: 100dvh; overflow: hidden; }
 .nav-pane { display: flex; flex-shrink: 0; }
 .main-pane { flex: 1; min-width: 0; display: flex; }
-.members-pane { width: var(--members-w); flex-shrink: 0; background: var(--bg-side); }
+.members-pane { width: var(--members-w); flex-shrink: 0; background: var(--bg-side); position: relative; }
 
 /* trilho de servidores */
 .server-rail {
@@ -217,7 +217,7 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
 .rail-sep { width: 32px; height: 2px; border-radius: 2px; background: var(--bg-active); flex-shrink: 0; }
 
 /* barra de canais */
-.channel-sidebar { width: var(--side-w); background: var(--bg-side); display: flex; flex-direction: column; min-height: 0; }
+.channel-sidebar { width: var(--side-w); background: var(--bg-side); display: flex; flex-direction: column; min-height: 0; position: relative; flex-shrink: 0; }
 .sidebar-header-wrap { position: relative; }
 .sidebar-header {
   height: var(--header-h); width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -1043,3 +1043,39 @@ button.avatar { cursor: pointer; }
 .role-holders ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .role-holders li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 999px; background: var(--bg-elev); font-weight: 700; font-size: .85em; max-width: 100%; }
 .role-holders p { margin: 8px 0 0; }
+
+.ctx-slider { padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; cursor: default; }
+.ctx-slider-top { display: flex; align-items: center; gap: 8px; font-size: .88em; font-weight: 600; }
+.ctx-slider-val { font-variant-numeric: tabular-nums; color: var(--text-2); font-weight: 700; }
+.ctx-slider input { width: 100%; accent-color: var(--accent); }
+
+/* ---------- arrastar para mudar a largura das abas ---------- */
+.resize-handle { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 6; cursor: col-resize; touch-action: none; outline: none; }
+.resize-handle.right { right: -3px; }
+.resize-handle.left { left: -3px; }
+.resize-handle::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: transparent; transition: background .12s; }
+.resize-handle:hover::after, .resize-handle:focus-visible::after, .resize-handle.dragging::after { background: var(--accent); }
+body:has(.resize-handle.dragging) { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+@media (max-width: 999px) { .resize-handle.left { display: none; } }
+@media (max-width: 767px) { .resize-handle { display: none; } }
+/* barra de rolagem das listas laterais: um pouco mais larga e fácil de pegar */
+.channel-list, .member-list { scrollbar-width: thin; scrollbar-gutter: stable; }
+.channel-list::-webkit-scrollbar, .member-list::-webkit-scrollbar { width: 10px; }
+.channel-list::-webkit-scrollbar-thumb:hover, .member-list::-webkit-scrollbar-thumb:hover { background: var(--text-3, #6b6f7b); }
+
+/* ---------- página inicial ---------- */
+.home-body { flex: 1; overflow-y: auto; padding: 24px 20px 40px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.home-hero { display: grid; justify-items: center; text-align: center; gap: 6px; padding: 20px 0 6px; }
+.home-hero h2 { font-size: 1.5em; font-weight: 800; }
+.home-card { width: min(640px, 100%); background: var(--bg-elev); border-radius: 12px; padding: 16px 18px; text-align: left; color: var(--text); }
+.home-card h3 { display: flex; align-items: center; gap: 8px; font-size: 1em; font-weight: 800; margin-bottom: 6px; }
+.home-card-link { cursor: pointer; transition: background .12s; }
+.home-card-link:hover { background: var(--bg-hover); }
+
+/* nome do servidor ao parar o mouse no ícone */
+.rail-tip {
+  position: fixed; transform: translateY(-50%); z-index: 3500; pointer-events: none; white-space: nowrap; max-width: 280px;
+  overflow: hidden; text-overflow: ellipsis; background: var(--bg-float); color: var(--text); padding: 8px 12px; border-radius: 8px;
+  font-size: 15px; font-weight: 700; box-shadow: var(--shadow); animation: tipin .12s ease-out;
+}
+@keyframes tipin { from { opacity: 0; } }

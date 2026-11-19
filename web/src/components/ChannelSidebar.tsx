@@ -14,6 +14,7 @@ import { copyText, showContextMenu, useUserMenu } from './ContextMenu'
 import { CreateChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
 import { ServerSettingsModal, useServerRole } from './ServerSettings'
 import { HomeSidebar } from './Home'
+import { ResizeHandle } from './ResizeHandle'
 import { t } from '../lib/i18n'
 
 export function ChannelSidebar() {
@@ -183,6 +184,7 @@ export function ChannelSidebar() {
       )}
       <VoiceConnectedPanel />
       <UserPanel />
+      <ResizeHandle panel="side" />
     </aside>
   )
 }

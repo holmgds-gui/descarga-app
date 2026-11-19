@@ -1,12 +1,13 @@
 import { ContextMenuHost, UserNoteHost } from './ContextMenu'
 import { useEffect, useState } from 'react'
-import { FriendsPage } from './Home'
+import { FriendsPage, HomePage } from './Home'
 import { voice } from '../lib/voice/engine'
 import { useVoice } from '../lib/voice/hooks'
 import { useApp } from '../state'
 import { ChannelSidebar } from './ChannelSidebar'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
+import { ResizeHandle } from './ResizeHandle'
 import { Modal } from './Modal'
 import { ProfilePopover } from './ProfileCard'
 import { ServerRail } from './ServerRail'
@@ -16,7 +17,7 @@ import { local } from '../lib/storage'
 import { t } from '../lib/i18n'
 
 export function Shell() {
-  const { channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId } = useApp()
+  const { homeSection, channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId } = useApp()
   const { error: voiceError } = useVoice()
   useEffect(() => {
     if (voiceError) {
@@ -50,7 +51,7 @@ export function Shell() {
           dm ? (
             <ChatView key={dm.id} channel={dm} dm={dm} membersOpen={membersOpen} onToggleMembers={toggleMembers} />
           ) : (
-            <FriendsPage />
+            homeSection === 'amigos' ? <FriendsPage /> : <HomePage />
           )
         ) : !channel ? (
           <EmptyServer />
@@ -62,11 +63,13 @@ export function Shell() {
       </div>
       {activeServerId && channel?.type === 'text' && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
+          <ResizeHandle panel="members" />
           <MemberList />
         </div>
       )}
       {dm?.is_group && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
+          <ResizeHandle panel="members" />
           <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
         </div>
       )}

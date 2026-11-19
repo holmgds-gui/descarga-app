@@ -12,6 +12,8 @@ export interface VoiceSettings {
   screenQuality: ScreenQuality
   soundVolume: number
   volumes: Record<string, number>
+  /** volume do som da tela compartilhada de cada pessoa (separado da voz) */
+  screenVolumes: Record<string, number>
 }
 
 const KEY = 'descarga-voz'
@@ -24,6 +26,7 @@ export const DEFAULT_VOICE: VoiceSettings = {
   screenQuality: '1080p30',
   soundVolume: 0.6,
   volumes: {},
+  screenVolumes: {},
 }
 
 export const SCREEN_PRESETS: Record<ScreenQuality, { label: string; height: number; fps: number; bitrate: number }> = {

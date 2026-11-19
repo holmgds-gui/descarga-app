@@ -23,6 +23,23 @@ export interface MenuItem {
   checked?: boolean
   /** bolinha colorida antes do texto */
   color?: string
+  /** barra deslizante (0–100) no lugar de um botão; o menu continua aberto enquanto mexe */
+  slider?: { value: number; onChange: (v: number) => void }
+}
+
+function MenuSlider({ item }: { item: MenuItem }) {
+  const [v, setV] = useState(item.slider!.value)
+  return (
+    <div className="ctx-slider" role="group" aria-label={item.label}>
+      <div className="ctx-slider-top">
+        {item.icon}
+        <span className="ctx-label">{item.label}</span>
+        <span className="ctx-slider-val">{v}%</span>
+      </div>
+      <input type="range" min={0} max={100} step={5} value={v} aria-label={item.label}
+        onChange={(e) => { const n = Number(e.target.value); setV(n); item.slider!.onChange(n) }} />
+    </div>
+  )
 }
 
 interface Open { x: number; y: number; items: MenuItem[] }
@@ -286,6 +303,7 @@ export function ContextMenuHost() {
       {open.items.map((it, i) => (
         <div key={i} role="none" className="ctx-row" onMouseEnter={() => setSub(it.children ? i : null)}>
           {it.separator && i > 0 && <div className="dropdown-sep" />}
+          {it.slider ? <MenuSlider item={it} /> : (
           <button role="menuitem" aria-haspopup={it.children ? 'menu' : undefined} aria-expanded={it.children ? sub === i : undefined}
             className={`dropdown-item ${it.danger ? 'danger' : ''}`} disabled={it.disabled}
             onClick={() => { if (it.children) { setSub(i); return } closeContextMenu(); it.onClick?.() }}>
@@ -294,6 +312,7 @@ export function ContextMenuHost() {
             {it.checked && <Check size={15} className="ctx-check" />}
             {it.children && <ChevronRight size={15} className="ctx-chev" />}
           </button>
+          )}
           {it.children && sub === i && (
             <div className={`dropdown ctx-sub ${pos?.flip ? 'flip' : ''}`} role="menu">
               {it.children.map((c, j) => (

@@ -1,4 +1,4 @@
-import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { Bell, BellOff, Cog, Fingerprint, LogOut, Plus, UserPlus } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Server, ServerPrefs } from '../lib/types'
@@ -8,7 +8,7 @@ import { t } from '../lib/i18n'
 import { copyText, showContextMenu } from './ContextMenu'
 
 export function ServerRail() {
-  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId, toast, ask, refreshServers, serverPrefs, setServerPrefs } = useApp()
+  const { servers, activeServerId, setActiveServerId, goHome, unreadDms, friendships, userId, toast, ask, refreshServers, serverPrefs, setServerPrefs } = useApp()
   const homeBadge = unreadDms.size + friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const [creating, setCreating] = useState(false)
   const [inviting, setInviting] = useState<Server | null>(null)
@@ -85,7 +85,7 @@ export function ServerRail() {
 
   return (
     <nav className="server-rail" aria-label={t('Servidores')}>
-      <RailItem label={t('Início')} active={activeServerId === null} onClick={() => setActiveServerId(null)} badge={homeBadge}>
+      <RailItem label={t('Início')} active={activeServerId === null} onClick={goHome} badge={homeBadge}>
         <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" className="rail-home" />
       </RailItem>
       <div className="rail-sep" />
@@ -137,19 +137,39 @@ function RailItem({
   muted?: boolean
   onContextMenu?: (e: React.MouseEvent) => void
 }) {
+  // o nome aparece 0,6 s depois de parar o mouse em cima (só onde existe mouse)
+  const [tip, setTip] = useState<{ top: number; left: number } | null>(null)
+  const timer = useRef<number>()
+  const showSoon = (el: HTMLElement) => {
+    window.clearTimeout(timer.current)
+    if (!window.matchMedia('(hover: hover)').matches) return
+    timer.current = window.setTimeout(() => {
+      const r = el.getBoundingClientRect()
+      setTip({ top: r.top + r.height / 2, left: r.right + 14 })
+    }, 600)
+  }
+  const hideTip = () => {
+    window.clearTimeout(timer.current)
+    setTip(null)
+  }
+  useEffect(() => () => window.clearTimeout(timer.current), [])
   return (
     <div className={`rail-item ${active ? 'active' : ''}`}>
       <span className="rail-pill" />
       <button
+        onMouseEnter={(e) => showSoon(e.currentTarget)}
+        onMouseLeave={hideTip}
+        onMouseDown={hideTip}
+        onFocus={hideTip}
         className={`rail-btn ${variant === 'add' ? 'rail-add' : ''} ${muted ? 'rail-muted' : ''}`}
         onClick={onClick}
-        onContextMenu={onContextMenu}
+        onContextMenu={(e) => { hideTip(); onContextMenu?.(e) }}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
-        data-tip={label}
       >
         {children}
       </button>
+      {tip && <div className="rail-tip" role="tooltip" style={{ top: tip.top, left: tip.left }}>{label}</div>}
       {badge > 0 && <span className="rail-badge" aria-label={t('{n} novidades', { n: badge })}>{badge > 99 ? '99+' : badge}</span>}
     </div>
   )
