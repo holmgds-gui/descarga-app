@@ -212,8 +212,8 @@ code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
 .rail-add { color: var(--success); }
 .rail-add:hover { background: var(--success) !important; color: #fff !important; }
 .rail-btn:has(.rail-home), .rail-btn:has(.rail-home):hover { background: transparent; overflow: visible; }
-.rail-btn .rail-home { padding: 0; object-fit: contain; transform: scale(1.12); filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); transition: transform .15s; }
-.rail-btn:hover .rail-home, .rail-item.active .rail-home { transform: scale(1.22) rotate(-4deg); }
+.rail-btn .rail-home { padding: 0; object-fit: contain; transform: scale(.78); filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); transition: transform .15s; }
+.rail-btn:hover .rail-home, .rail-item.active .rail-home { transform: scale(.86) rotate(-4deg); }
 .rail-sep { width: 32px; height: 2px; border-radius: 2px; background: var(--bg-active); flex-shrink: 0; }
 
 /* barra de canais */
