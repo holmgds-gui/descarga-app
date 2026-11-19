@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   AdminUser,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
-  ServerEmoji, Ban, RoleDef, Attachment, OnceFile, Pin,
+  ServerEmoji, Ban, RoleDef, ServerPrefs, Attachment, OnceFile, Pin,
 } from './types'
 import { compressImage } from './image'
 import { getLang, t } from './i18n'
@@ -213,15 +213,41 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     async listMemberRoles(serverId) {
-      const rows = must(
-        await sb.from('server_members').select('user_id, role_id').eq('server_id', serverId),
-      ) as { user_id: string; role_id: string | null }[]
-      return Object.fromEntries(rows.map((r) => [r.user_id, r.role_id]))
+      const [mem, rel] = await Promise.all([
+        sb.from('server_members').select('user_id').eq('server_id', serverId),
+        sb.from('member_roles').select('user_id, role_id').eq('server_id', serverId),
+      ])
+      const out: Record<string, string[]> = {}
+      for (const m of must(mem) as { user_id: string }[]) out[m.user_id] = []
+      for (const r of must(rel) as { user_id: string; role_id: string }[]) (out[r.user_id] ??= []).push(r.role_id)
+      return out
     },
 
-    async setMemberRole(serverId, userId, roleId) {
-      const r = await sb.rpc('set_member_role', { s: serverId, target: userId, rid: roleId })
-      if (r.error) throw new Error(t('Só o dono do servidor pode escolher os cargos.'))
+    async setMemberRole(serverId, userId, roleId, on) {
+      const r = await sb.rpc('toggle_member_role', { s: serverId, target: userId, rid: roleId, on_: on })
+      if (r.error) throw new Error(t('Você não pode mexer nos cargos dessa pessoa.'))
+    },
+
+    async listServerPrefs() {
+      const rows = must(await sb.from('server_prefs').select('server_id, level, muted_until')) as { server_id: string; level: ServerPrefs['level']; muted_until: string | null }[]
+      return Object.fromEntries(rows.map((r) => [r.server_id, { level: r.level, muted_until: r.muted_until }]))
+    },
+    async setServerPrefs(serverId, p) {
+      const me = await uid()
+      must(await sb.from('server_prefs').upsert({ user_id: me, server_id: serverId, level: p.level, muted_until: p.muted_until }))
+    },
+
+    async listUserNotes() {
+      const rows = must(await sb.from('user_notes').select('target_id, note, nickname')) as { target_id: string; note: string; nickname: string }[]
+      return Object.fromEntries(rows.map((r) => [r.target_id, { note: r.note, nickname: r.nickname }]))
+    },
+    async setUserNote(targetId, n) {
+      const me = await uid()
+      if (!n.note.trim() && !n.nickname.trim()) {
+        must(await sb.from('user_notes').delete().eq('owner_id', me).eq('target_id', targetId))
+        return
+      }
+      must(await sb.from('user_notes').upsert({ owner_id: me, target_id: targetId, note: n.note.trim(), nickname: n.nickname.trim(), updated_at: new Date().toISOString() }))
     },
 
     async kickMember(serverId, userId) {
@@ -254,6 +280,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_members' }, () => cb())
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'servers' }, () => cb())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_roles' }, () => cb())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'member_roles' }, () => cb())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'server_bans' }, () => cb())
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'servers' }, () => cb())
         .subscribe()

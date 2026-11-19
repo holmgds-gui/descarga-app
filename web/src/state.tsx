@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
-import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji } from './lib/types'
+import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji, ServerPrefs, UserNote } from './lib/types'
+import { setNicknames } from './components/Avatar'
 import { local, session } from './lib/storage'
 import { t } from './lib/i18n'
 import { customTheme, themeById } from './lib/themes'
@@ -42,6 +43,15 @@ interface AppState {
   setActiveDmId: (id: string | null) => void
   /** abre (ou cria) a conversa com essas pessoas e mostra na tela */
   openDmWith: (userIds: string[], groupTitle?: string | null) => Promise<void>
+  /** nota e apelido que EU dei a cada pessoa (só eu vejo) */
+  notes: Record<string, UserNote>
+  setNote: (targetId: string, n: UserNote) => Promise<void>
+  /** silenciar / nível de aviso de cada servidor (só eu) */
+  serverPrefs: Record<string, ServerPrefs>
+  setServerPrefs: (serverId: string, p: ServerPrefs) => Promise<void>
+  /** pessoas que escolhi ignorar (as mensagens ficam escondidas, só neste aparelho) */
+  ignored: Set<string>
+  toggleIgnored: (id: string) => void
   unreadDms: Set<string>
   hideDm: (id: string) => void
   hiddenDms: Record<string, string>
@@ -121,6 +131,7 @@ export const ADMIN_KEY = 'descarga-abrir-admin'
 export const HOME = '@inicio'
 const SEEN_KEY = 'descarga-dm-visto'
 const HIDDEN_KEY = 'descarga-dm-escondidas'
+const IGNORED_KEY = 'descarga-ignorados'
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -146,6 +157,39 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [seen, setSeen] = useState<Record<string, string>>(() => readJson(SEEN_KEY, {}))
   const [hiddenDms, setHidden] = useState<Record<string, string>>(() => readJson(HIDDEN_KEY, {}))
   const [emojis, setEmojis] = useState<ServerEmoji[]>([])
+  const [notes, setNotes] = useState<Record<string, UserNote>>({})
+  const [serverPrefs, setServerPrefsState] = useState<Record<string, ServerPrefs>>({})
+  useEffect(() => {
+    void backend.listServerPrefs().then(setServerPrefsState).catch(() => undefined)
+  }, [userId])
+  const setServerPrefs = useCallback(async (serverId: string, p: ServerPrefs) => {
+    await backend.setServerPrefs(serverId, p)
+    setServerPrefsState((cur) => ({ ...cur, [serverId]: p }))
+  }, [])
+  const [ignoredList, setIgnoredList] = useState<string[]>(() => {
+    try { return JSON.parse(local.get(IGNORED_KEY) ?? '[]') as string[] } catch { return [] }
+  })
+  const ignored = useMemo(() => new Set(ignoredList), [ignoredList])
+  const toggleIgnored = useCallback((id: string) => {
+    setIgnoredList((cur) => {
+      const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+      local.set(IGNORED_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
+  useEffect(() => {
+    void backend.listUserNotes().then(setNotes).catch(() => undefined)
+  }, [userId])
+  const setNote = useCallback(async (targetId: string, n: UserNote) => {
+    await backend.setUserNote(targetId, n)
+    setNotes((cur) => {
+      const next = { ...cur }
+      if (n.note.trim() || n.nickname.trim()) next[targetId] = { note: n.note.trim(), nickname: n.nickname.trim() }
+      else delete next[targetId]
+      return next
+    })
+  }, [])
+  setNicknames(Object.fromEntries(Object.entries(notes).filter(([, v]) => v.nickname).map(([k, v]) => [k, v.nickname])))
   const [channels, setChannels] = useState<Channel[]>([])
   const [activeChannelId, setActiveChannelIdRaw] = useState<string | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>([])
@@ -446,6 +490,12 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       activeDmId,
       setActiveDmId,
       openDmWith,
+      notes,
+      setNote,
+      serverPrefs,
+      setServerPrefs,
+      ignored,
+      toggleIgnored,
       unreadDms,
       hideDm,
       hiddenDms,
@@ -474,7 +524,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     }),
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
       activeChannelId, setActiveChannelId, memberIds, friendships, refreshFriends, dms, refreshDms, activeDmId,
-      setActiveDmId, openDmWith, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
+      setActiveDmId, openDmWith, notes, setNote, serverPrefs, setServerPrefs, ignored, toggleIgnored, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
       requestedTab, openAdminPanel, adminPending, mobilePane, toast, toastMsg, question],
   )
 

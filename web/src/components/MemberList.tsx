@@ -6,6 +6,7 @@ import { Avatar, displayName } from './Avatar'
 import type { Profile } from '../lib/types'
 import { locale, t } from '../lib/i18n'
 import { useUserMenu } from './ContextMenu'
+import { topRole } from '../lib/roles'
 
 export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string | null } = {}) {
   const { memberIds, profiles, servers, activeServerId, openProfile, toast, ask } = useApp()
@@ -34,16 +35,15 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
   }
 
   const row = (p: Profile) => {
-    const role = ids ? undefined : access.roleOf(p.id)
+    const roleColor = ids ? undefined : topRole(access.roleDefs, access.members[p.id])?.color
     return (
     <button key={p.id} className={`member ${p.status === 'invisible' ? 'offline' : ''}`}
       onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())} onContextMenu={(e) => userMenu(e, p, moderate(p))}>
       <Avatar profile={p} size={34} showStatus />
       <span className="member-text">
-        <span className="member-name truncate" style={{ color: p.status === 'invisible' ? undefined : p.accent_color }}>
+        <span className="member-name truncate" style={{ color: roleColor ?? (p.status === 'invisible' ? undefined : p.accent_color) }}>
           {displayName(p)}
           {owner === p.id && <Crown size={14} className="crown" aria-label={ids ? t('Dono do grupo') : t('Dono do servidor')} />}
-          {role && <span className="role-chip" style={{ borderColor: role.color, color: role.color }}>{role.name}</span>}
         </span>
         {p.custom_status && <span className="member-status truncate">{p.custom_status}</span>}
       </span>

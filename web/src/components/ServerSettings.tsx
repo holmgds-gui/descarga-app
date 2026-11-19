@@ -11,6 +11,9 @@ import { useCropPick } from './ImageCropper'
 export const PERMISSION_LABELS: Record<Permission, { name: string; hint: string }> = {
   manage_server: { name: 'Gerenciar servidor', hint: 'Mudar nome, foto, banner e descrição.' },
   manage_channels: { name: 'Gerenciar canais', hint: 'Criar, renomear, reorganizar e apagar canais.' },
+  manage_roles: { name: 'Gerenciar cargos', hint: 'Criar, editar e apagar cargos e dar cargos às pessoas (só com poderes que a própria pessoa tem).' },
+  manage_messages: { name: 'Gerenciar mensagens', hint: 'Apagar mensagens de outras pessoas nos canais.' },
+  manage_emojis: { name: 'Gerenciar emojis', hint: 'Adicionar e apagar os emojis do servidor.' },
   pin_messages: { name: 'Fixar mensagens', hint: 'Fixar e desafixar mensagens nos canais.' },
   kick: { name: 'Expulsar membros', hint: 'Tirar alguém do servidor (a pessoa pode voltar com um convite).' },
   ban: { name: 'Banir membros', hint: 'Tirar alguém e impedir que volte. Também desbanir.' },
@@ -19,7 +22,7 @@ export const PERMISSION_LABELS: Record<Permission, { name: string; hint: string 
 /** O que a pessoa pode fazer no servidor: o dono pode tudo; os outros, o que o cargo deles permite. */
 export function useServerRole(server: Server | undefined) {
   const { userId } = useApp()
-  const [members, setMembers] = useState<Record<string, string | null>>({})
+  const [members, setMembers] = useState<Record<string, string[]>>({})
   const [roleDefs, setRoleDefs] = useState<RoleDef[]>([])
   const serverId = server?.id
   useEffect(() => {
@@ -37,14 +40,15 @@ export function useServerRole(server: Server | undefined) {
     }
   }, [serverId])
   const isOwner = !!server && server.owner_id === userId
-  const roleOf = (uid: string) => roleDefs.find((r) => r.id === members[uid])
-  const myRole = roleOf(userId)
-  const can = (perm: Permission) => isOwner || !!myRole?.permissions.includes(perm)
-  const canManage = isOwner || (myRole?.permissions.length ?? 0) > 0
+  const rolesOf = (uid: string) => roleDefs.filter((r) => members[uid]?.includes(r.id))
+  const permsOf = (uid: string) => new Set(rolesOf(uid).flatMap((r) => r.permissions))
+  const myPerms = permsOf(userId)
+  const can = (perm: Permission) => isOwner || myPerms.has(perm)
+  const canManage = isOwner || myPerms.size > 0
   /** dá para expulsar/banir essa pessoa? (nunca o dono nem você; só o dono age sobre quem tem poderes) */
   const canActOn = (uid: string) =>
-    !!server && uid !== userId && uid !== server.owner_id && (isOwner || (roleOf(uid)?.permissions.length ?? 0) === 0)
-  return { isOwner, can, canManage, canActOn, members, roleDefs, roleOf }
+    !!server && uid !== userId && uid !== server.owner_id && (isOwner || permsOf(uid).size === 0)
+  return { isOwner, can, canManage, canActOn, members, roleDefs, rolesOf }
 }
 export type ServerAccess = ReturnType<typeof useServerRole>
 
@@ -55,7 +59,7 @@ export function ServerSettingsModal({ server, access, onClose }: { server: Serve
     ...(access.can('manage_server') ? [{ id: 'geral' as Tab, label: t('Visão geral') }] : []),
     ...(access.can('manage_channels') ? [{ id: 'canais' as Tab, label: t('Canais') }] : []),
     ...(access.can('kick') || access.can('ban') || access.isOwner ? [{ id: 'membros' as Tab, label: t('Membros') }] : []),
-    ...(access.isOwner ? [{ id: 'cargos' as Tab, label: t('Cargos') }] : []),
+    ...(access.can('manage_roles') ? [{ id: 'cargos' as Tab, label: t('Cargos') }] : []),
   ]
   const [tab, setTab] = useState<Tab>(tabs[0]?.id ?? 'geral')
   return (
@@ -70,7 +74,7 @@ export function ServerSettingsModal({ server, access, onClose }: { server: Serve
       {tab === 'geral' && <OverviewTab server={server} isOwner={access.isOwner} onClose={onClose} />}
       {tab === 'canais' && <ChannelsTab server={server} />}
       {tab === 'membros' && <MembersTab server={server} access={access} />}
-      {tab === 'cargos' && access.isOwner && <RolesTab server={server} access={access} />}
+      {tab === 'cargos' && access.can('manage_roles') && <RolesTab server={server} access={access} />}
     </Modal>
   )
 }
@@ -348,19 +352,11 @@ function MembersTab({ server, access }: { server: Server; access: ServerAccess }
     <div className="srv-mods">
       {!ids.length && <p className="muted small">{t('Ainda não há outros membros no servidor.')}</p>}
       {ids.map((id) => {
-        const role = access.roleOf(id)
         const acts = access.canActOn(id)
         return (
           <div key={id} className="srv-channel-row">
             <Avatar profile={profiles[id]} size={28} />
             <span className="truncate flex-1">{displayName(profiles[id])}</span>
-            {access.isOwner ? (
-              <select className="srv-role-select" aria-label={t('Cargo de {nome}', { nome: displayName(profiles[id]) })} value={access.members[id] ?? ''} disabled={busy === id}
-                onChange={(e) => void run(id, () => backend.setMemberRole(server.id, id, e.target.value || null))}>
-                <option value="">{t('Sem cargo')}</option>
-                {access.roleDefs.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            ) : role && <span className="role-chip" style={{ borderColor: role.color, color: role.color }}>{role.name}</span>}
             {acts && access.can('kick') && (
               <button className="btn btn-ghost btn-sm" disabled={busy === id} onClick={() => void kick(id)}><LogOut size={16} /> {t('Expulsar')}</button>
             )}
@@ -403,8 +399,8 @@ function RolesTab({ server, access }: { server: Server; access: ServerAccess }) 
   }
   return (
     <div className="srv-roles">
-      <p className="muted small">{t('Cargos dão permissões a quem você escolher na aba Membros. Só você cria cargos e escolhe quem tem cada um.')}</p>
-      {access.roleDefs.map((r) => <RoleCard key={r.id} role={r} busy={busy} run={run} />)}
+      <p className="muted small">{t('Cargos dão permissões e cor ao nome. Para dar ou tirar cargos, clique com o botão direito na pessoa e escolha Cargos. Uma pessoa pode ter quantos cargos quiser; o nome fica com a cor do cargo que tem mais permissões.')}</p>
+      {access.roleDefs.map((r) => <RoleCard key={r.id} role={r} busy={busy} run={run} access={access} />)}
       <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void run(async () => {
         await backend.createRole(server.id, { name: t('Novo cargo'), color: '#7B3FE4', permissions: [] })
         toast(t('Cargo criado'))
@@ -413,27 +409,28 @@ function RolesTab({ server, access }: { server: Server; access: ServerAccess }) 
   )
 }
 
-function RoleCard({ role, busy, run }: { role: RoleDef; busy: boolean; run: (fn: () => Promise<void>) => Promise<void> }) {
+function RoleCard({ role, busy, run, access }: { role: RoleDef; busy: boolean; run: (fn: () => Promise<void>) => Promise<void>; access: ServerAccess }) {
   const { toast, ask } = useApp()
   const [name, setName] = useState(role.name)
   const [color, setColor] = useState(role.color)
   const [perms, setPerms] = useState<Permission[]>(role.permissions)
   const changed = name.trim() !== role.name || color !== role.color || perms.join() !== role.permissions.join()
+  const locked = !access.isOwner && !role.permissions.every((p) => access.can(p))
   const toggle = (p: Permission) => setPerms((cur) => PERMISSIONS.filter((x) => (x === p ? !cur.includes(x) : cur.includes(x))))
   return (
     <div className="role-card">
       <div className="role-card-head">
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label={t('Cor do cargo')} />
-        <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label={t('Nome do cargo')} />
-        <button className="icon-btn tiny danger" aria-label={t('Apagar cargo {nome}', { nome: role.name })} disabled={busy} onClick={() => void (async () => {
-          const ok = await ask({ title: t('Apagar cargo'), message: t('Quem tem o cargo {nome} fica sem cargo.', { nome: role.name }), confirmLabel: t('Apagar'), danger: true })
+        <input type="color" value={color} disabled={locked} onChange={(e) => setColor(e.target.value)} aria-label={t('Cor do cargo')} />
+        <input value={name} maxLength={30} disabled={locked} onChange={(e) => setName(e.target.value)} aria-label={t('Nome do cargo')} />
+        <button className="icon-btn tiny danger" aria-label={t('Apagar cargo {nome}', { nome: role.name })} disabled={busy || locked} onClick={() => void (async () => {
+          const ok = await ask({ title: t('Apagar cargo'), message: t('Quem tem o cargo {nome} perde esse cargo.', { nome: role.name }), confirmLabel: t('Apagar'), danger: true })
           if (ok) await run(async () => { await backend.deleteRole(role.id); toast(t('Cargo apagado')) })
         })()}><Trash2 size={16} /></button>
       </div>
       <div className="role-perms">
         {PERMISSIONS.map((p) => (
           <label key={p} className="check-row">
-            <input type="checkbox" checked={perms.includes(p)} onChange={() => toggle(p)} />
+            <input type="checkbox" checked={perms.includes(p)} disabled={locked || (!access.isOwner && !access.can(p))} onChange={() => toggle(p)} />
             <span><strong>{t(PERMISSION_LABELS[p].name)}</strong><br /><span className="muted small">{t(PERMISSION_LABELS[p].hint)}</span></span>
           </label>
         ))}

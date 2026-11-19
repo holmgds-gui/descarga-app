@@ -9,8 +9,17 @@ export const STATUS_LABEL: Record<Status, string> = {
   get invisible() { return t('Invisível') },
 }
 
-export function displayName(p: Profile | null | undefined) {
+/** apelidos que EU dei às pessoas (só eu vejo); o AppProvider atualiza antes de desenhar a tela */
+let nicknames: Record<string, string> = {}
+export function setNicknames(map: Record<string, string>) {
+  nicknames = map
+}
+/** o nome de exibição de verdade, sem apelido */
+export function realName(p: Profile | null | undefined) {
   return p ? (p.deleted_at ? t('Usuário excluído') : p.display_name || p.username) : t('Carregando…')
+}
+export function displayName(p: Profile | null | undefined) {
+  return p && !p.deleted_at && nicknames[p.id] ? nicknames[p.id] : realName(p)
 }
 
 export function StatusDot({ status, size = 12 }: { status: Status; size?: number }) {

@@ -36,6 +36,19 @@ export function ChannelSidebar() {
     if (inVoice.length) ensureProfiles(inVoice.map((m) => m.userId))
   }, [inVoice, ensureProfiles])
 
+  // o menu do servidor (botão direito no ícone) pede para abrir estas janelas
+  useEffect(() => {
+    const sid = server?.id
+    const onSettings = (e: Event) => { if ((e as CustomEvent).detail === sid) setServerSettingsOpen(true) }
+    const onCreate = (e: Event) => { if ((e as CustomEvent).detail === sid) setCreating({ category: 'Canais de texto', type: 'text' }) }
+    window.addEventListener('descarga-server-settings', onSettings)
+    window.addEventListener('descarga-create-channel', onCreate)
+    return () => {
+      window.removeEventListener('descarga-server-settings', onSettings)
+      window.removeEventListener('descarga-create-channel', onCreate)
+    }
+  }, [server?.id])
+
   const openChannel = (c: Channel) => {
     setActiveChannelId(c.id)
     if (c.type === 'voice' && server && call.channelId !== c.id) void voice.join(c.id, server.id, userId)
@@ -84,7 +97,7 @@ export function ChannelSidebar() {
                     {t('Criar canal')} <Plus size={16} />
                   </button>
                 )}
-                {isOwner && (
+                {access.can('manage_emojis') && (
                   <button className="dropdown-item" onClick={() => { setEmojiOpen(true); setMenuOpen(false) }}>
                     {t('Emojis do servidor')} <Smile size={16} />
                   </button>

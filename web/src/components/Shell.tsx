@@ -1,4 +1,4 @@
-import { ContextMenuHost } from './ContextMenu'
+import { ContextMenuHost, UserNoteHost } from './ContextMenu'
 import { useEffect, useState } from 'react'
 import { FriendsPage } from './Home'
 import { voice } from '../lib/voice/engine'
@@ -74,6 +74,7 @@ export function Shell() {
       <ProfilePopover />
       <SettingsModal />
       <ContextMenuHost />
+      <UserNoteHost />
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
       {question && (
         <Modal title={question.title} onClose={() => question.resolve(false)}

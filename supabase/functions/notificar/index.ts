@@ -61,6 +61,9 @@ Deno.serve(async (req) => {
 
   let recipients: string[] = []
   let payloadFor: (lang: Lang) => Payload
+  // avisos de servidor respeitam silenciar / nível de notificação de cada pessoa (tabela server_prefs)
+  let prefServerId: string | null = null
+  let prefKind: 'mention' | 'call' = 'mention'
 
   if (body.type === 'message' && body.messageId) {
     const { data: msg } = await admin
@@ -97,6 +100,7 @@ Deno.serve(async (req) => {
       })
     } else {
 
+    prefServerId = serverId
     const { data: members } = await admin.from('server_members').select('user_id').eq('server_id', serverId)
     const memberIds = new Set((members ?? []).map((m) => m.user_id as string))
 
@@ -140,6 +144,7 @@ Deno.serve(async (req) => {
     await admin.from('call_notify_log').upsert({ channel_id: ch.id, last_at: new Date().toISOString() })
 
     recipients = ids
+    if (!isDm) { prefServerId = ch.server_id; prefKind = 'call' }
     // deno-lint-ignore no-explicit-any
     const serverName = (ch.servers as any)?.name ?? ''
     payloadFor = (lang) => isDm ? ({
@@ -180,6 +185,16 @@ Deno.serve(async (req) => {
     // contas pendentes ou bloqueadas não recebem avisos
     const { data: ok } = await admin.from('profiles').select('id').in('id', recipients).eq('approval', 'approved')
     recipients = (ok ?? []).map((r) => r.id as string)
+  }
+  if (prefServerId && recipients.length) {
+    const { data: prefs } = await admin.from('server_prefs').select('user_id, level, muted_until').eq('server_id', prefServerId).in('user_id', recipients)
+    const now = Date.now()
+    const skip = new Set(
+      (prefs ?? [])
+        .filter((p) => (p.muted_until && new Date(p.muted_until).getTime() > now) || p.level === 'none' || (p.level === 'mentions' && prefKind === 'call'))
+        .map((p) => p.user_id as string),
+    )
+    recipients = recipients.filter((id) => !skip.has(id))
   }
   if (!recipients.length) return json({ sent: 0 })
 

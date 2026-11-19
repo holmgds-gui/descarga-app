@@ -1,14 +1,87 @@
-import { useState, type ReactNode } from 'react'
-import { Plus } from 'lucide-react'
+import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { Bell, BellOff, Cog, Fingerprint, LogOut, Plus, UserPlus } from 'lucide-react'
+import { backend } from '../lib/backend'
+import type { Server, ServerPrefs } from '../lib/types'
 import { useApp } from '../state'
-import { ServerCreateModal } from './ServerModals'
+import { InviteModal, ServerCreateModal } from './ServerModals'
 import { t } from '../lib/i18n'
 import { copyText, showContextMenu } from './ContextMenu'
 
 export function ServerRail() {
-  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId, toast } = useApp()
+  const { servers, activeServerId, setActiveServerId, unreadDms, friendships, userId, toast, ask, refreshServers, serverPrefs, setServerPrefs } = useApp()
   const homeBadge = unreadDms.size + friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const [creating, setCreating] = useState(false)
+  const [inviting, setInviting] = useState<Server | null>(null)
+
+  const isMuted = (id: string) => {
+    const p = serverPrefs[id]
+    return !!p && (p.level === 'none' || (!!p.muted_until && new Date(p.muted_until).getTime() > Date.now()))
+  }
+
+  /** menu do botão direito no servidor (as permissões dessa pessoa naquele servidor são buscadas na hora) */
+  const serverMenu = async (e: ReactMouseEvent, s: Server) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const at = { clientX: e.clientX, clientY: e.clientY, preventDefault() {}, stopPropagation() {} } as unknown as MouseEvent
+    const owner = s.owner_id === userId
+    let perms = new Set<string>()
+    if (!owner) {
+      try {
+        const [roles, members] = await Promise.all([backend.listRoles(s.id), backend.listMemberRoles(s.id)])
+        const mine = members[userId] ?? []
+        perms = new Set(roles.filter((r) => mine.includes(r.id)).flatMap((r) => r.permissions))
+      } catch { /* sem permissões extras */ }
+    }
+    const can = (p: string) => owner || perms.has(p)
+    const prefs = serverPrefs[s.id] ?? { level: 'all' as const, muted_until: null }
+    const save = (p: ServerPrefs) => void setServerPrefs(s.id, p).catch((err: Error) => toast(err.message))
+    const muteFor = (ms: number | null) => save({ ...prefs, muted_until: ms === null ? '9999-12-31T00:00:00Z' : new Date(Date.now() + ms).toISOString() })
+    const open = (ev: string) => {
+      setActiveServerId(s.id)
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent(ev, { detail: s.id })), 120)
+    }
+    const MIN = 60_000
+    showContextMenu(at, [
+      { label: t('Convidar para o servidor'), icon: <UserPlus size={16} />, onClick: () => setInviting(s) },
+      isMuted(s.id) && prefs.level !== 'none'
+        ? { label: t('Reativar servidor'), icon: <Bell size={16} />, separator: true, onClick: () => save({ ...prefs, muted_until: null }) }
+        : {
+            label: t('Silenciar servidor'), icon: <BellOff size={16} />, separator: true,
+            children: [
+              { label: t('Por 15 minutos'), onClick: () => muteFor(15 * MIN) },
+              { label: t('Por 1 hora'), onClick: () => muteFor(60 * MIN) },
+              { label: t('Por 8 horas'), onClick: () => muteFor(8 * 60 * MIN) },
+              { label: t('Por 24 horas'), onClick: () => muteFor(24 * 60 * MIN) },
+              { label: t('Até eu reativar'), onClick: () => muteFor(null) },
+            ],
+          },
+      {
+        label: t('Configurar avisos'), icon: <Bell size={16} />,
+        children: [
+          { label: t('Menções, respostas e chamadas'), checked: prefs.level === 'all', onClick: () => save({ ...prefs, level: 'all' }) },
+          { label: t('Só menções e respostas'), checked: prefs.level === 'mentions', onClick: () => save({ ...prefs, level: 'mentions' }) },
+          { label: t('Nada'), checked: prefs.level === 'none', onClick: () => save({ ...prefs, level: 'none' }) },
+        ],
+      },
+      ...(owner || perms.size > 0 ? [{ label: t('Configurações do servidor'), icon: <Cog size={16} />, separator: true, onClick: () => open('descarga-server-settings') }] : []),
+      ...(can('manage_channels') ? [{ label: t('Criar canal'), icon: <Plus size={16} />, onClick: () => open('descarga-create-channel') }] : []),
+      ...(!owner ? [{
+        label: t('Sair do servidor'), icon: <LogOut size={16} />, danger: true, separator: true,
+        onClick: () => void (async () => {
+          const ok = await ask({ title: t('Sair de {nome}', { nome: s.name }), message: t('Você vai precisar de um novo convite para voltar.'), confirmLabel: t('Sair do servidor'), danger: true })
+          if (!ok) return
+          try {
+            await backend.leaveServer(s.id)
+            await refreshServers()
+            toast(t('Você saiu do servidor'))
+          } catch (err) {
+            toast((err as Error).message)
+          }
+        })(),
+      }] : []),
+      { label: t('Copiar ID do servidor'), icon: <Fingerprint size={16} />, separator: true, onClick: () => copyText(s.id, toast) },
+    ])
+  }
 
   return (
     <nav className="server-rail" aria-label={t('Servidores')}>
@@ -18,10 +91,8 @@ export function ServerRail() {
       <div className="rail-sep" />
       {servers.map((s) => (
         <RailItem key={s.id} label={s.name} active={s.id === activeServerId} onClick={() => setActiveServerId(s.id)}
-          onContextMenu={(e) => showContextMenu(e, [
-            { label: t('Abrir servidor'), onClick: () => setActiveServerId(s.id) },
-            { label: t('Copiar nome do servidor'), onClick: () => copyText(s.name, toast) },
-          ])}>
+          muted={isMuted(s.id)}
+          onContextMenu={(e) => void serverMenu(e, s)}>
           {s.icon_url ? (
             <img src={s.icon_url} alt="" />
           ) : (
@@ -33,6 +104,7 @@ export function ServerRail() {
         <Plus size={24} />
       </RailItem>
       {creating && <ServerCreateModal onClose={() => setCreating(false)} />}
+      {inviting && <InviteModal server={inviting} onClose={() => setInviting(null)} />}
     </nav>
   )
 }
@@ -53,6 +125,7 @@ function RailItem({
   children,
   variant,
   badge = 0,
+  muted = false,
   onContextMenu,
 }: {
   label: string
@@ -61,13 +134,14 @@ function RailItem({
   children: ReactNode
   variant?: 'add'
   badge?: number
+  muted?: boolean
   onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
     <div className={`rail-item ${active ? 'active' : ''}`}>
       <span className="rail-pill" />
       <button
-        className={`rail-btn ${variant === 'add' ? 'rail-add' : ''}`}
+        className={`rail-btn ${variant === 'add' ? 'rail-add' : ''} ${muted ? 'rail-muted' : ''}`}
         onClick={onClick}
         onContextMenu={onContextMenu}
         aria-label={label}

@@ -1025,3 +1025,16 @@ button.avatar { cursor: pointer; }
 .crop-zoom { display: flex; align-items: center; gap: 8px; }
 .crop-zoom input[type=range] { flex: 1; accent-color: var(--accent); }
 .crop-presets { justify-content: center; }
+
+/* ---------- menu de pessoa: submenus, bolinha de cor ---------- */
+.ctx-row { position: relative; }
+.ctx-menu .dropdown-item { display: flex; align-items: center; gap: 8px; }
+.ctx-label { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-chev, .ctx-check { flex-shrink: 0; opacity: .8; }
+.ctx-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
+.ctx-sub { position: absolute; left: calc(100% - 2px); top: -6px; min-width: 190px; max-width: 260px; max-height: 60dvh; overflow: auto; right: auto; bottom: auto; }
+.ctx-sub.flip { left: auto; right: calc(100% - 2px); }
+.rail-btn.rail-muted { opacity: .5; }
+.rail-btn.rail-muted:hover { opacity: .85; }
+.msg-ignored { margin: 2px 16px; padding: 6px 10px; border-radius: 8px; font-size: .85em; color: var(--text-3); background: color-mix(in srgb, var(--bg-elev) 60%, transparent); display: flex; align-items: center; gap: 8px; }
+.msg-ignored button { color: var(--accent-text, var(--accent)); font-weight: 700; }

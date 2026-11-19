@@ -27,6 +27,7 @@ import { copyText, useUserMenu } from './ContextMenu'
 import { ForwardModal } from './ForwardModal'
 import { PinsModal } from './PinsModal'
 import { useServerRole } from './ServerSettings'
+import { topRole } from '../lib/roles'
 import { swipeHandlers } from '../lib/swipe'
 import { useTyping } from '../lib/typing'
 import { useReceiptOff } from '../lib/receipts'
@@ -93,7 +94,8 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   membersOpen: boolean
   onToggleMembers: () => void
 }) {
-  const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me, servers } = useApp()
+  const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me, servers, ignored } = useApp()
+  const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const userMenu = useUserMenu()
   const [messages, setMessages] = useState<Message[]>([])
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({})
@@ -356,6 +358,8 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     }
   }
 
+  /** cor do nome: cargo de maior poder neste servidor; senão, a cor do perfil */
+  const nameColor = (uid: string) => (isDm ? undefined : topRole(role.roleDefs, role.members[uid])?.color) ?? profiles[uid]?.accent_color
   const canPin = isDm || role.can('pin_messages')
   const pinned = new Set(pins.map((p) => p.message_id))
   const togglePin = async (m: Message) => {
@@ -534,6 +538,14 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
           const author = profiles[m.author_id]
           const parent = m.reply_to ? byId.get(m.reply_to) : null
           const mine = m.author_id === userId
+          if (!mine && ignored.has(m.author_id) && !revealed.has(m.id)) {
+            return (
+              <div key={m.id} className="msg-ignored" data-mid={m.id}>
+                <EyeOff size={14} /> {t('Mensagem de uma pessoa que você ignorou')}
+                <button type="button" onClick={() => setRevealed((cur) => new Set(cur).add(m.id))}>{t('Mostrar')}</button>
+              </div>
+            )
+          }
           return (
             <Fragment key={m.id}>
               {newDay && <div className="day-sep"><span>{formatLongDate(m.created_at)}</span></div>}
@@ -551,7 +563,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                     ...(canPin ? [{ label: pinned.has(m.id) ? t('Desafixar') : t('Fixar mensagem'), icon: pinned.has(m.id) ? <PinOff size={16} /> : <PinIcon size={16} />, onClick: () => void togglePin(m) }] : []),
                     ...(text ? [{ label: sel ? t('Copiar seleção') : t('Copiar texto'), icon: <Copy size={16} />, onClick: () => copyText(text, toast) }] : []),
                     ...(mine && !m.attachments.some((a) => a.voice) ? [{ label: t('Editar'), icon: <Pencil size={16} />, onClick: () => setEditingId(m.id) }] : []),
-                    ...(mine ? [{ label: t('Apagar'), icon: <Trash2 size={16} />, danger: true, onClick: () => void remove(m) }] : []),
+                    ...(mine || (!isDm && role.can('manage_messages') && role.canActOn(m.author_id)) ? [{ label: t('Apagar'), icon: <Trash2 size={16} />, danger: true, onClick: () => void remove(m) }] : []),
                   ])
                 }}>
                 <span className="swipe-hint" aria-hidden><CornerUpLeft size={20} /></span>
@@ -561,7 +573,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                     {parent ? (
                       <>
                         <Avatar profile={profiles[parent.author_id]} size={16} />
-                        <strong style={{ color: profiles[parent.author_id]?.accent_color }}>{displayName(profiles[parent.author_id])}</strong>
+                        <strong style={{ color: nameColor(parent.author_id) }}>{displayName(profiles[parent.author_id])}</strong>
                         <span className="truncate">
                           {parent.content.replace(/[*_~`]/g, '') || (parent.attachments.some((a) => a.voice) ? t('Mensagem de voz') : t('Arquivo'))}
                         </span>
@@ -581,7 +593,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                 <div className="msg-body">
                   {!grouped && (
                     <div className="msg-meta">
-                      <button className="msg-author" style={{ color: author?.accent_color }}
+                      <button className="msg-author" style={{ color: nameColor(m.author_id) }}
                         onClick={(e) => openProfile(m.author_id, e.currentTarget.getBoundingClientRect())}>
                         {displayName(author)}
                       </button>
@@ -902,6 +914,17 @@ function Composer({
     setPick(0)
   }
 
+  // "Mencionar" no menu de uma pessoa coloca @nome na caixa de mensagem
+  const insertRef = useRef<(s: string) => void>(() => undefined)
+  useEffect(() => {
+    const onMention = (e: Event) => {
+      const name = (e as CustomEvent<string>).detail
+      if (name) insertRef.current(`@${name} `)
+    }
+    window.addEventListener('descarga-mention', onMention)
+    return () => window.removeEventListener('descarga-mention', onMention)
+  }, [])
+
   const insertAtCaret = (s: string) => {
     const el = ref.current
     const start = el?.selectionStart ?? text.length
@@ -910,6 +933,7 @@ function Composer({
     pendingCaret.current = start + s.length
     setText(next)
   }
+  insertRef.current = insertAtCaret
 
   const choose = (p: Profile) => {
     const el = ref.current

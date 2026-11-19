@@ -58,8 +58,20 @@ export interface Server {
 }
 
 /** o que um cargo permite fazer no servidor (o dono, quem tem owner_id, pode tudo) */
-export type Permission = 'manage_server' | 'manage_channels' | 'pin_messages' | 'kick' | 'ban'
-export const PERMISSIONS: Permission[] = ['manage_server', 'manage_channels', 'pin_messages', 'kick', 'ban']
+export type Permission = 'manage_server' | 'manage_channels' | 'manage_roles' | 'manage_messages' | 'manage_emojis' | 'pin_messages' | 'kick' | 'ban'
+export const PERMISSIONS: Permission[] = ['manage_server', 'manage_channels', 'manage_roles', 'manage_messages', 'manage_emojis', 'pin_messages', 'kick', 'ban']
+
+/** silenciar e nível de aviso de um servidor (por pessoa) */
+export interface ServerPrefs {
+  level: 'all' | 'mentions' | 'none'
+  muted_until: string | null
+}
+
+/** nota e apelido que a pessoa deu a alguém (só ela enxerga) */
+export interface UserNote {
+  note: string
+  nickname: string
+}
 export interface RoleDef {
   id: string
   server_id: string
@@ -216,14 +228,18 @@ export interface Backend {
   leaveServer(serverId: string): Promise<void>
   updateServer(serverId: string, patch: ServerPatch): Promise<Server>
   listRoles(serverId: string): Promise<RoleDef[]>
-  /** só o dono */
+  /** dono ou quem tem "gerenciar cargos" (só com permissões que a própria pessoa tem) */
   createRole(serverId: string, role: Required<RolePatch>): Promise<RoleDef>
   updateRole(roleId: string, patch: RolePatch): Promise<RoleDef>
   deleteRole(roleId: string): Promise<void>
-  /** cargo de cada membro (id do cargo, ou null se não tem) */
-  listMemberRoles(serverId: string): Promise<Record<string, string | null>>
-  /** só o dono: roleId null tira o cargo */
-  setMemberRole(serverId: string, userId: string, roleId: string | null): Promise<void>
+  /** cargos de cada membro (lista de ids; vazia se não tem nenhum) */
+  listMemberRoles(serverId: string): Promise<Record<string, string[]>>
+  /** dá (on) ou tira (off) um cargo; cada pessoa pode ter quantos cargos quiser */
+  setMemberRole(serverId: string, userId: string, roleId: string, on: boolean): Promise<void>
+  listServerPrefs(): Promise<Record<string, ServerPrefs>>
+  setServerPrefs(serverId: string, p: ServerPrefs): Promise<void>
+  listUserNotes(): Promise<Record<string, UserNote>>
+  setUserNote(targetId: string, n: UserNote): Promise<void>
   kickMember(serverId: string, userId: string): Promise<void>
   banMember(serverId: string, userId: string, reason: string): Promise<void>
   unbanMember(serverId: string, userId: string): Promise<void>
