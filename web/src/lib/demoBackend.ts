@@ -4,7 +4,7 @@
  * Abra duas abas, entre com contas diferentes e converse entre elas.
  */
 import type {
-  AdminUser, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, Ban, RoleDef, ServerPrefs, Permission, RolePatch,
+  AdminUser, Report, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, Ban, RoleDef, ServerPrefs, Permission, RolePatch,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
 import { local, session } from './storage'
@@ -32,6 +32,7 @@ interface DB {
   roles: RoleDef[]
   bans: Ban[]
   notice?: { body: string; updated_at: string } | null
+  reports?: Report[]
   notes?: { owner: string; target: string; note: string; nickname: string }[]
   prefs?: { user: string; server: string; level: ServerPrefs['level']; muted_until: string | null }[]
 }
@@ -366,6 +367,25 @@ export function createDemoBackend(): Backend {
       emit({ type: 'users' })
       if (target === self) setSession(null)
     },
+    async reportUser(reportedId, reason, details) {
+      const db = load()
+      const mine = (db.reports ?? []).filter((r) => r.reporter_id === me() && Date.now() - new Date(r.created_at).getTime() < 864e5)
+      if (mine.length >= 5) throw new Error(t('Você já enviou o máximo de denúncias de hoje. Tente de novo amanhã.'))
+      db.reports = [...(db.reports ?? []), { id: crypto.randomUUID(), reporter_id: me(), reported_id: reportedId, reason, details: details.trim().slice(0, 1000), status: 'open', created_at: new Date().toISOString() }]
+      save(db)
+    },
+    async adminListReports() {
+      const db = load()
+      if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      return [...(db.reports ?? [])].sort((a, b) => (a.status === b.status ? b.created_at.localeCompare(a.created_at) : a.status === 'open' ? -1 : 1))
+    },
+    async adminResolveReport(id, resolved) {
+      const db = load()
+      if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      db.reports = (db.reports ?? []).map((r) => (r.id === id ? { ...r, status: resolved ? 'resolved' : 'open' } : r))
+      save(db)
+    },
+
     onAdminUsersChange(cb) {
       return listen((e) => (e.type === 'users' || e.type === 'profile' || e.type === 'auth') && cb())
     },

@@ -383,7 +383,7 @@ function AccountTab() {
       <a className="btn btn-ghost terms-btn" href={DESKTOP_URL} target="_blank" rel="noreferrer">
         <Download size={16} /> {tr('Baixar o app para Windows')}
       </a>
-      <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos de Uso')}</button>
+      <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos e regras')}</button>
       {terms && <TermsModal onClose={() => setTerms(false)} />}
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>
       {!me?.is_admin && (

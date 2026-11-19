@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { AtSign, Check, ChevronRight, Copy, EyeOff, Eye, Fingerprint, MessageCircle, Pencil, Send, ShieldCheck, StickyNote, User, UserMinus } from 'lucide-react'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
-import type { Profile, Server } from '../lib/types'
+import type { Profile, ReportReason, Server } from '../lib/types'
 import { backend } from '../lib/backend'
 import { useServerRole } from './ServerSettings'
 import { Modal } from './Modal'
@@ -23,6 +23,8 @@ export interface MenuItem {
   checked?: boolean
   /** bolinha colorida antes do texto */
   color?: string
+  /** item discreto: texto apagado, sem ícone chamativo (ex.: Denunciar) */
+  muted?: boolean
   /** barra deslizante (0–100) no lugar de um botão; o menu continua aberto enquanto mexe */
   slider?: { value: number; onChange: (v: number) => void }
 }
@@ -65,6 +67,76 @@ export function showContextMenu(e: ReactMouseEvent | MouseEvent, items: MenuItem
   if (!list.length) return
   current = { x: e.clientX, y: e.clientY, items: list }
   emit()
+}
+
+// ---------- denúncia (discreta: último item do menu, janela pede motivo e descrição) ----------
+let reportOpen: string | null = null
+const reportListeners = new Set<() => void>()
+const reportSubscribe = (cb: () => void) => {
+  reportListeners.add(cb)
+  return () => reportListeners.delete(cb)
+}
+function setReportOpen(v: string | null) {
+  reportOpen = v
+  reportListeners.forEach((l) => l())
+}
+
+const REASONS: { id: ReportReason; label: () => string }[] = [
+  { id: 'harassment', label: () => t('Assédio ou ameaça') },
+  { id: 'hate', label: () => t('Discurso de ódio') },
+  { id: 'illegal', label: () => t('Conteúdo ilegal, golpe ou malware') },
+  { id: 'copyright', label: () => t('Direitos autorais') },
+  { id: 'spam', label: () => t('Spam') },
+  { id: 'other', label: () => t('Outro motivo') },
+]
+
+export function ReportHost() {
+  const target = useSyncExternalStore(reportSubscribe, () => reportOpen)
+  const { profiles, toast } = useApp()
+  const [reason, setReason] = useState<ReportReason>('harassment')
+  const [details, setDetails] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (target) { setReason('harassment'); setDetails('') }
+  }, [target])
+  if (!target) return null
+  const ok = details.trim().length >= 10
+  const send = async () => {
+    if (!ok) return
+    setBusy(true)
+    try {
+      await backend.reportUser(target, reason, details)
+      toast(t('Denúncia enviada. Obrigado.'))
+      setReportOpen(null)
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal title={t('Denunciar {nome}', { nome: realName(profiles[target]) })} subtitle={t('Só o administrador vê a denúncia. A pessoa não fica sabendo.')} onClose={() => setReportOpen(null)}>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); void send() }}>
+        <label>
+          {t('Motivo')}
+          <select value={reason} onChange={(e) => setReason(e.target.value as ReportReason)}>
+            {REASONS.map((r) => <option key={r.id} value={r.id}>{r.label()}</option>)}
+          </select>
+        </label>
+        <label>
+          {t('O que aconteceu?')}
+          <textarea value={details} maxLength={1000} rows={5} autoFocus onChange={(e) => setDetails(e.target.value)}
+            placeholder={t('Conte com o máximo de detalhes: onde, quando e o que foi feito (mínimo 10 letras).')} />
+          <span className="muted small">{details.trim().length}/1000</span>
+        </label>
+        <p className="muted small">{t('Denúncias falsas ou repetidas podem levar à suspensão da sua conta.')}</p>
+        <div className="row-end">
+          <button type="button" className="btn btn-ghost" onClick={() => setReportOpen(null)}>{t('Cancelar')}</button>
+          <button className="btn btn-primary" disabled={busy || !ok}>{t('Enviar denúncia')}</button>
+        </div>
+      </form>
+    </Modal>
+  )
 }
 
 // ---------- nota e apelido ----------
@@ -212,6 +284,7 @@ export function useUserMenu() {
       ...(showRoles ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
       { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
       { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
+      ...(!mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []),
     ])
   }
 }
@@ -305,7 +378,7 @@ export function ContextMenuHost() {
           {it.separator && i > 0 && <div className="dropdown-sep" />}
           {it.slider ? <MenuSlider item={it} /> : (
           <button role="menuitem" aria-haspopup={it.children ? 'menu' : undefined} aria-expanded={it.children ? sub === i : undefined}
-            className={`dropdown-item ${it.danger ? 'danger' : ''}`} disabled={it.disabled}
+            className={`dropdown-item ${it.danger ? 'danger' : ''} ${it.muted ? 'ctx-muted' : ''}`} disabled={it.disabled}
             onClick={() => { if (it.children) { setSub(i); return } closeContextMenu(); it.onClick?.() }}>
             {it.icon}{it.color && <span className="ctx-dot" style={{ background: it.color }} />}
             <span className="ctx-label">{it.label}</span>

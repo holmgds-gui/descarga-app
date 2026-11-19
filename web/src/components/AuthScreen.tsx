@@ -5,6 +5,7 @@ import { LANGS, setLang, t, useLang } from '../lib/i18n'
 import { rememberSignupAcceptance } from '../lib/terms'
 import { cleanUsername, isValidUsername } from '../lib/username'
 import { TermsModal } from './TermsModal'
+import type { LegalKind } from '../lib/legalDocs'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -18,7 +19,7 @@ export function AuthScreen() {
   const [busy, setBusy] = useState(false)
   const [google, setGoogle] = useState(false)
   const [agree, setAgree] = useState(false)
-  const [showTerms, setShowTerms] = useState(false)
+  const [showTerms, setShowTerms] = useState<LegalKind | null>(null)
 
   useEffect(() => {
     void backend.authOptions().then((o) => setGoogle(o.google))
@@ -124,7 +125,9 @@ export function AuthScreen() {
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span>
                 {t('Tenho 18 anos ou mais e li e aceito os')}{' '}
-                <button type="button" className="link" onClick={() => setShowTerms(true)}>{t('Termos de Uso')}</button>.
+                <button type="button" className="link" onClick={() => setShowTerms('terms')}>{t('Termos de Uso')}</button>,{' '}
+                <button type="button" className="link" onClick={() => setShowTerms('guidelines')}>{t('Diretrizes da Comunidade')}</button>{' '}{t('e a')}{' '}
+                <button type="button" className="link" onClick={() => setShowTerms('copyright')}>{t('Política de Direitos Autorais')}</button>.
               </span>
             </label>
           )}
@@ -146,9 +149,13 @@ export function AuthScreen() {
         </p>
 
         <p className="auth-terms">
-          <button type="button" className="link" onClick={() => setShowTerms(true)}>{t('Termos de Uso')}</button>
+          <button type="button" className="link" onClick={() => setShowTerms('terms')}>{t('Termos de Uso')}</button>
+          {' · '}
+          <button type="button" className="link" onClick={() => setShowTerms('guidelines')}>{t('Diretrizes da Comunidade')}</button>
+          {' · '}
+          <button type="button" className="link" onClick={() => setShowTerms('copyright')}>{t('Direitos Autorais')}</button>
         </p>
-        {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+        {showTerms && <TermsModal key={showTerms} initial={showTerms} onClose={() => setShowTerms(null)} />}
 
         <div className="lang-switch" role="group" aria-label={t('Idioma')}>
           {LANGS.map((l) => (

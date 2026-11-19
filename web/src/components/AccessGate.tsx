@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Clock, LogOut, RefreshCw, ShieldX } from 'lucide-react'
-import { TermsDocument } from './TermsModal'
+import { LegalReader } from './TermsModal'
 import { TERMS_VERSION, acceptedLocally, rememberAcceptance, signupAcceptedFor, termsFor } from '../lib/terms'
 import { backend } from '../lib/backend'
 import { voice } from '../lib/voice/engine'
@@ -96,10 +96,10 @@ export function AccessGate({ userId, children }: { userId: string; children: Rea
           <img className="auth-logo" src={`${import.meta.env.BASE_URL}logo.svg`} alt="" />
           <h1>{termsFor(lang).title}</h1>
           <p className="muted">{t('Antes de continuar, leia e aceite os termos.')}</p>
-          <div className="terms-scroll"><TermsDocument /></div>
+          <div className="terms-scroll"><LegalReader /></div>
           <label className="check-row terms-check">
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-            <span>{t('Tenho 18 anos ou mais e li e aceito os Termos de Uso.')}</span>
+            <span>{t('Tenho 18 anos ou mais e li e aceito os Termos de Uso, as Diretrizes da Comunidade e a Política de Direitos Autorais.')}</span>
           </label>
           <div className="gate-actions">
             <button className="btn btn-primary" disabled={!agree || accepting} onClick={() => void accept()}>{t('Aceitar e continuar')}</button>

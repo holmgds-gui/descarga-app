@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { AdminUser } from '../lib/types'
+import type { AdminUser, Report } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar } from './Avatar'
 import { locale, t } from '../lib/i18n'
@@ -15,10 +15,13 @@ export function AdminPanel() {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [reports, setReports] = useState<Report[]>([])
+  const [showDone, setShowDone] = useState(false)
 
   const load = useCallback(async () => {
     try {
       setUsers(await backend.adminListUsers())
+      setReports(await backend.adminListReports().catch(() => []))
       setError(null)
     } catch (err) {
       setError((err as Error).message)
@@ -81,6 +84,19 @@ export function AdminPanel() {
     }
   }
 
+  const resolve = async (r: Report, done: boolean) => {
+    try {
+      await backend.adminResolveReport(r.id, done)
+      await load()
+    } catch (err) {
+      toast((err as Error).message)
+    }
+  }
+  const reasonLabel: Record<Report['reason'], string> = {
+    harassment: t('Assédio ou ameaça'), hate: t('Discurso de ódio'), illegal: t('Conteúdo ilegal, golpe ou malware'),
+    copyright: t('Direitos autorais'), spam: t('Spam'), other: t('Outro motivo'),
+  }
+
   if (error) {
     return (
       <>
@@ -136,6 +152,34 @@ export function AdminPanel() {
             <Trash2 size={16} /> {t('Excluir')}
           </button>
         </>))}
+
+      <h3 className="field-label admin-h">{t('Denúncias')} — {reports.filter((r) => r.status === 'open').length}</h3>
+      {!reports.some((r) => r.status === 'open') && <p className="muted small">{t('Nenhuma denúncia em aberto.')}</p>}
+      {reports.filter((r) => showDone || r.status === 'open').map((r) => {
+        const who = users.find((u) => u.id === r.reported_id)
+        const by = users.find((u) => u.id === r.reporter_id)
+        return (
+          <div key={r.id} className={`admin-row report-row ${r.status === 'resolved' ? 'done' : ''}`}>
+            <div className="admin-row-text">
+              <span className="admin-row-name"><strong className="truncate">{who ? who.display_name || who.username : t('Usuário excluído')}</strong>
+                <span className="profile-chip">{reasonLabel[r.reason]}</span></span>
+              <span className="report-details">{r.details}</span>
+              <span className="muted small">{t('Denunciado por {nome}', { nome: by ? '@' + by.username : t('Usuário excluído') })} • {when(r.created_at)}</span>
+            </div>
+            <div className="admin-row-actions">
+              {who && r.status === 'open' && !who.is_admin && who.approval === 'approved' && (
+                <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === who.id} onClick={() => void block(who)}><Ban size={16} /> {t('Bloquear')}</button>
+              )}
+              <button className="btn btn-ghost btn-sm" onClick={() => void resolve(r, r.status === 'open')}>
+                {r.status === 'open' ? <><Check size={16} /> {t('Resolvida')}</> : <><RotateCcw size={16} /> {t('Reabrir')}</>}
+              </button>
+            </div>
+          </div>
+        )
+      })}
+      {reports.some((r) => r.status === 'resolved') && (
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowDone((v) => !v)}>{showDone ? t('Esconder resolvidas') : t('Mostrar resolvidas')}</button>
+      )}
 
       {blocked.length > 0 && (
         <>

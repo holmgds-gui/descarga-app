@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AdminUser,
+  AdminUser, Report,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
   ServerEmoji, Ban, RoleDef, ServerPrefs, Attachment, OnceFile, Pin,
 } from './types'
@@ -148,6 +148,20 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         throw new Error(/administrador/.test(msg) ? t('A conta do administrador não pode ser excluída.') : msg || t('Não deu para excluir a conta.'))
       }
       if (!userId || userId === (await sb.auth.getUser()).data.user?.id) await sb.auth.signOut().catch(() => undefined)
+    },
+
+    async reportUser(reportedId, reason, details) {
+      const r = await sb.from('reports').insert({ reporter_id: await uid(), reported_id: reportedId, reason, details: details.trim().slice(0, 1000) })
+      if (r.error) {
+        if (/Limite de den/.test(r.error.message)) throw new Error(t('Você já enviou o máximo de denúncias de hoje. Tente de novo amanhã.'))
+        throw new Error(r.error.message)
+      }
+    },
+    async adminListReports() {
+      return must(await sb.from('reports').select('*').order('status', { ascending: true }).order('created_at', { ascending: false }).limit(200)) as Report[]
+    },
+    async adminResolveReport(id, resolved) {
+      must(await sb.from('reports').update({ status: resolved ? 'resolved' : 'open', resolved_at: resolved ? new Date().toISOString() : null }).eq('id', id))
     },
 
     onAdminUsersChange(cb) {

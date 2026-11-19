@@ -34,6 +34,17 @@ export interface Profile {
 export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin'>>
 
 /** linha da lista de contas do painel do administrador */
+export type ReportReason = 'harassment' | 'hate' | 'illegal' | 'copyright' | 'spam' | 'other'
+export interface Report {
+  id: string
+  reporter_id: string
+  reported_id: string
+  reason: ReportReason
+  details: string
+  status: 'open' | 'resolved'
+  created_at: string
+}
+
 export interface AdminUser {
   id: string
   email: string
@@ -332,6 +343,11 @@ export interface Backend {
   /** Registra que a pessoa aceitou os Termos de Uso desta versão. Não falha se o banco ainda não tiver o recurso. */
   acceptTerms(version: string): Promise<void>
   onAdminUsersChange(cb: () => void): () => void
+  /** denuncia uma pessoa (só o administrador vê; a pessoa denunciada não fica sabendo). Limite de 5 por dia. */
+  reportUser(reportedId: string, reason: ReportReason, details: string): Promise<void>
+  /** só o administrador */
+  adminListReports(): Promise<Report[]>
+  adminResolveReport(id: string, resolved: boolean): Promise<void>
 
   /** Quais jeitos de entrar estão ligados no servidor (ex.: Google). */
   authOptions(): Promise<{ google: boolean }>

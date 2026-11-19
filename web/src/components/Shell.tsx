@@ -1,4 +1,4 @@
-import { ContextMenuHost, UserNoteHost } from './ContextMenu'
+import { ContextMenuHost, ReportHost, UserNoteHost } from './ContextMenu'
 import { useEffect, useState } from 'react'
 import { FriendsPage, HomePage } from './Home'
 import { voice } from '../lib/voice/engine'
@@ -80,6 +80,7 @@ export function Shell() {
       <SettingsModal />
       <ContextMenuHost />
       <UserNoteHost />
+      <ReportHost />
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
       {question && (
         <Modal title={question.title} onClose={() => question.resolve(false)}
