@@ -11,7 +11,8 @@ const MAX_TARGETS = 10
 
 
 /** Encaminhar uma mensagem para várias conversas e canais de uma vez. */
-export function ForwardModal({ message, onClose }: { message: Message; onClose: () => void }) {
+export function ForwardModal({ messages, onClose }: { messages: Message[]; onClose: () => void }) {
+  const message = messages[0]
   const { dms, servers, profiles, userId, toast } = useApp()
   const [channels, setChannels] = useState<(Channel & { serverName: string })[]>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -45,8 +46,8 @@ export function ForwardModal({ message, onClose }: { message: Message; onClose: 
   const submit = async () => {
     setBusy(true)
     try {
-      await backend.forwardMessage(message.id, selected)
-      toast(selected.length > 1 ? t('Mensagem encaminhada para {n} conversas', { n: selected.length }) : t('Mensagem encaminhada'))
+      for (const m of messages) await backend.forwardMessage(m.id, selected) // na ordem em que foram escritas
+      toast(messages.length > 1 ? t('{n} mensagens encaminhadas', { n: messages.length }) : selected.length > 1 ? t('Mensagem encaminhada para {n} conversas', { n: selected.length }) : t('Mensagem encaminhada'))
       onClose()
     } catch (err) {
       toast((err as Error).message)
@@ -57,12 +58,12 @@ export function ForwardModal({ message, onClose }: { message: Message; onClose: 
 
   const preview = message.content.replace(/[*_~`]/g, '') || (message.attachments.length ? t('Arquivo') : '')
   return (
-    <Modal title={t('Encaminhar mensagem')} subtitle={t('Escolha até {n} conversas ou canais.', { n: MAX_TARGETS })} onClose={onClose}
+    <Modal title={messages.length > 1 ? t('Encaminhar {n} mensagens', { n: messages.length }) : t('Encaminhar mensagem')} subtitle={t('Escolha até {n} conversas ou canais.', { n: MAX_TARGETS })} onClose={onClose}
       footer={<button className="btn btn-primary" disabled={!selected.length || busy} onClick={() => void submit()}>
         {selected.length ? t('Encaminhar ({n})', { n: selected.length }) : t('Encaminhar')}
       </button>}>
       <div className="stack">
-        <p className="forward-preview truncate">{preview}</p>
+        <p className="forward-preview truncate">{preview}{messages.length > 1 ? ` (+${messages.length - 1})` : ''}</p>
         <label className="search-field">
           <Search size={16} />
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Procurar conversa ou canal')} aria-label={t('Procurar conversa ou canal')} />

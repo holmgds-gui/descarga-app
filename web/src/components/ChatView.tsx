@@ -3,7 +3,7 @@ import {
   type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject,
 } from 'react'
 import {
-  Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
+  Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, ListChecks, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
   Square, Trash2, Upload, UserPlus, Users, Video, X,
 } from 'lucide-react'
 import { backend } from '../lib/backend'
@@ -110,7 +110,9 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   const [dialog, setDialog] = useState<'add' | 'rename' | 'newGroup' | null>(null)
   const [pins, setPins] = useState<Pin[]>([])
   const [pinsOpen, setPinsOpen] = useState(false)
-  const [forwardMsg, setForwardMsg] = useState<Message | null>(null)
+  const [forwardMsg, setForwardMsg] = useState<Message[] | null>(null)
+  const [sel, setSel] = useState<Set<string> | null>(null) // seleção de várias mensagens (null = desligada)
+  const lastSel = useRef<string | null>(null)
   const [onceViews, setOnceViews] = useState<Record<string, string[]>>({})
   const [flashId, setFlashId] = useState<string | null>(null)
   const server = servers.find((s) => s.id === channel.server_id)
@@ -326,6 +328,55 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     await backend.deleteMessage(m.id)
     setMessages((prev) => prev.filter((x) => x.id !== m.id))
   }
+
+  // ---- selecionar várias mensagens ----
+  const canDelete = (m: Message) => m.author_id === userId || (!isDm && role.can('manage_messages') && role.canActOn(m.author_id))
+  const picked = useMemo(() => messages.filter((m) => sel?.has(m.id)), [messages, sel])
+  const startSelect = (m: Message) => { lastSel.current = m.id; setSel(new Set([m.id])) }
+  const toggleSel = (m: Message, range = false) => {
+    setSel((cur) => {
+      const next = new Set(cur ?? [])
+      if (range && lastSel.current) {
+        const a = messages.findIndex((x) => x.id === lastSel.current), b = messages.findIndex((x) => x.id === m.id)
+        if (a >= 0 && b >= 0) for (const x of messages.slice(Math.min(a, b), Math.max(a, b) + 1)) next.add(x.id)
+      } else if (next.has(m.id)) next.delete(m.id)
+      else next.add(m.id)
+      return next
+    })
+    lastSel.current = m.id
+  }
+  const copyPicked = () => {
+    const text = picked.filter((m) => m.content.trim()).map((m) => `${displayName(profiles[m.author_id])}: ${m.content.trim()}`).join('\n')
+    if (!text) { toast(t('Nada para copiar nas mensagens escolhidas.')); return }
+    copyText(text, toast)
+    setSel(null)
+  }
+  const deletePicked = async () => {
+    const list = picked
+    if (!list.length) return
+    const ok = await ask({
+      title: t('Apagar {n} mensagens', { n: list.length }),
+      message: t('Tem certeza de que quer apagar as mensagens escolhidas? Não dá para desfazer.'),
+      confirmLabel: t('Apagar'),
+      danger: true,
+    })
+    if (!ok) return
+    const done: string[] = []
+    try {
+      for (const m of list) { await backend.deleteMessage(m.id); done.push(m.id) }
+    } catch (err) {
+      toast((err as Error).message)
+    }
+    setMessages((prev) => prev.filter((x) => !done.includes(x.id)))
+    setSel(null)
+  }
+  useEffect(() => { setSel(null) }, [channel.id])
+  useEffect(() => {
+    if (!sel) return
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') setSel(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sel])
 
   const saveEdit = async (m: Message, content: string) => {
     setEditingId(null)
@@ -550,22 +601,25 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
             <Fragment key={m.id}>
               {newDay && <div className="day-sep"><span>{formatLongDate(m.created_at)}</span></div>}
               <article tabIndex={-1} data-mid={m.id}
-                className={`msg ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''} ${flashId === m.id ? 'flash' : ''}`}
-                {...swipeHandlers(() => setReplyTo(m), editingId !== m.id)}
+                className={`msg ${sel ? 'selecting' : ''} ${sel?.has(m.id) ? 'picked' : ''} ${grouped ? 'grouped' : ''} ${replyTo?.id === m.id ? 'replying' : ''} ${isForMe(m) ? 'mentioned' : ''} ${flashId === m.id ? 'flash' : ''}`}
+                {...swipeHandlers(() => setReplyTo(m), editingId !== m.id && !sel)}
+                onClickCapture={sel ? (e) => { e.preventDefault(); e.stopPropagation(); toggleSel(m, e.shiftKey) } : undefined}
                 onContextMenu={(e) => {
                   if (editingId === m.id) return // editando: deixa o menu de texto do navegador
                   const sel = window.getSelection()?.toString().trim()
                   const text = sel || m.content
                   userMenu(e, author, [
                     { label: t('Responder'), icon: <CornerUpLeft size={16} />, onClick: () => setReplyTo(m) },
+                    { label: t('Selecionar mensagens'), icon: <ListChecks size={16} />, onClick: () => startSelect(m) },
                     { label: t('Adicionar reação'), icon: <SmilePlus size={16} />, onClick: () => setPicker({ anchor: new DOMRect(e.clientX, e.clientY, 0, 0), messageId: m.id }) },
-                    ...(!m.attachments.some((a) => a.once) ? [{ label: t('Encaminhar'), icon: <Forward size={16} />, onClick: () => setForwardMsg(m) }] : []),
+                    ...(!m.attachments.some((a) => a.once) ? [{ label: t('Encaminhar'), icon: <Forward size={16} />, onClick: () => setForwardMsg([m]) }] : []),
                     ...(canPin ? [{ label: pinned.has(m.id) ? t('Desafixar') : t('Fixar mensagem'), icon: pinned.has(m.id) ? <PinOff size={16} /> : <PinIcon size={16} />, onClick: () => void togglePin(m) }] : []),
                     ...(text ? [{ label: sel ? t('Copiar seleção') : t('Copiar texto'), icon: <Copy size={16} />, onClick: () => copyText(text, toast) }] : []),
                     ...(mine && !m.attachments.some((a) => a.voice) ? [{ label: t('Editar'), icon: <Pencil size={16} />, onClick: () => setEditingId(m.id) }] : []),
                     ...(mine || (!isDm && role.can('manage_messages') && role.canActOn(m.author_id)) ? [{ label: t('Apagar'), icon: <Trash2 size={16} />, danger: true, onClick: () => void remove(m) }] : []),
                   ])
                 }}>
+                {sel && <span className={`sel-box ${sel.has(m.id) ? 'on' : ''}`} aria-hidden>{sel.has(m.id) && <Check size={13} />}</span>}
                 <span className="swipe-hint" aria-hidden><CornerUpLeft size={20} /></span>
                 {m.reply_to && (
                   <div className="msg-reply-ref">
@@ -628,7 +682,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                     <span className="seen-label"><Check size={14} /> {seenLabel}</span>
                   )}
                 </div>
-                {editingId !== m.id && (
+                {editingId !== m.id && !sel && (
                   <div className="msg-actions">
                     {quickReactions().map((e) => (
                       <button key={e} className="icon-btn tiny quick-react" aria-label={t('Reagir com {emoji}', { emoji: e })}
@@ -642,8 +696,11 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                     <button className="icon-btn tiny" aria-label={t('Responder')} data-tip={t('Responder')} onClick={() => setReplyTo(m)}>
                       <CornerUpLeft size={18} />
                     </button>
+                    <button className="icon-btn tiny" aria-label={t('Selecionar mensagens')} data-tip={t('Selecionar mensagens')} onClick={() => startSelect(m)}>
+                      <ListChecks size={18} />
+                    </button>
                     {!m.attachments.some((a) => a.once) && (
-                      <button className="icon-btn tiny" aria-label={t('Encaminhar')} data-tip={t('Encaminhar')} onClick={() => setForwardMsg(m)}>
+                      <button className="icon-btn tiny" aria-label={t('Encaminhar')} data-tip={t('Encaminhar')} onClick={() => setForwardMsg([m])}>
                         <Forward size={18} />
                       </button>
                     )}
@@ -675,6 +732,18 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
       <div className="typing-line" aria-live="polite">
         {typingIds.length > 0 && <TypingText ids={typingIds} />}
       </div>
+      {sel && (
+        <div className="select-bar" role="toolbar" aria-label={t('Mensagens escolhidas')}>
+          <button className="icon-btn" aria-label={t('Cancelar seleção')} data-tip={t('Cancelar')} onClick={() => setSel(null)}><X size={18} /></button>
+          <strong className="select-count">{picked.length === 1 ? t('1 mensagem') : t('{n} mensagens', { n: picked.length })}</strong>
+          <button className="btn btn-ghost btn-sm" onClick={() => setSel(new Set(messages.filter((m) => !(!(m.author_id === userId) && ignored.has(m.author_id))).map((m) => m.id)))}>{t('Selecionar tudo')}</button>
+          <span className="flex-1" />
+          <button className="btn btn-ghost btn-sm" disabled={!picked.length} onClick={copyPicked}><Copy size={15} /> {t('Copiar')}</button>
+          <button className="btn btn-ghost btn-sm" disabled={!picked.length} onClick={() => { const list = picked.filter((m) => !m.attachments.some((a) => a.once)); if (list.length) setForwardMsg(list); else toast(t('Mensagens de visualização única não podem ser encaminhadas.')) }}><Forward size={15} /> {t('Encaminhar')}</button>
+          <button className="btn btn-danger btn-sm" disabled={!picked.length || !picked.every(canDelete)} data-tip={picked.every(canDelete) ? undefined : t('Você só pode apagar as suas mensagens')} onClick={() => void deletePicked()}><Trash2 size={15} /> {t('Apagar')}</button>
+        </div>
+      )}
+      <div style={{ display: sel ? 'none' : 'contents' }}>
       <Composer
         canOnce={isDm}
         onTyping={ping}
@@ -694,6 +763,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
           if (last) setEditingId(last.id)
         }}
       />
+      </div>
       {dragging && (
         <div className="drop-overlay">
           <div className="drop-card">
@@ -710,7 +780,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
             if (m && !(reactions[m.id] ?? []).some((r) => r.user_id === userId && r.emoji === e)) void toggleReaction(m, e)
           }} />
       )}
-      {forwardMsg && <ForwardModal message={forwardMsg} onClose={() => setForwardMsg(null)} />}
+      {forwardMsg && <ForwardModal messages={forwardMsg} onClose={() => setForwardMsg(null)} />}
       {pinsOpen && (
         <PinsModal pins={pins} loaded={messages} canPin={canPin} onJump={(id) => void jumpTo(id)}
           onUnpin={(id) => { const m = messagesRef.current.find((x) => x.id === id); if (m) void togglePin(m); else { setPins((prev) => prev.filter((p) => p.message_id !== id)); void backend.unpinMessage(id) } }}

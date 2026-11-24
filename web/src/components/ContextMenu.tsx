@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type MouseEvent as ReactMouseEvent } from 'react'
 import { AtSign, Check, ChevronRight, Copy, EyeOff, Eye, Fingerprint, MessageCircle, Pencil, Send, ShieldCheck, StickyNote, User, UserMinus } from 'lucide-react'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
@@ -27,6 +28,8 @@ export interface MenuItem {
   muted?: boolean
   /** barra deslizante (0–100) no lugar de um botão; o menu continua aberto enquanto mexe */
   slider?: { value: number; onChange: (v: number) => void }
+  /** aba do menu em que o item aparece (se houver 2 ou mais abas, o menu mostra as abas no topo; sem `tab` vai para a primeira) */
+  tab?: string
 }
 
 function MenuSlider({ item }: { item: MenuItem }) {
@@ -267,16 +270,13 @@ export function useUserMenu() {
         })
       : [{ label: t('Nenhum cargo criado ainda'), disabled: true }]
 
-    showContextMenu(e, [
-      ...extra,
-      { label: t('Ver perfil'), icon: <User size={16} />, onClick: () => openProfile(p.id, at), separator: extra.length > 0 },
+    const TAB_ACTIONS = t('Ações'), TAB_PERSON = t('Pessoa'), TAB_MORE = t('Mais')
+    const tag = (list: MenuItem[], tab: string): MenuItem[] => (compact ? list : list.map((it, i) => ({ ...it, tab, separator: i === 0 ? false : it.separator })))
+    const essentials: MenuItem[] = [
+      { label: t('Ver perfil'), icon: <User size={16} />, onClick: () => openProfile(p.id, at) },
       ...(!mine ? [{ label: t('Mandar mensagem'), icon: <MessageCircle size={16} />, onClick: () => void openDmWith([p.id]).catch((err: Error) => toast(err.message)) }] : []),
       ...(canMention ? [{ label: t('Mencionar'), icon: <AtSign size={16} />, onClick: () => window.dispatchEvent(new CustomEvent('descarga-mention', { detail: p.username })) }] : []),
       ...(!mine ? [
-        ...(compact ? [] : [
-          { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, separator: true, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
-          { label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const }) },
-        ]),
         ...(servers.length ? [{
           label: t('Convidar para o servidor'), icon: <Send size={16} />, separator: true,
           children: servers.map((s) => ({ label: s.name, onClick: () => void invite(s) })),
@@ -284,13 +284,21 @@ export function useUserMenu() {
         ...(friend ? [{ label: t('Desfazer amizade'), icon: <UserMinus size={16} />, onClick: () => void unfriend() }] : []),
         { label: ignored.has(p.id) ? t('Parar de ignorar') : t('Ignorar'), icon: ignored.has(p.id) ? <Eye size={16} /> : <EyeOff size={16} />, onClick: () => { toggleIgnored(p.id); toast(ignored.has(p.id) ? t('Você voltou a ver {nome}', { nome: realName(p) }) : t('Mensagens de {nome} escondidas', { nome: realName(p) })) } },
       ] : []),
-      ...(showRoles && !compact ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
-      ...(compact ? [] : [
-        { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
-        { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
-      ]),
-      ...(!mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []),
-    ])
+    ]
+    const advanced: MenuItem[] = compact ? [] : [
+      ...(!mine ? [
+        { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
+        { label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const }) },
+      ] : []),
+      ...(showRoles ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
+      { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
+      { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
+    ]
+    const report: MenuItem[] = !mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []
+
+    showContextMenu(e, compact
+      ? [...extra, ...essentials.map((it, i) => (i === 0 && extra.length ? { ...it, separator: true } : it)), ...report]
+      : [...tag(extra, TAB_ACTIONS), ...tag(essentials, TAB_PERSON), ...tag([...advanced, ...report], TAB_MORE)])
   }
 }
 
@@ -316,7 +324,15 @@ export function ContextMenuHost() {
   const { toast } = useApp()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number; flip: boolean } | null>(null)
-  const [sub, setSub] = useState<number | null>(null)
+  const [sub, setSub] = useState<{ i: number; rect: DOMRect } | null>(null)
+  const [tab, setTab] = useState<string | null>(null)
+  const tabs = useMemo(() => {
+    const names: string[] = []
+    for (const it of open?.items ?? []) if (it.tab && !names.includes(it.tab)) names.push(it.tab)
+    return names.length > 1 ? names : []
+  }, [open])
+  const items = useMemo(() => (tabs.length ? (open?.items ?? []).filter((it) => (it.tab ?? tabs[0]) === (tab ?? tabs[0])) : (open?.items ?? [])), [open, tabs, tab])
+  useEffect(() => { setTab(null) }, [open])
 
   // por padrão o menu do navegador nunca aparece em cima do app; em campos de texto ele fica (colar, corrigir)
   useEffect(() => {
@@ -345,19 +361,21 @@ export function ContextMenuHost() {
       }
     }
     const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) close()
+      if (!(e.target as Element).closest?.('.ctx-menu, .ctx-sub')) close()
     }
+    // rolar dentro do menu (quando é alto) não pode fechá-lo
+    const onWheel = (e: Event) => { if (!(e.target as Element).closest?.('.ctx-menu, .ctx-sub')) close() }
     window.addEventListener('keydown', onKey)
     window.addEventListener('pointerdown', onDown, true)
     window.addEventListener('blur', close)
     window.addEventListener('resize', close)
-    window.addEventListener('wheel', close, { passive: true })
+    window.addEventListener('wheel', onWheel, { passive: true })
     return () => {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('pointerdown', onDown, true)
       window.removeEventListener('blur', close)
       window.removeEventListener('resize', close)
-      window.removeEventListener('wheel', close)
+      window.removeEventListener('wheel', onWheel)
     }
   }, [open])
 
@@ -366,44 +384,68 @@ export function ContextMenuHost() {
     if (!open || !ref.current) return
     const r = ref.current.getBoundingClientRect()
     const left = Math.max(6, Math.min(open.x, window.innerWidth - r.width - 6))
+    // cabe embaixo do clique? senão abre para cima; se não cabe em nenhum, encosta na borda (e o menu rola)
+    const below = window.innerHeight - open.y - 6
+    const top = r.height <= below ? open.y : r.height <= open.y - 6 ? open.y - r.height : Math.max(6, window.innerHeight - r.height - 6)
     setSub(null)
-    setPos({
-      left,
-      top: Math.max(6, Math.min(open.y, window.innerHeight - r.height - 6)),
-      flip: left + r.width + 230 > window.innerWidth,
-    })
-  }, [open])
+    setPos({ left, top, flip: left + r.width + 230 > window.innerWidth })
+  }, [open, tab])
 
   if (!open) return null
   return (
     <div ref={ref} className="dropdown ctx-menu" role="menu" style={{ left: pos?.left ?? open.x, top: pos?.top ?? open.y, visibility: pos ? 'visible' : 'hidden' }}
       onContextMenu={(e) => e.preventDefault()}>
-      {open.items.map((it, i) => (
-        <div key={i} role="none" className="ctx-row" onMouseEnter={() => setSub(it.children ? i : null)}>
-          {it.separator && i > 0 && <div className="dropdown-sep" />}
-          {it.slider ? <MenuSlider item={it} /> : (
-          <button role="menuitem" aria-haspopup={it.children ? 'menu' : undefined} aria-expanded={it.children ? sub === i : undefined}
-            className={`dropdown-item ${it.danger ? 'danger' : ''} ${it.muted ? 'ctx-muted' : ''}`} disabled={it.disabled}
-            onClick={() => { if (it.children) { setSub(i); return } closeContextMenu(); it.onClick?.() }}>
-            {it.icon}{it.color && <span className="ctx-dot" style={{ background: it.color }} />}
-            <span className="ctx-label">{it.label}</span>
-            {it.checked && <Check size={15} className="ctx-check" />}
-            {it.children && <ChevronRight size={15} className="ctx-chev" />}
-          </button>
-          )}
-          {it.children && sub === i && (
-            <div className={`dropdown ctx-sub ${pos?.flip ? 'flip' : ''}`} role="menu">
-              {it.children.map((c, j) => (
-                <button key={j} role="menuitem" className="dropdown-item" disabled={c.disabled} onClick={() => { closeContextMenu(); c.onClick?.() }}>
-                  {c.color && <span className="ctx-dot" style={{ background: c.color }} />}
-                  <span className="ctx-label">{c.label}</span>
-                  {c.checked && <Check size={15} className="ctx-check" />}
-                </button>
-              ))}
-            </div>
-          )}
+      {tabs.length > 0 && (
+        <div className="ctx-tabs" role="tablist">
+          {tabs.map((n) => (
+            <button key={n} role="tab" aria-selected={(tab ?? tabs[0]) === n} className={(tab ?? tabs[0]) === n ? 'on' : ''} onClick={() => { setTab(n); setSub(null) }}>{n}</button>
+          ))}
         </div>
-      ))}
+      )}
+      <div className="ctx-body">
+        {items.map((it, i) => (
+          <div key={i} role="none" className="ctx-row" onMouseEnter={(e) => setSub(it.children ? { i, rect: e.currentTarget.getBoundingClientRect() } : null)}>
+            {it.separator && i > 0 && <div className="dropdown-sep" />}
+            {it.slider ? <MenuSlider item={it} /> : (
+            <button role="menuitem" aria-haspopup={it.children ? 'menu' : undefined} aria-expanded={it.children ? sub?.i === i : undefined}
+              className={`dropdown-item ${it.danger ? 'danger' : ''} ${it.muted ? 'ctx-muted' : ''}`} disabled={it.disabled}
+              onClick={(e) => { if (it.children) { setSub({ i, rect: (e.currentTarget.closest('.ctx-row') as HTMLElement).getBoundingClientRect() }); return } closeContextMenu(); it.onClick?.() }}>
+              {it.icon}{it.color && <span className="ctx-dot" style={{ background: it.color }} />}
+              <span className="ctx-label">{it.label}</span>
+              {it.checked && <Check size={15} className="ctx-check" />}
+              {it.children && <ChevronRight size={15} className="ctx-chev" />}
+            </button>
+            )}
+            {it.children && sub?.i === i && <SubMenu rect={sub.rect} items={it.children} />}
+          </div>
+        ))}
+      </div>
     </div>
+  )
+}
+
+/** Submenu solto na tela (portal): nunca é cortado pelo menu e se ajusta quando falta espaço embaixo, em cima ou ao lado. */
+function SubMenu({ rect, items }: { rect: DOMRect; items: MenuItem[] }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
+  useLayoutEffect(() => {
+    const r = ref.current?.getBoundingClientRect()
+    if (!r) return
+    let left = rect.right - 2
+    if (left + r.width > window.innerWidth - 6) left = Math.max(6, rect.left - r.width + 2)
+    const top = Math.max(6, Math.min(rect.top - 6, window.innerHeight - r.height - 6))
+    setAt({ left, top })
+  }, [rect, items])
+  return createPortal(
+    <div ref={ref} className="dropdown ctx-sub" role="menu" style={{ left: at?.left ?? rect.right, top: at?.top ?? rect.top, visibility: at ? 'visible' : 'hidden' }}>
+      {items.map((c, j) => (
+        <button key={j} role="menuitem" className="dropdown-item" disabled={c.disabled} onClick={() => { closeContextMenu(); c.onClick?.() }}>
+          {c.color && <span className="ctx-dot" style={{ background: c.color }} />}
+          <span className="ctx-label">{c.label}</span>
+          {c.checked && <Check size={15} className="ctx-check" />}
+        </button>
+      ))}
+    </div>,
+    document.body,
   )
 }

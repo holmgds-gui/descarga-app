@@ -93,7 +93,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async getProfiles(ids) {
       if (!ids.length) return []
-      return must(await sb.from('profiles').select('*').in('id', ids)) as Profile[]
+      return must(await sb.rpc('get_profiles', { ids })) as Profile[]
     },
 
     async updateProfile(patch: ProfilePatch) {

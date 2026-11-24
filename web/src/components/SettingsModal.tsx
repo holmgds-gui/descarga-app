@@ -415,10 +415,10 @@ function PrivacySettings() {
   const { me, upsertProfile, toast } = useApp()
   const [busy, setBusy] = useState(false)
   if (!me) return null
-  const toggle = async (v: boolean) => {
+  const toggle = async (v: boolean, field: 'read_receipts' | 'profile_private' = 'read_receipts') => {
     setBusy(true)
     try {
-      upsertProfile(await backend.updateProfile({ read_receipts: v }))
+      upsertProfile(await backend.updateProfile({ [field]: v }))
     } catch (err) {
       toast((err as Error).message)
     } finally {
@@ -434,6 +434,13 @@ function PrivacySettings() {
           <span className="muted small">{tr('Mostra "Visto" nas conversas diretas. Se desligar, ninguém vê quando você leu, e você também não vê dos outros.')}</span>
         </span>
         <input type="checkbox" className="toggle" disabled={busy} checked={me.read_receipts !== false} onChange={(e) => void toggle(e.target.checked)} />
+      </label>
+      <label className="toggle-row">
+        <span>
+          <strong>{tr('Perfil privado')}</strong>
+          <span className="muted small">{tr('Só seus amigos veem biografia, banner, pronomes, aniversário, cidade, links e status personalizado. Os outros veem apenas nome e foto.')}</span>
+        </span>
+        <input type="checkbox" className="toggle" disabled={busy} checked={!!me.profile_private} onChange={(e) => void toggle(e.target.checked, 'profile_private')} />
       </label>
       <ReceiptPeople disabled={me.read_receipts === false} />
     </div>

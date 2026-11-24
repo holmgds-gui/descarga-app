@@ -22,6 +22,8 @@ export interface Profile {
   status: Status
   custom_status: string
   read_receipts: boolean
+  /** perfil privado: quem não é amigo vê só nome, foto, cor e status (o banco já entrega sem bio, banner, etc.) */
+  profile_private?: boolean
   /** só contas aprovadas pelo administrador usam o app (versões antigas do banco não têm este campo) */
   approval?: Approval
   terms_version?: string | null
