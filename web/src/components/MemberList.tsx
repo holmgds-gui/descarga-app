@@ -9,7 +9,7 @@ import { useUserMenu } from './ContextMenu'
 import { topRole } from '../lib/roles'
 
 export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string | null } = {}) {
-  const { memberIds, profiles, servers, activeServerId, openProfile, toast, ask } = useApp()
+  const { memberIds, profiles, servers, activeServerId, toast, ask } = useApp()
   const userMenu = useUserMenu()
   const server = servers.find((s) => s.id === (ids ? undefined : activeServerId))
   const access = useServerRole(server)
@@ -54,7 +54,7 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
     const roleColor = ids ? undefined : topRole(access.roleDefs, access.members[p.id])?.color
     return (
     <button key={p.id} className={`member ${p.status === 'invisible' ? 'offline' : ''}`}
-      onClick={(e) => openProfile(p.id, e.currentTarget.getBoundingClientRect())} onContextMenu={(e) => userMenu(e, p, moderate(p))}>
+      onClick={(e) => userMenu(e, p, moderate(p), true)} onContextMenu={(e) => userMenu(e, p, moderate(p))}>
       <Avatar profile={p} size={34} showStatus />
       <span className="member-text">
         <span className="member-name truncate" style={{ color: roleColor ?? (p.status === 'invisible' ? undefined : p.accent_color) }}>

@@ -202,12 +202,13 @@ export function UserNoteHost() {
   )
 }
 
-/** Menu de uma pessoa (botão direito no nome): perfil, mensagem, mencionar, nota, apelido, convite, amizade, ignorar, cargos, copiar ID. */
+/** Menu de uma pessoa. Botão direito: completo (perfil, mensagem, mencionar, nota, apelido, convite, amizade, ignorar, cargos, copiar ID).
+ *  Clique normal (`compact`): só o essencial (perfil, mensagem, mencionar, convite, amizade, ignorar, denunciar). */
 export function useUserMenu() {
   const { openProfile, openDmWith, userId, toast, notes, ignored, toggleIgnored, friendships, refreshFriends, refreshDms, ask, servers, activeServerId } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const access = useServerRole(server)
-  return (e: ReactMouseEvent, p: Profile | null | undefined, extra: MenuItem[] = []) => {
+  return (e: ReactMouseEvent, p: Profile | null | undefined, extra: MenuItem[] = [], compact = false) => {
     if (!p || p.deleted_at) {
       if (extra.length) showContextMenu(e, extra)
       return
@@ -272,8 +273,10 @@ export function useUserMenu() {
       ...(!mine ? [{ label: t('Mandar mensagem'), icon: <MessageCircle size={16} />, onClick: () => void openDmWith([p.id]).catch((err: Error) => toast(err.message)) }] : []),
       ...(canMention ? [{ label: t('Mencionar'), icon: <AtSign size={16} />, onClick: () => window.dispatchEvent(new CustomEvent('descarga-mention', { detail: p.username })) }] : []),
       ...(!mine ? [
-        { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, separator: true, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
-        { label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const }) },
+        ...(compact ? [] : [
+          { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, separator: true, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
+          { label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const }) },
+        ]),
         ...(servers.length ? [{
           label: t('Convidar para o servidor'), icon: <Send size={16} />, separator: true,
           children: servers.map((s) => ({ label: s.name, onClick: () => void invite(s) })),
@@ -281,9 +284,11 @@ export function useUserMenu() {
         ...(friend ? [{ label: t('Desfazer amizade'), icon: <UserMinus size={16} />, onClick: () => void unfriend() }] : []),
         { label: ignored.has(p.id) ? t('Parar de ignorar') : t('Ignorar'), icon: ignored.has(p.id) ? <Eye size={16} /> : <EyeOff size={16} />, onClick: () => { toggleIgnored(p.id); toast(ignored.has(p.id) ? t('Você voltou a ver {nome}', { nome: realName(p) }) : t('Mensagens de {nome} escondidas', { nome: realName(p) })) } },
       ] : []),
-      ...(showRoles ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
-      { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
-      { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
+      ...(showRoles && !compact ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
+      ...(compact ? [] : [
+        { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
+        { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
+      ]),
       ...(!mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []),
     ])
   }

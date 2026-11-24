@@ -355,7 +355,7 @@ type Tab = 'online' | 'all' | 'pending' | 'add'
 
 /** Página de amigos: disponíveis, todos, pedidos e adicionar. */
 export function FriendsPage() {
-  const { friendships, userId, profiles, openDmWith, toast, ask, refreshFriends, openProfile } = useApp()
+  const { friendships, userId, profiles, openDmWith, toast, ask, refreshFriends } = useApp()
   const userMenu = useUserMenu()
   const incoming = friendships.filter((f) => f.status === 'pending' && f.addressee === userId)
   const [tab, setTab] = useState<Tab>(() => (incoming.length ? 'pending' : 'online'))
@@ -437,7 +437,7 @@ export function FriendsPage() {
               return (
                 <div key={f.id} className="friend-row" onContextMenu={(e) => userMenu(e, p)} role={f.status === 'accepted' ? 'button' : undefined} tabIndex={f.status === 'accepted' ? 0 : -1}
                   aria-label={f.status === 'accepted' ? t('Conversar com {nome}', { nome: displayName(p) }) : undefined}
-                  onClick={(e) => (f.status === 'accepted' ? void openDmWith([otherOf(f)]).catch((err) => toast((err as Error).message)) : openProfile(otherOf(f), e.currentTarget.getBoundingClientRect()))}
+                  onClick={(e) => userMenu(e, p, [], true)}
                   onKeyDown={(e) => e.key === 'Enter' && f.status === 'accepted' && void openDmWith([otherOf(f)])}>
                   <Avatar profile={p} size={36} showStatus />
                   <span className="friend-text">

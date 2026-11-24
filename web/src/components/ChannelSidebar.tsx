@@ -18,7 +18,7 @@ import { ResizeHandle } from './ResizeHandle'
 import { t } from '../lib/i18n'
 
 export function ChannelSidebar() {
-  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask, openProfile } = useApp()
+  const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const [menuOpen, setMenuOpen] = useState(false)
   const [inviting, setInviting] = useState(false)
@@ -153,7 +153,7 @@ export function ChannelSidebar() {
                       <div className="voice-members">
                         {inVoice.filter((m) => m.channelId === c.id).map((m) => (
                           <button key={m.sessionId} className="voice-member" onContextMenu={(e) => userMenu(e, profiles[m.userId])}
-                            onClick={(e) => openProfile(m.userId, e.currentTarget.getBoundingClientRect())}>
+                            onClick={(e) => userMenu(e, profiles[m.userId], [], true)}>
                             <span className={`speak-ring ${call.speaking[m.sessionId] ? 'on' : ''}`}>
                               <Avatar profile={profiles[m.userId]} size={24} />
                             </span>

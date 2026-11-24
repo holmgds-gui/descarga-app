@@ -94,7 +94,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   membersOpen: boolean
   onToggleMembers: () => void
 }) {
-  const { profiles, ensureProfiles, userId, openProfile, toast, ask, memberIds, me, servers, ignored } = useApp()
+  const { profiles, ensureProfiles, userId, toast, ask, memberIds, me, servers, ignored } = useApp()
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const userMenu = useUserMenu()
   const [messages, setMessages] = useState<Message[]>([])
@@ -587,14 +587,14 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                   {grouped ? (
                     <time className="msg-hover-time">{formatTime(m.created_at)}</time>
                   ) : (
-                    <Avatar profile={author} size={40} onClick={(e) => openProfile(m.author_id, e.currentTarget.getBoundingClientRect())} />
+                    <Avatar profile={author} size={40} onClick={(e) => userMenu(e, author, [], true)} />
                   )}
                 </div>
                 <div className="msg-body">
                   {!grouped && (
                     <div className="msg-meta">
                       <button className="msg-author" style={{ color: nameColor(m.author_id) }}
-                        onClick={(e) => openProfile(m.author_id, e.currentTarget.getBoundingClientRect())}>
+                        onClick={(e) => userMenu(e, author, [], true)}>
                         {displayName(author)}
                       </button>
                       <time>{formatTimestamp(m.created_at)}</time>
