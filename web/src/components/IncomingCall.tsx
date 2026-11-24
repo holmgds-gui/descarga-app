@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneOff } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
 import { useActiveCalls, useVoice } from '../lib/voice/hooks'
-import { startRingback } from '../lib/voice/sounds'
+import { preloadRingtone, startIncomingRingtone, startRingback } from '../lib/voice/sounds'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import { dmName } from './dm'
@@ -10,7 +10,7 @@ import { t } from '../lib/i18n'
 
 const RING_MAX_MS = 45_000
 
-/** Alguém começou uma call numa conversa sua: mostra "Atender / Recusar". E, para quem liga, toca o "chamando" até alguém entrar. */
+/** Alguém começou uma call numa conversa sua: toca o toque e mostra "Atender / Recusar". E, para quem liga, toca o "chamando" até alguém entrar. */
 export function IncomingCall() {
   const { dms, userId, profiles, ensureProfiles, setActiveDmId, ignored, me } = useApp()
   const call = useVoice()
@@ -18,6 +18,7 @@ export function IncomingCall() {
   const byRoom = useActiveCalls(ids)
   const seenEmpty = useRef(new Set<string>())   // só toca para call que começou depois de eu ver a sala vazia
   const dismissed = useRef(new Set<string>())
+  useEffect(() => preloadRingtone(), [])
   const [ringing, setRinging] = useState<{ dmId: string; who: string; key: string } | null>(null)
 
   useEffect(() => {
@@ -46,9 +47,9 @@ export function IncomingCall() {
   useEffect(() => {
     if (!ringing) return
     ensureProfiles([ringing.who])
-    // o toque de quem RECEBE ainda vai chegar (áudio escolhido depois): por enquanto só o aviso na tela
+    const stop = startIncomingRingtone()
     const timer = window.setTimeout(() => { dismissed.current.add(ringing.key); setRinging(null) }, RING_MAX_MS)
-    return () => window.clearTimeout(timer)
+    return () => { stop(); window.clearTimeout(timer) }
   }, [ringing?.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // quem liga: "chamando" enquanto mais ninguém entrou na call da conversa

@@ -149,3 +149,58 @@ export function startRingback(force = false) {
   return () => window.clearInterval(id)
 }
 export const playRingbackPreview = () => { const stop = startRingback(true); window.setTimeout(stop, RINGBACK_PERIOD_MS * 2 - 100) }
+
+// ---- toque de quem RECEBE a chamada: arquivo "Descarga Call Loop" (trecho forte, já emendado para repetir sem corte) ----
+const RINGTONE_URL = `${import.meta.env.BASE_URL}toque-chamada.mp3`
+let ringtoneBuffer: Promise<AudioBuffer> | null = null
+
+function loadRingtone() {
+  if (!ringtoneBuffer) {
+    ringtoneBuffer = fetch(RINGTONE_URL)
+      .then((r) => r.arrayBuffer())
+      .then((data) => soundContext().decodeAudioData(data))
+      .catch((err) => { ringtoneBuffer = null; throw err })
+  }
+  return ringtoneBuffer
+}
+
+/** Baixa e prepara o toque quando o app está ocioso, para tocar na hora quando alguém ligar. */
+export function preloadRingtone() {
+  if (!ringtoneOnIncoming()) return
+  const go = () => void loadRingtone().catch(() => undefined)
+  if ('requestIdleCallback' in window) window.requestIdleCallback(go, { timeout: 8000 })
+  else setTimeout(go, 4000)
+}
+
+const INCOMING_KEY = 'descarga-som-toque-recebe'
+export const ringtoneOnIncoming = () => local.get(INCOMING_KEY) !== '0'
+export const setRingtoneIncoming = (on: boolean) => local.set(INCOMING_KEY, on ? '1' : '0')
+
+/** Toca o toque de chamada recebida em loop até chamar o que esta função devolve (some suavemente ao parar). */
+export function startIncomingRingtone(force = false) {
+  if (!force && !ringtoneOnIncoming()) return () => undefined
+  let stopped = false
+  let stopNow: (() => void) | null = null
+  void loadRingtone().then((buf) => {
+    if (stopped) return
+    const c = soundContext()
+    const src = c.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    const g = c.createGain()
+    const level = Math.min(1, volume * 1.5)
+    g.gain.setValueAtTime(0.0001, c.currentTime)
+    g.gain.exponentialRampToValueAtTime(level, c.currentTime + 0.05)
+    src.connect(g).connect(c.destination)
+    src.start()
+    stopNow = () => {
+      const t = c.currentTime
+      g.gain.cancelScheduledValues(t)
+      g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25)
+      src.stop(t + 0.3)
+    }
+  }).catch(() => undefined)
+  return () => { stopped = true; stopNow?.() }
+}
+export const playIncomingPreview = () => { const stop = startIncomingRingtone(true); window.setTimeout(stop, 9000) }

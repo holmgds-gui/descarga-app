@@ -862,6 +862,8 @@ export const EN: Record<string, string> = {
   'Principal': 'Main',
   'Tocar o "chamando" quando eu ligar para alguém': 'Play the ringing sound when I call someone',
   'Ouvir o "chamando"': 'Hear the ringing sound',
+  'Tocar o toque quando alguém me ligar': 'Play the ringtone when someone calls me',
+  'Ouvir o toque de chamada': 'Hear the call ringtone',
   '{nome} está te ligando': '{nome} is calling you',
   '{nome} está ligando para o grupo': '{nome} is calling the group',
   'está te ligando…': 'is calling you…',
