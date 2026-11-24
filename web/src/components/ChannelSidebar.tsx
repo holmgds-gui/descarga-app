@@ -74,6 +74,10 @@ export function ChannelSidebar({ onHide }: { onHide?: () => void } = {}) {
     toast(t('Você saiu do servidor'))
   }
 
+  const hideBtn = onHide ? (
+    <button className="pane-hide pane-hide-side" aria-label={t('Esconder canais')} title={t('Esconder canais')} onClick={onHide}><ChevronLeft size={18} /></button>
+  ) : null
+
   return (
     <aside className="channel-sidebar">
       {server ? (
@@ -84,6 +88,7 @@ export function ChannelSidebar({ onHide }: { onHide?: () => void } = {}) {
               <span className="truncate">{server.name}</span>
               {menuOpen ? <X size={18} /> : <ChevronDown size={18} />}
             </button>
+            {hideBtn}
             {menuOpen && (
               <div className="dropdown" onMouseLeave={() => setMenuOpen(false)}>
                 <button className="dropdown-item accent" onClick={() => { setInviting(true); setMenuOpen(false) }}>
@@ -195,13 +200,10 @@ export function ChannelSidebar({ onHide }: { onHide?: () => void } = {}) {
           )}
         </>
       ) : (
-        <HomeSidebar />
+        <HomeSidebar trailing={hideBtn} />
       )}
       <VoiceConnectedPanel />
       <UserPanel />
-      {onHide && (
-        <button className="pane-hide pane-hide-side" aria-label={t('Esconder canais')} title={t('Esconder canais')} onClick={onHide}><ChevronLeft size={18} /></button>
-      )}
       <ResizeHandle panel="side" />
     </aside>
   )

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Asterisk, Bell, Check, ChevronDown, ChevronUp, Globe, House, Pencil, Phone, Pin, Radio, Sparkles, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
@@ -48,7 +48,7 @@ function MapaSection() {
 import { getLang, locale, t } from '../lib/i18n'
 
 /** Barra lateral do Início: amigos e lista de conversas diretas. */
-export function HomeSidebar() {
+export function HomeSidebar({ trailing }: { trailing?: ReactNode } = {}) {
   const { homeSection, setHomeSection, dms, activeDmId, setActiveDmId, profiles, userId, unreadDms, friendships, hideDm, hiddenDms, ask, toast, refreshDms } = useApp()
   const [creating, setCreating] = useState(false)
   const call = useVoice()
@@ -83,6 +83,7 @@ export function HomeSidebar() {
     <>
       <div className="sidebar-header static">
         <button className="find-dm" onClick={() => setCreating(true)}>{t('Encontre ou comece uma conversa')}</button>
+        {trailing}
       </div>
       <div className="channel-list">
         <button className={`channel-item home-item ${activeDmId === null && homeSection === 'inicio' ? 'active' : ''}`}

@@ -56,18 +56,13 @@ export function Shell() {
       <div className="nav-pane">
         <ServerRail />
         <ChannelSidebar onHide={toggleSide} />
+        {!sideOpen && (
+          <div className="pane-strip pane-strip-side">
+            <button className="pane-show" aria-label={t('Mostrar canais')} title={t('Mostrar canais')} onClick={toggleSide}><ChevronRight size={18} /></button>
+          </div>
+        )}
       </div>
       <div className="main-pane" onClick={() => mobilePane === 'nav' && setMobilePane('chat')}>
-        {!sideOpen && (
-          <button className="pane-show pane-show-side" aria-label={t('Mostrar canais')} title={t('Mostrar canais')} onClick={(e) => { e.stopPropagation(); toggleSide() }}>
-            <ChevronRight size={18} />
-          </button>
-        )}
-        {membersApplicable && !membersOpen && (
-          <button className="pane-show pane-show-members" aria-label={t('Mostrar membros')} title={t('Mostrar membros')} onClick={(e) => { e.stopPropagation(); toggleMembers() }}>
-            <ChevronLeft size={18} />
-          </button>
-        )}
         {!activeServerId ? (
           dm ? (
             <ChatView key={dm.id} channel={dm} dm={dm} membersOpen={membersOpen} onToggleMembers={toggleMembers} />
@@ -85,15 +80,24 @@ export function Shell() {
       {activeServerId && channel?.type === 'text' && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
-          <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
+          <div className="pane-bar">
+            <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
+          </div>
           <MemberList />
         </div>
       )}
       {dm?.is_group && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
-          <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
+          <div className="pane-bar">
+            <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
+          </div>
           <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
+        </div>
+      )}
+      {membersApplicable && !membersOpen && (
+        <div className="pane-strip pane-strip-members">
+          <button className="pane-show" aria-label={t('Mostrar membros')} title={t('Mostrar membros')} onClick={toggleMembers}><ChevronLeft size={18} /></button>
         </div>
       )}
       {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}

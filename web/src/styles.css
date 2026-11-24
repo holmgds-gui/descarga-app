@@ -1200,26 +1200,30 @@ body.rail-dragging .rail-tip { display: none; }
 .select-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin: 0 14px 14px; border-radius: 10px; background: var(--bg-elev); border: 1px solid var(--border, rgba(255,255,255,.08)); }
 .select-count { font-size: .92em; }
 
-/* setinhas para esconder / mostrar a lista de canais e a de membros: só a seta, sem moldura */
-.main-pane { position: relative; }
-.pane-hide, .pane-show { position: absolute; z-index: 6; display: grid; place-items: center; width: 26px; height: 34px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; color: var(--text-2); opacity: .75; transition: opacity .15s, color .15s, transform .15s; }
+/* setinhas para esconder / mostrar a lista de canais e a de membros: só a seta, sem moldura, sempre numa faixa própria (nunca em cima do conteúdo) */
+.pane-hide, .pane-show { display: grid; place-items: center; width: 30px; height: 34px; flex: none; padding: 0; background: none; border: 0; border-radius: 8px; box-shadow: none; color: var(--text-2); opacity: .75; transition: opacity .15s, color .15s, transform .15s; }
 .pane-hide:hover, .pane-show:hover, .pane-hide:focus-visible, .pane-show:focus-visible { opacity: 1; color: var(--text); background: none; }
-.pane-hide-side { top: calc((var(--header-h) - 34px) / 2); right: 6px; }
+.pane-hide-side { align-self: center; height: var(--header-h); border-bottom: 1px solid var(--border); border-radius: 0; margin-right: 4px; }
+.sidebar-header-wrap { display: flex; align-items: stretch; }
+.sidebar-header-wrap .sidebar-header { flex: 1; min-width: 0; }
+.sidebar-header.static .pane-hide-side { border-bottom: 0; height: 34px; margin: 0 -8px 0 4px; }
 .pane-hide-side:hover { transform: translateX(-2px); }
-.pane-hide-members { top: 8px; left: 6px; }
+.pane-bar { flex: none; height: 38px; display: flex; align-items: center; padding: 0 6px; }
 .pane-hide-members:hover { transform: translateX(2px); }
-.pane-show { top: calc(var(--header-h) + 10px); }
-.pane-show-side { left: 4px; }
-.pane-show-side:hover { transform: translateX(2px); }
-.pane-show-members { right: 4px; }
-.pane-show-members:hover { transform: translateX(-2px); }
-.channel-sidebar .sidebar-header:not(.static) { padding-right: 38px; }
-.members-pane .member-list { padding-top: 40px; }
-@media (max-width: 999px) { .pane-hide-members, .pane-show-members { display: none; } }
-@media (max-width: 767px) { .pane-hide-side, .pane-show-side { display: none; } }
+.pane-strip { flex: none; width: 24px; display: flex; flex-direction: column; align-items: center; padding-top: calc((var(--header-h) - 34px) / 2); }
+.pane-strip .pane-show { width: 24px; }
+.pane-strip-side .pane-show:hover { transform: translateX(2px); }
+.pane-strip-members .pane-show:hover { transform: translateX(-2px); }
+.pane-bar { display: none; }
+@media (min-width: 1000px) {
+  .members-pane { display: flex; flex-direction: column; }
+  .members-pane .pane-bar { display: flex; }
+  .members-pane .member-list { height: auto; flex: 1; min-height: 0; padding-top: 0; }
+}
+@media (max-width: 999px) { .pane-strip-members { display: none; } }
+@media (max-width: 767px) { .pane-hide-side, .pane-strip-side { display: none; } }
 @media (min-width: 768px) {
   .app.side-hidden .channel-sidebar { display: none; }
-  .app.side-hidden .main-pane .chat-header { padding-left: 38px; }
 }
 
 /* aba da esquerda / direita bem estreita: só ícones */
@@ -1261,9 +1265,9 @@ body.rail-dragging .rail-tip { display: none; }
   html[data-side-compact] .channel-sidebar .status-menu { position: fixed; top: auto; bottom: 16px; left: 152px; right: auto; width: 260px; }
 }
 @media (min-width: 1000px) {
-  html[data-members-compact] .pane-hide-members { left: 50%; margin-left: -13px; top: 6px; }
+  html[data-members-compact] .pane-bar { justify-content: center; padding: 0; }
   html[data-members-compact] .member-group { display: none; }
-  html[data-members-compact] .member-list { padding: 40px 6px 8px; }
+  html[data-members-compact] .member-list { padding: 0 6px 8px; }
   html[data-members-compact] .members-pane section + section, html[data-members-compact] .members-pane .member + .member { margin-top: 2px; }
   html[data-members-compact] .member { justify-content: center; padding: 5px 0; }
   html[data-members-compact] .member-text { display: none; }
