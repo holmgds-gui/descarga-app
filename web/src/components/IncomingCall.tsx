@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneOff } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
 import { useActiveCalls, useVoice } from '../lib/voice/hooks'
-import { startRingtone } from '../lib/voice/sounds'
+import { startRingback } from '../lib/voice/sounds'
 import { useApp } from '../state'
 import { Avatar, displayName } from './Avatar'
 import { dmName } from './dm'
@@ -10,7 +10,7 @@ import { t } from '../lib/i18n'
 
 const RING_MAX_MS = 45_000
 
-/** Alguém começou uma call numa conversa sua: toca o toque e mostra "Atender / Recusar". */
+/** Alguém começou uma call numa conversa sua: mostra "Atender / Recusar". E, para quem liga, toca o "chamando" até alguém entrar. */
 export function IncomingCall() {
   const { dms, userId, profiles, ensureProfiles, setActiveDmId, ignored, me } = useApp()
   const call = useVoice()
@@ -46,10 +46,21 @@ export function IncomingCall() {
   useEffect(() => {
     if (!ringing) return
     ensureProfiles([ringing.who])
-    const stop = startRingtone()
+    // o toque de quem RECEBE ainda vai chegar (áudio escolhido depois): por enquanto só o aviso na tela
     const timer = window.setTimeout(() => { dismissed.current.add(ringing.key); setRinging(null) }, RING_MAX_MS)
-    return () => { stop(); window.clearTimeout(timer) }
+    return () => window.clearTimeout(timer)
   }, [ringing?.key]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // quem liga: "chamando" enquanto mais ninguém entrou na call da conversa
+  const myDm = call.status !== 'idle' && call.channelId && dms.some((d) => d.id === call.channelId) ? call.channelId : null
+  const alone = !!myDm && call.members.filter((m) => m.sessionId !== call.sessionId).length === 0
+  useEffect(() => {
+    if (!myDm || !alone) return
+    let stop: (() => void) | null = null
+    const start = window.setTimeout(() => { stop = startRingback() }, 700)
+    const end = window.setTimeout(() => stop?.(), RING_MAX_MS)
+    return () => { window.clearTimeout(start); window.clearTimeout(end); stop?.() }
+  }, [myDm, alone])
 
   if (!ringing) return null
   const dm = dms.find((d) => d.id === ringing.dmId)

@@ -122,30 +122,30 @@ export function playMessageIfAway(force = false) {
   playMessage()
 }
 
-// ---- toque de chamada: gotas graves e agudas, repetindo com intervalo curto ----
+// ---- "chamando": o som que QUEM LIGA escuta enquanto o outro não atende (gotas graves e agudas, intervalo curto) ----
 const RING_KEY = 'descarga-som-toque'
-export const ringtoneOn = () => local.get(RING_KEY) !== '0'
-export const setRingtone = (on: boolean) => local.set(RING_KEY, on ? '1' : '0')
+export const ringbackOn = () => local.get(RING_KEY) !== '0'
+export const setRingback = (on: boolean) => local.set(RING_KEY, on ? '1' : '0')
 
-const RING_NOTES: Array<[number, number]> = [[374, 0], [748, 0.2], [374, 0.4], [748, 0.6], [561, 1.0], [935, 1.2]]
-const RING_PERIOD_MS = 1650
+const RINGBACK_NOTES: Array<[number, number]> = [[337, 0], [673, 0.2], [337, 0.4], [673, 0.6], [505, 1.0], [842, 1.2]]
+const RINGBACK_PERIOD_MS = 1650
 
-function ringOnce() {
+function ringbackOnce() {
   try {
     const c = soundContext()
     const dest = out(c)
     const t = c.currentTime + 0.02
-    RING_NOTES.forEach(([f, at]) => drop(c, dest, t + at, f, 0.34, 2.3, false))
+    RINGBACK_NOTES.forEach(([f, at]) => drop(c, dest, t + at, f, 0.34, 2.3, false))
   } catch {
     // sem áudio liberado ainda: segue sem som
   }
 }
 
-/** Toca o toque em loop até chamar o que esta função devolve. */
-export function startRingtone(force = false) {
-  if (!force && !ringtoneOn()) return () => undefined
-  ringOnce()
-  const id = window.setInterval(ringOnce, RING_PERIOD_MS)
+/** Toca o "chamando" em loop até chamar o que esta função devolve. */
+export function startRingback(force = false) {
+  if (!force && !ringbackOn()) return () => undefined
+  ringbackOnce()
+  const id = window.setInterval(ringbackOnce, RINGBACK_PERIOD_MS)
   return () => window.clearInterval(id)
 }
-export const playRingtonePreview = () => { const stop = startRingtone(true); window.setTimeout(stop, RING_PERIOD_MS * 2 - 100) }
+export const playRingbackPreview = () => { const stop = startRingback(true); window.setTimeout(stop, RINGBACK_PERIOD_MS * 2 - 100) }

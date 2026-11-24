@@ -6,7 +6,7 @@ import { clearDiagnostics, getDiagnostics, voice } from '../lib/voice/engine'
 import { copyText } from './ContextMenu'
 import { useVoice } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
-import { messageSoundOn, playJoin, playLeave, playMessage, playRingtonePreview, ringtoneOn, setMessageSound, setRingtone } from '../lib/voice/sounds'
+import { messageSoundOn, playJoin, playLeave, playMessage, playRingbackPreview, ringbackOn, setMessageSound, setRingback } from '../lib/voice/sounds'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
 import { micErrorMessage } from '../lib/voice/micError'
@@ -198,7 +198,7 @@ export function NotificationsTab() {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   const [soundOn, setSoundOn] = useState(messageSoundOn)
-  const [ringOn, setRingOn] = useState(ringtoneOn)
+  const [ringOn, setRingOn] = useState(ringbackOn)
 
   const refresh = () => void getPushState().then(setState)
   useEffect(refresh, [])
@@ -270,10 +270,10 @@ export function NotificationsTab() {
       </label>
       <button type="button" className="btn btn-ghost btn-sm" onClick={playMessage}><Droplets size={16} /> {t('Ouvir o som de mensagem')}</button>
       <label className="toggle-row">
-        <span>{t('Tocar o toque quando alguém me ligar')}</span>
-        <input type="checkbox" className="toggle" checked={ringOn} onChange={(e) => { setRingOn(e.target.checked); setRingtone(e.target.checked) }} />
+        <span>{t('Tocar o "chamando" quando eu ligar para alguém')}</span>
+        <input type="checkbox" className="toggle" checked={ringOn} onChange={(e) => { setRingOn(e.target.checked); setRingback(e.target.checked) }} />
       </label>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={playRingtonePreview}><Waves size={16} /> {t('Ouvir o toque')}</button>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={playRingbackPreview}><Waves size={16} /> {t('Ouvir o "chamando"')}</button>
       {isIOS() && state !== 'needs-install' && (
         <p className="muted small">{t('No iPhone, as notificações funcionam com o Descarga aberto pelo ícone da Tela de Início.')}</p>
       )}
