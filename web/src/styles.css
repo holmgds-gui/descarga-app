@@ -1202,7 +1202,7 @@ body.rail-dragging .rail-tip { display: none; }
 
 /* setinhas para esconder / mostrar a lista de canais e a de membros: só a seta, sem moldura */
 .main-pane { position: relative; }
-.pane-hide, .pane-show { position: absolute; z-index: 6; display: grid; place-items: center; width: 26px; height: 34px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; color: var(--text-3); opacity: .55; transition: opacity .15s, color .15s, transform .15s; }
+.pane-hide, .pane-show { position: absolute; z-index: 6; display: grid; place-items: center; width: 26px; height: 34px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; color: var(--text-2); opacity: .75; transition: opacity .15s, color .15s, transform .15s; }
 .pane-hide:hover, .pane-show:hover, .pane-hide:focus-visible, .pane-show:focus-visible { opacity: 1; color: var(--text); background: none; }
 .pane-hide-side { top: calc((var(--header-h) - 34px) / 2); right: 6px; }
 .pane-hide-side:hover { transform: translateX(-2px); }
