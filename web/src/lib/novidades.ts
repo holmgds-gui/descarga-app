@@ -13,6 +13,7 @@ export const NOVIDADES: Novidade[] = [
     items: [
       n('Design novo', 'New design', 'Painéis flutuantes, ícones arredondados, fontes novas, animações suaves e tema "Tinta". Dá para voltar ao visual antigo em Configurações > Aparência e idioma.', 'Floating panels, rounded icons, new fonts, smooth animations and the "Ink" theme. You can go back to the old look in Settings > Appearance and language.'),
       n('Barra de abas no celular', 'Mobile tab bar', 'Início, Conversas, Servidores e Você ficam sempre à mão embaixo da tela, como no Discord novo.', 'Home, Chats, Servers and You are always at hand at the bottom of the screen, like the new Discord.'),
+      n('Organize seus servidores', 'Organize your servers', 'Segure um ícone de servidor (ou puxe com o mouse) e arraste para mudar a ordem. No celular, segurar e soltar sem mexer abre o menu. A ordem fica salva na sua conta.', 'Hold a server icon (or drag it with the mouse) to change the order. On a phone, hold and release without moving to open the menu. The order is saved to your account.'),
       n('App para Mac', 'Mac app', 'O Descarga agora também tem instalador para Mac (em Configurações > Conta).', 'Descarga now also has a Mac installer (Settings > Account).'),
     ],
   },

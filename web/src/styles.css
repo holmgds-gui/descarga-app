@@ -1162,3 +1162,12 @@ button.home-row:hover { background: var(--bg-hover); }
 .ctx-menu .dropdown-item.ctx-muted:hover { opacity: .9; }
 .report-details { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92em; }
 .report-row.done { opacity: .55; }
+
+/* arrastar servidor para reorganizar (segurar no celular, puxar com o mouse) */
+.rail-item[data-sid] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.server-rail.is-dragging .rail-item[data-sid]:not(.dragging) { transition: transform .22s cubic-bezier(.2, .9, .3, 1.1); }
+.rail-item.dragging { z-index: 8; transition: none; }
+.rail-item.dragging .rail-btn { transform: scale(1.14); box-shadow: 0 16px 30px -8px rgba(0, 0, 0, .65); cursor: grabbing; }
+.rail-item.dragging .rail-pill { opacity: 0; }
+body.rail-dragging, body.rail-dragging * { cursor: grabbing !important; }
+body.rail-dragging .rail-tip { display: none; }

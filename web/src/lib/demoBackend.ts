@@ -34,7 +34,7 @@ interface DB {
   notice?: { body: string; updated_at: string } | null
   reports?: Report[]
   notes?: { owner: string; target: string; note: string; nickname: string }[]
-  prefs?: { user: string; server: string; level: ServerPrefs['level']; muted_until: string | null }[]
+  prefs?: { user: string; server: string; level: ServerPrefs['level']; muted_until: string | null; position?: number | null }[]
 }
 const FILE_PREFIX = 'descarga-demo-arquivo-'
 const DEMO_MAX_FILE = 1024 * 1024
@@ -509,12 +509,24 @@ export function createDemoBackend(): Backend {
     },
     async listServerPrefs() {
       const db = load()
-      return Object.fromEntries((db.prefs ?? []).filter((p) => p.user === me()).map((p) => [p.server, { level: p.level, muted_until: p.muted_until }]))
+      return Object.fromEntries((db.prefs ?? []).filter((p) => p.user === me()).map((p) => [p.server, { level: p.level, muted_until: p.muted_until, position: p.position ?? null }]))
     },
     async setServerPrefs(serverId, p) {
       const db = load()
+      const old = (db.prefs ?? []).find((x) => x.user === me() && x.server === serverId)
       db.prefs = (db.prefs ?? []).filter((x) => !(x.user === me() && x.server === serverId))
-      db.prefs.push({ user: me(), server: serverId, level: p.level, muted_until: p.muted_until })
+      db.prefs.push({ user: me(), server: serverId, level: p.level, muted_until: p.muted_until, position: old?.position ?? null })
+      save(db)
+    },
+    async setServerOrder(orderedIds) {
+      const db = load()
+      const prefs = db.prefs ?? []
+      orderedIds.forEach((id, i) => {
+        const row = prefs.find((x) => x.user === me() && x.server === id)
+        if (row) row.position = i
+        else prefs.push({ user: me(), server: id, level: 'all', muted_until: null, position: i })
+      })
+      db.prefs = prefs
       save(db)
     },
     async getNotice() {

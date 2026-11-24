@@ -21,7 +21,7 @@ html[data-design='novo'] {
   --shadow: 0 18px 50px -12px rgba(0, 0, 0, .55);
   --bg-hover: color-mix(in srgb, var(--text) 6%, transparent);
   --bg-active: color-mix(in srgb, var(--text) 11%, transparent);
-  --border: color-mix(in srgb, var(--text) 17%, transparent);
+  --border: color-mix(in srgb, var(--text) 15%, transparent);
   letter-spacing: -.003em;
 
   & body { font-weight: 500; font-feature-settings: 'ss01', 'cv11'; }
@@ -39,7 +39,7 @@ html[data-design='novo'] {
   & .btn:active:not(:disabled) { transform: scale(.96); }
   & .btn-primary { background: var(--grad); box-shadow: var(--glow); }
   & .btn-primary:hover:not(:disabled) { background: var(--grad); filter: brightness(1.1) saturate(1.05); transform: translateY(-1px); box-shadow: 0 12px 26px -8px color-mix(in srgb, var(--accent) 85%, transparent); }
-  & .btn-ghost { background: var(--bg-active); border: 2px solid transparent; }
+  & .btn-ghost { background: var(--bg-active); border: 1px solid transparent; }
   & .btn-ghost:hover { background: var(--bg-active); outline: 0; border-color: var(--border); transform: translateY(-1px); }
   & .btn-success, & .btn-danger { box-shadow: 0 8px 20px -10px currentColor; }
   & .btn-sm { height: 34px; border-radius: 8px; }
@@ -53,7 +53,7 @@ html[data-design='novo'] {
 
   /* campos */
   & .form input:not([type=checkbox]):not([type=range]):not([type=color]), & .form textarea, & .select, & .form select {
-    border-radius: 8px; background: color-mix(in srgb, var(--bg-input) 92%, var(--text) 2%); border: 2px solid transparent; padding: 11px 14px;
+    border-radius: 8px; background: color-mix(in srgb, var(--bg-input) 92%, var(--text) 2%); border: 1px solid var(--border); padding: 11px 14px;
     transition: border-color .15s, box-shadow .2s, background .15s;
   }
   & .form input:focus, & .form textarea:focus, & .select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--bg-input); }
@@ -80,7 +80,7 @@ html[data-design='novo'] {
   & .auth-page::before { width: 340px; height: 340px; left: 6%; top: 52%; background: color-mix(in srgb, var(--accent) 70%, transparent); }
   & .auth-page::after { width: 280px; height: 280px; right: 8%; top: 8%; background: color-mix(in srgb, #ff4fd8 50%, transparent); animation-delay: -9s; }
   & .auth-card {
-    border-radius: 16px; padding: 36px 34px 30px; max-width: 450px; border: 2px solid var(--border);
+    border-radius: 16px; padding: 36px 34px 30px; max-width: 450px; border: 1px solid var(--border);
     background: color-mix(in srgb, var(--bg-side) 78%, transparent); backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
     box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .6), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
     animation: card-in .7s var(--ease-out) both;
@@ -96,7 +96,7 @@ html[data-design='novo'] {
   & .nav-pane { gap: 4px; }
   & .server-rail { width: 68px; background: transparent; padding: 2px 0 6px; gap: 10px; }
   & .channel-sidebar, & .main-pane, & .members-pane {
-    border-radius: var(--r-xl); overflow: hidden; border: 2px solid var(--border);
+    border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--border);
     box-shadow: 0 14px 40px -20px rgba(0, 0, 0, .6);
   }
   & .channel-sidebar { background: var(--bg-side); }
@@ -106,10 +106,10 @@ html[data-design='novo'] {
   & .chat { background: var(--bg-chat); }
 
   /* trilho de servidores: squircles com mola */
-  & .rail-btn { width: 50px; height: 50px; border-radius: 10px; background: var(--bg-elev); transition: border-radius .28s var(--ease-spring), transform .28s var(--ease-spring), background .2s, box-shadow .25s; }
-  & .rail-btn:hover { transform: translateY(-2px) scale(1.06); border-radius: 12px; }
+  & .rail-btn { width: 50px; height: 50px; border-radius: 50%; background: var(--bg-elev); transition: border-radius .28s var(--ease-spring), transform .28s var(--ease-spring), background .2s, box-shadow .25s; }
+  & .rail-btn:hover { transform: translateY(-2px) scale(1.06); border-radius: 18px; }
   & .rail-btn:active { transform: scale(.94); }
-  & .rail-item.active .rail-btn { border-radius: 12px; box-shadow: 0 0 0 2.5px var(--bg-rail), 0 0 0 5px var(--accent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+  & .rail-item.active .rail-btn { border-radius: 18px; box-shadow: 0 0 0 2px var(--bg-rail), 0 0 0 4px var(--accent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
   & .rail-item.active .rail-btn:not(:has(img)), & .rail-btn:not(:has(img)):hover { background: var(--grad); }
   & .rail-pill { width: 5px; left: -9px; background: var(--grad); border-radius: 0 5px 5px 0; transition: height .3s var(--ease-spring), opacity .2s; opacity: 0; }
   & .rail-item:hover .rail-pill { opacity: 1; height: 18px; }
@@ -118,7 +118,7 @@ html[data-design='novo'] {
   & .rail-item.active .rail-btn:has(.rail-home) { box-shadow: none; }
   & .rail-btn .rail-home { transform: scale(.9); filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
   & .rail-btn:hover .rail-home, & .rail-item.active .rail-home { transform: scale(1) rotate(-6deg); }
-  & .rail-sep { height: 4px; border-radius: 2px; width: 28px; background: var(--border); }
+  & .rail-sep { height: 3px; border-radius: 2px; width: 28px; background: var(--border); }
   & .rail-add { background: color-mix(in srgb, var(--success) 14%, var(--bg-elev)); }
   & .rail-add:hover { background: var(--success) !important; }
   & .rail-tip { border-radius: 8px; font-family: var(--font-display); font-weight: 700; padding: 9px 14px; animation: tip-in .22s var(--ease-spring); }
@@ -141,7 +141,7 @@ html[data-design='novo'] {
   & .channel-item.in-call { color: var(--success); }
   & .voice-member { border-radius: 7px; }
   & .user-panel {
-    margin: 0 10px 10px; height: 60px; border-radius: 12px; padding: 0 8px; border: 2px solid var(--border);
+    margin: 0 10px 10px; height: 60px; border-radius: 12px; padding: 0 8px; border: 1px solid var(--border);
     background: color-mix(in srgb, var(--bg-elev) 85%, transparent);
   }
   & .user-panel { padding: 0 6px; gap: 0; }
@@ -149,19 +149,17 @@ html[data-design='novo'] {
   & .user-panel-me { border-radius: 8px; padding: 4px 6px 4px 4px; }
   & .user-panel-text strong { font-family: var(--font-display); font-weight: 700; }
   & .voice-panel { margin: 0 10px 8px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border)); background: color-mix(in srgb, var(--success) 8%, var(--bg-elev)); }
-  & .status-menu { border-radius: 12px; padding: 10px; backdrop-filter: blur(16px); left: 0; right: 0; width: auto; bottom: calc(100% + 6px); border: 2px solid var(--border); }
+  & .status-menu { border-radius: 12px; padding: 10px; backdrop-filter: blur(16px); left: 0; right: 0; width: auto; bottom: calc(100% + 6px); border: 1px solid var(--border); }
   & .status-custom input { min-width: 0; }
 
-  /* avatares: squircle */
-  & .avatar { border-radius: 24%; }
-  & .avatar > img, & .avatar-fallback { border-radius: 24%; }
-  & .speak-ring { border-radius: 24%; }
+  /* avatares: redondos */
+  & .avatar, & .avatar > img, & .avatar-fallback, & .speak-ring { border-radius: 50%; }
   & .avatar-fallback { font-family: var(--font-display); font-weight: 800; }
   & .avatar .status-dot { box-shadow: 0 0 0 3px var(--bg-side); border-radius: 50%; }
 
   /* ---------- chat ---------- */
   & .chat-header {
-    height: var(--header-h); padding: 0 14px 0 20px; border-bottom: 2px solid var(--border); box-shadow: none; position: relative; z-index: 2;
+    height: var(--header-h); padding: 0 14px 0 20px; border-bottom: 1px solid var(--border); box-shadow: none; position: relative; z-index: 2;
     background: color-mix(in srgb, var(--bg-chat) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   }
   & .chat-header h1 { font-size: 1.12em; font-weight: 750; }
@@ -171,7 +169,7 @@ html[data-design='novo'] {
   & .channel-welcome-icon { width: 76px; height: 76px; border-radius: 14px; background: var(--grad); color: #fff; box-shadow: var(--glow); }
   & .channel-welcome h2 { font-size: 2.1em; font-weight: 800; letter-spacing: -.03em; }
   & .day-sep { margin: 20px 16px 6px; gap: 12px; }
-  & .day-sep::before, & .day-sep::after { height: 2px; }
+  & .day-sep::before, & .day-sep::after { height: 1px; }
   & .day-sep::before, & .day-sep::after { background: linear-gradient(90deg, transparent, var(--border)); }
   & .day-sep::after { background: linear-gradient(270deg, transparent, var(--border)); }
 
@@ -197,7 +195,7 @@ html[data-design='novo'] {
 
   & .composer-wrap { padding: 0 18px 18px; }
   & .composer {
-    border-radius: 14px; padding: 7px 10px; background: color-mix(in srgb, var(--bg-input) 94%, var(--text) 2%); border: 2px solid var(--border);
+    border-radius: 14px; padding: 7px 10px; background: color-mix(in srgb, var(--bg-input) 94%, var(--text) 2%); border: 1px solid var(--border);
     transition: border-color .2s, box-shadow .25s, background .2s; box-shadow: 0 10px 30px -18px rgba(0, 0, 0, .7);
   }
   & .composer:focus-within { border-color: color-mix(in srgb, var(--accent) 75%, transparent); box-shadow: 0 0 0 4px var(--accent-soft), 0 14px 34px -16px color-mix(in srgb, var(--accent) 60%, transparent); }
@@ -216,13 +214,13 @@ html[data-design='novo'] {
   /* ---------- janelas, menus, avisos ---------- */
   & .modal-backdrop { background: rgba(5, 3, 12, .62); backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); animation: fade .2s; }
   & .modal {
-    border-radius: 16px; background: color-mix(in srgb, var(--bg-side) 96%, var(--text) 1%); border: 2px solid var(--border);
+    border-radius: 16px; background: color-mix(in srgb, var(--bg-side) 96%, var(--text) 1%); border: 1px solid var(--border);
     box-shadow: 0 40px 100px -20px rgba(0, 0, 0, .7); animation: modal-in .42s var(--ease-spring) both;
   }
   & .modal-header { padding: 28px 28px 8px; }
   & .modal-header h2 { font-size: 1.55em; font-weight: 800; letter-spacing: -.025em; }
   & .modal-body { padding: 16px 28px 28px; }
-  & .modal-footer { background: color-mix(in srgb, var(--bg-rail) 70%, transparent); padding: 16px 28px; border-top: 2px solid var(--border); }
+  & .modal-footer { background: color-mix(in srgb, var(--bg-rail) 70%, transparent); padding: 16px 28px; border-top: 1px solid var(--border); }
   & .choice { border-radius: 12px; padding: 16px 18px; transition: transform .22s var(--ease-spring), background .15s, border-color .15s, box-shadow .2s; }
   & .choice:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -16px rgba(0, 0, 0, .7); }
   & .choice.selected { border-color: var(--accent); }
@@ -233,7 +231,7 @@ html[data-design='novo'] {
   & .profile-name { font-family: var(--font-display); font-weight: 800; }
 
   & .dropdown, & .ctx-menu.dropdown {
-    border-radius: 12px; padding: 7px; border: 2px solid var(--border);
+    border-radius: 12px; padding: 7px; border: 1px solid var(--border);
     background: color-mix(in srgb, var(--bg-float) 90%, transparent); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
     box-shadow: 0 24px 60px -16px rgba(0, 0, 0, .7);
   }
@@ -245,7 +243,7 @@ html[data-design='novo'] {
   & .ctx-slider { border-radius: 8px; }
   & .toast {
     border-radius: 10px; border-left: 0; padding: 12px 20px 12px 18px; bottom: 100px; font-weight: 700;
-    background: color-mix(in srgb, var(--bg-float) 92%, transparent); backdrop-filter: blur(16px); border: 2px solid var(--border);
+    background: color-mix(in srgb, var(--bg-float) 92%, transparent); backdrop-filter: blur(16px); border: 1px solid var(--border);
     box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .7), 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); animation: toast-in .45s var(--ease-spring) both;
   }
   & .toast::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 10px; background: var(--grad); box-shadow: 0 0 10px var(--accent); vertical-align: 1px; }
@@ -256,7 +254,7 @@ html[data-design='novo'] {
   & .settings-nav button { border-radius: 8px; padding: 10px 14px; font-weight: 700; transition: background .15s, color .15s, transform .2s var(--ease-out); }
   & .settings-nav button:hover { transform: translateX(3px); }
   & .settings-nav button.active { background: var(--accent-soft); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
-  & .settings-content { background: var(--bg-chat); border-radius: var(--r-xl) 0 0 var(--r-xl); margin: 10px 0 10px; border: 2px solid var(--border); border-right: 0; }
+  & .settings-content { background: var(--bg-chat); border-radius: var(--r-xl) 0 0 var(--r-xl); margin: 10px 0 10px; border: 1px solid var(--border); border-right: 0; }
   & .settings-title { font-size: 1.7em; font-weight: 800; letter-spacing: -.03em; }
   & .settings-close svg { border-radius: 10px; }
   & .account-card, & .home-card { border-radius: 12px; }
@@ -269,7 +267,7 @@ html[data-design='novo'] {
   & .home-body { padding: 28px 24px 48px; }
   & .home-hero h2 { font-size: 1.9em; font-weight: 800; letter-spacing: -.035em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   & .home-block, & .news-card, & .home-card {
-    border-radius: 14px; background: color-mix(in srgb, var(--bg-elev) 88%, transparent); border: 2px solid var(--border);
+    border-radius: 14px; background: color-mix(in srgb, var(--bg-elev) 88%, transparent); border: 1px solid var(--border);
     transition: transform .3s var(--ease-out), box-shadow .3s, border-color .2s;
   }
   & .news-card:hover, & .home-block:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: 0 22px 44px -26px color-mix(in srgb, var(--accent) 70%, transparent); }
@@ -286,13 +284,13 @@ html[data-design='novo'] {
   & .friend-tabs button.on { background: var(--accent-soft); color: var(--accent-text); }
 
   /* mensagens diretas e busca */
-  & .find-dm { border-radius: 10px; background: var(--bg-input); border: 2px solid var(--border); font-weight: 650; padding: 9px 12px; transition: border-color .2s, box-shadow .2s; }
+  & .find-dm { border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border); font-weight: 650; height: 36px; padding: 0 12px; line-height: 34px; font-size: .86em; transition: border-color .2s, box-shadow .2s; }
   & .find-dm:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 0 0 4px var(--accent-soft); }
   & .dm-item { border-radius: 10px; margin-top: 3px; transition: background .15s, transform .22s var(--ease-out); }
   & .dm-item:hover { transform: translateX(3px); }
   & .dm-item.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
   & .dm-item-name { font-family: var(--font-display); font-weight: 650; }
-  & .notice-add { border-radius: 12px; border: 2px dashed color-mix(in srgb, var(--accent) 55%, var(--border)); background: transparent; color: var(--text-2); height: 42px; transition: background .2s, color .2s, transform .2s var(--ease-spring); }
+  & .notice-add { border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border)); background: transparent; color: var(--text-2); height: 42px; transition: background .2s, color .2s, transform .2s var(--ease-spring); }
   & .notice-add:hover { background: var(--accent-soft); color: var(--text); transform: translateY(-1px); }
   & .unread-dot, & .badge { animation: pop-in .4s var(--ease-spring) both; }
 
@@ -327,7 +325,7 @@ html[data-design='novo'] {
     & .main-pane { background: var(--bg-chat); }
     & .nav-pane { background: var(--bg-rail); padding: 8px 8px 0 0; gap: 0; }
     & .server-rail { width: 72px; padding-top: 6px; padding-bottom: 80px; }
-    & .channel-sidebar { border-radius: 14px 14px 0 0; flex: 1; padding-bottom: calc(66px + env(safe-area-inset-bottom)); border: 2px solid var(--border); border-bottom: 0; }
+    & .channel-sidebar { border-radius: 14px 14px 0 0; flex: 1; padding-bottom: calc(66px + env(safe-area-inset-bottom)); border: 1px solid var(--border); border-bottom: 0; }
     & .chat-header { padding: 0 8px 0 10px; }
     & .msg { margin-left: 4px; margin-right: 4px; padding-right: 12px; grid-template-columns: 56px 1fr; }
     & .msg-reply-ref { padding-left: 56px; }
@@ -342,7 +340,7 @@ html[data-design='novo'] {
     & .mobile-tabs {
       position: fixed; z-index: 45; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); height: 62px;
       display: flex; align-items: center; justify-content: space-around; padding: 6px; border-radius: 14px;
-      background: color-mix(in srgb, var(--bg-float) 82%, transparent); border: 2px solid var(--border);
+      background: color-mix(in srgb, var(--bg-float) 82%, transparent); border: 1px solid var(--border);
       backdrop-filter: blur(22px) saturate(1.5); -webkit-backdrop-filter: blur(22px) saturate(1.5);
       box-shadow: 0 20px 50px -14px rgba(0, 0, 0, .75); animation: tabs-in .5s var(--ease-spring) both;
     }
@@ -365,7 +363,7 @@ html[data-design='novo'] {
 
 /* seletor Design novo / clássico nas configurações */
 .design-switch button {
-  text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 10px; border: 2px solid var(--border); background: var(--bg-elev);
+  text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-elev);
   transition: border-color .2s, background .2s, transform .25s cubic-bezier(.34, 1.56, .64, 1);
 }
 .design-switch button:hover { transform: translateY(-2px); }

@@ -243,12 +243,17 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     async listServerPrefs() {
-      const rows = must(await sb.from('server_prefs').select('server_id, level, muted_until')) as { server_id: string; level: ServerPrefs['level']; muted_until: string | null }[]
-      return Object.fromEntries(rows.map((r) => [r.server_id, { level: r.level, muted_until: r.muted_until }]))
+      const rows = must(await sb.from('server_prefs').select('server_id, level, muted_until, position')) as { server_id: string; level: ServerPrefs['level']; muted_until: string | null; position: number | null }[]
+      return Object.fromEntries(rows.map((r) => [r.server_id, { level: r.level, muted_until: r.muted_until, position: r.position }]))
     },
     async setServerPrefs(serverId, p) {
       const me = await uid()
       must(await sb.from('server_prefs').upsert({ user_id: me, server_id: serverId, level: p.level, muted_until: p.muted_until }))
+    },
+
+    async setServerOrder(orderedIds) {
+      const me = await uid()
+      must(await sb.from('server_prefs').upsert(orderedIds.map((id, i) => ({ user_id: me, server_id: id, position: i }))))
     },
 
     async getNotice() {

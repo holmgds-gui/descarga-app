@@ -76,6 +76,8 @@ export const PERMISSIONS: Permission[] = ['manage_server', 'manage_channels', 'm
 export interface ServerPrefs {
   level: 'all' | 'mentions' | 'none'
   muted_until: string | null
+  /** posição do servidor na barra lateral (só eu; vazio = ordem original) */
+  position?: number | null
 }
 
 /** nota e apelido que a pessoa deu a alguém (só ela enxerga) */
@@ -252,6 +254,8 @@ export interface Backend {
   setMemberRole(serverId: string, userId: string, roleId: string, on: boolean): Promise<void>
   listServerPrefs(): Promise<Record<string, ServerPrefs>>
   setServerPrefs(serverId: string, p: ServerPrefs): Promise<void>
+  /** salva a ordem dos servidores na barra lateral (só para mim) */
+  setServerOrder(orderedIds: string[]): Promise<void>
   /** recado fixado do administrador (null quando não há) */
   getNotice(): Promise<{ body: string; updated_at: string } | null>
   /** só o administrador; texto vazio apaga o recado */

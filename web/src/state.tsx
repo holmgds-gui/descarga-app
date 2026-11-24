@@ -54,6 +54,8 @@ interface AppState {
   /** silenciar / nível de aviso de cada servidor (só eu) */
   serverPrefs: Record<string, ServerPrefs>
   setServerPrefs: (serverId: string, p: ServerPrefs) => Promise<void>
+  /** nova ordem dos servidores na barra lateral (arrastar) */
+  reorderServers: (orderedIds: string[]) => Promise<void>
   /** pessoas que escolhi ignorar (as mensagens ficam escondidas, só neste aparelho) */
   ignored: Set<string>
   toggleIgnored: (id: string) => void
@@ -170,8 +172,10 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   }, [userId])
   const setServerPrefs = useCallback(async (serverId: string, p: ServerPrefs) => {
     await backend.setServerPrefs(serverId, p)
-    setServerPrefsState((cur) => ({ ...cur, [serverId]: p }))
+    setServerPrefsState((cur) => ({ ...cur, [serverId]: { ...p, position: p.position ?? cur[serverId]?.position ?? null } }))
   }, [])
+  const serverPrefsRef = useRef(serverPrefs)
+  serverPrefsRef.current = serverPrefs
   const [ignoredList, setIgnoredList] = useState<string[]>(() => {
     try { return JSON.parse(local.get(IGNORED_KEY) ?? '[]') as string[] } catch { return [] }
   })
@@ -215,6 +219,20 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToastMsg(null), 3500)
   }, [])
+  const reorderServers = useCallback(async (ids: string[]) => {
+    const before = serverPrefsRef.current
+    setServerPrefsState((cur) => {
+      const next = { ...cur }
+      ids.forEach((id, i) => { next[id] = { ...(cur[id] ?? { level: 'all' as const, muted_until: null }), position: i } })
+      return next
+    })
+    try {
+      await backend.setServerOrder(ids)
+    } catch (err) {
+      setServerPrefsState(before)
+      toast((err as Error).message)
+    }
+  }, [toast])
 
   // ---- perfis (cache) ----
   const ensureProfiles = useCallback(
@@ -508,6 +526,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       setNote,
       serverPrefs,
       setServerPrefs,
+      reorderServers,
       ignored,
       toggleIgnored,
       unreadDms,
@@ -538,7 +557,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     }),
     [userId, profiles, ensureProfiles, servers, refreshServers, activeServerId, setActiveServerId, channels,
       activeChannelId, setActiveChannelId, memberIds, friendships, refreshFriends, dms, refreshDms, activeDmId,
-      setActiveDmId, homeSection, goHome, openDmWith, notes, setNote, serverPrefs, setServerPrefs, ignored, toggleIgnored, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
+      setActiveDmId, homeSection, goHome, openDmWith, notes, setNote, serverPrefs, setServerPrefs, reorderServers, ignored, toggleIgnored, unreadDms, hideDm, hiddenDms, emojis, emojiById, appearance, setAppearance, profileView, settingsOpen,
       requestedTab, openAdminPanel, adminPending, mobilePane, toast, toastMsg, question],
   )
 
