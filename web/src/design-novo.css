@@ -134,6 +134,10 @@ html[data-design='novo'] {
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
   }
   & .sidebar-header:not(.static):hover { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 24%, transparent), transparent); }
+  /* o degradê cobre a linha toda, inclusive a setinha de esconder */
+  & .sidebar-header-wrap { border-bottom: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent); }
+  & .sidebar-header-wrap:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 24%, transparent), transparent); }
+  & .sidebar-header-wrap .sidebar-header, & .sidebar-header-wrap .sidebar-header:hover { background: none; }
   & .channel-list { padding: 4px 10px 14px; }
   & .category-toggle { font-size: .68em; letter-spacing: .1em; color: var(--text-3); padding-left: 4px; }
   & .channel-item {

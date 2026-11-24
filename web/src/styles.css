@@ -1203,9 +1203,10 @@ body.rail-dragging .rail-tip { display: none; }
 /* setinhas para esconder / mostrar a lista de canais e a de membros: só a seta, sem moldura, sempre numa faixa própria (nunca em cima do conteúdo) */
 .pane-hide, .pane-show { display: grid; place-items: center; width: 30px; height: 34px; flex: none; padding: 0; background: none; border: 0; border-radius: 8px; box-shadow: none; color: var(--text-2); opacity: .75; transition: opacity .15s, color .15s, transform .15s; }
 .pane-hide:hover, .pane-show:hover, .pane-hide:focus-visible, .pane-show:focus-visible { opacity: 1; color: var(--text); background: none; }
-.pane-hide-side { align-self: center; height: var(--header-h); border-bottom: 1px solid var(--border); border-radius: 0; margin-right: 4px; }
-.sidebar-header-wrap { display: flex; align-items: stretch; }
-.sidebar-header-wrap .sidebar-header { flex: 1; min-width: 0; }
+.pane-hide-side { align-self: stretch; height: auto; border-radius: 0; margin-right: 4px; }
+.sidebar-header-wrap { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.sidebar-header-wrap .sidebar-header { flex: 1; min-width: 0; border-bottom: 0; background: none; }
+.sidebar-header-wrap:hover { background: var(--bg-hover); }
 .sidebar-header.static .pane-hide-side { border-bottom: 0; height: 34px; margin: 0 -8px 0 4px; }
 .pane-hide-side:hover { transform: translateX(-2px); }
 .pane-bar { flex: none; height: 38px; display: flex; align-items: center; padding: 0 6px; }
