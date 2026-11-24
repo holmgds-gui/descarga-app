@@ -121,3 +121,31 @@ export function playMessageIfAway(force = false) {
   if (!force && !document.hidden && document.hasFocus()) return
   playMessage()
 }
+
+// ---- toque de chamada: gotas graves e agudas, repetindo com intervalo curto ----
+const RING_KEY = 'descarga-som-toque'
+export const ringtoneOn = () => local.get(RING_KEY) !== '0'
+export const setRingtone = (on: boolean) => local.set(RING_KEY, on ? '1' : '0')
+
+const RING_NOTES: Array<[number, number]> = [[374, 0], [748, 0.2], [374, 0.4], [748, 0.6], [561, 1.0], [935, 1.2]]
+const RING_PERIOD_MS = 1650
+
+function ringOnce() {
+  try {
+    const c = soundContext()
+    const dest = out(c)
+    const t = c.currentTime + 0.02
+    RING_NOTES.forEach(([f, at]) => drop(c, dest, t + at, f, 0.34, 2.3, true))
+  } catch {
+    // sem áudio liberado ainda: segue sem som
+  }
+}
+
+/** Toca o toque em loop até chamar o que esta função devolve. */
+export function startRingtone(force = false) {
+  if (!force && !ringtoneOn()) return () => undefined
+  ringOnce()
+  const id = window.setInterval(ringOnce, RING_PERIOD_MS)
+  return () => window.clearInterval(id)
+}
+export const playRingtonePreview = () => { const stop = startRingtone(true); window.setTimeout(stop, RING_PERIOD_MS * 2 - 100) }

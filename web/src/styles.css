@@ -1281,3 +1281,10 @@ body.rail-dragging .rail-tip { display: none; }
 .nick-pop label > span { font-size: .72em; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nick-pop input { width: 100%; }
 .nick-pop-actions { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* chamada chegando */
+.incoming-call { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 12px; padding: 10px 14px; max-width: calc(100vw - 24px); border-radius: 16px; background: var(--bg-float); border: 1px solid var(--border, rgba(255,255,255,.12)); box-shadow: var(--shadow), 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); animation: incoming-pulse 1.4s ease-in-out infinite; }
+.incoming-call-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.incoming-call-text span { font-size: .8em; color: var(--text-2); }
+@keyframes incoming-pulse { 50% { box-shadow: var(--shadow), 0 0 0 7px color-mix(in srgb, var(--accent) 10%, transparent); } }
+@media (max-width: 520px) { .incoming-call { flex-wrap: wrap; justify-content: center; } }

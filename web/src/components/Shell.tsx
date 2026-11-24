@@ -6,6 +6,7 @@ import { voice } from '../lib/voice/engine'
 import { useVoice } from '../lib/voice/hooks'
 import { useApp } from '../state'
 import { ChannelSidebar } from './ChannelSidebar'
+import { IncomingCall } from './IncomingCall'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
 import { MobileTabs } from './MobileTabs'
@@ -102,6 +103,7 @@ export function Shell() {
       )}
       {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
       {showTabs && <MobileTabs />}
+      <IncomingCall />
       <ProfilePopover />
       <SettingsModal />
       <ContextMenuHost />
