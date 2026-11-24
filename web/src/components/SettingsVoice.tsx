@@ -6,7 +6,7 @@ import { clearDiagnostics, getDiagnostics, voice } from '../lib/voice/engine'
 import { copyText } from './ContextMenu'
 import { useVoice } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
-import { playJoin, playLeave } from '../lib/voice/sounds'
+import { messageSoundOn, playJoin, playLeave, playMessage, setMessageSound } from '../lib/voice/sounds'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
 import { micErrorMessage } from '../lib/voice/micError'
@@ -197,6 +197,7 @@ export function NotificationsTab() {
   const { toast } = useApp()
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
+  const [soundOn, setSoundOn] = useState(messageSoundOn)
 
   const refresh = () => void getPushState().then(setState)
   useEffect(refresh, [])
@@ -262,6 +263,11 @@ export function NotificationsTab() {
           )}
         </div>
       )}
+      <label className="toggle-row">
+        <span>{t('Tocar um som quando chegar mensagem nova')}</span>
+        <input type="checkbox" className="toggle" checked={soundOn} onChange={(e) => { setSoundOn(e.target.checked); setMessageSound(e.target.checked) }} />
+      </label>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={playMessage}><Droplets size={16} /> {t('Ouvir o som de mensagem')}</button>
       {isIOS() && state !== 'needs-install' && (
         <p className="muted small">{t('No iPhone, as notificações funcionam com o Descarga aberto pelo ícone da Tela de Início.')}</p>
       )}

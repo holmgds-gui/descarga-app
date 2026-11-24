@@ -860,6 +860,8 @@ export const EN: Record<string, string> = {
   'Pessoa': 'Person',
   'Mais': 'More',
   'Principal': 'Main',
+  'Tocar um som quando chegar mensagem nova': 'Play a sound when a new message arrives',
+  'Ouvir o som de mensagem': 'Hear the message sound',
   'Selecionar mensagens': 'Select messages',
   'Mensagens escolhidas': 'Selected messages',
   'Cancelar seleção': 'Cancel selection',

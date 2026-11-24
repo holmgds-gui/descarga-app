@@ -4,6 +4,8 @@
  * - sair da call: gotas descendo de tom
  * - mutar / desmutar: cliques curtos
  */
+import { local } from '../storage'
+
 let ctx: AudioContext | null = null
 let volume = 0.6
 
@@ -95,3 +97,27 @@ function blip(from: number, to: number) {
 
 export const playMute = () => blip(700, 420)
 export const playUnmute = () => blip(420, 700)
+
+// ---- aviso de mensagem nova: "plim" grave e suave (duas gotinhas) ----
+const MSG_KEY = 'descarga-som-mensagem'
+export const messageSoundOn = () => local.get(MSG_KEY) !== '0'
+export const setMessageSound = (on: boolean) => local.set(MSG_KEY, on ? '1' : '0')
+
+export function playMessage() {
+  try {
+    const c = soundContext()
+    const dest = out(c)
+    const t = c.currentTime + 0.02
+    drop(c, dest, t, 520, 0.4, 2.2, false)
+    drop(c, dest, t + 0.17, 700, 0.24, 2, false)
+  } catch {
+    // sem áudio liberado ainda: segue sem som
+  }
+}
+
+/** Toca o aviso só se faz sentido: a pessoa ligou o som e não está olhando para o app agora. */
+export function playMessageIfAway(force = false) {
+  if (!messageSoundOn()) return
+  if (!force && !document.hidden && document.hasFocus()) return
+  playMessage()
+}

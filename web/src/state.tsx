@@ -1,3 +1,4 @@
+import { playMessageIfAway } from './lib/voice/sounds'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
 import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji, ServerPrefs, UserNote } from './lib/types'
@@ -351,6 +352,22 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       return next
     })
   }, [viewingDm, dms])
+
+  // aviso sonoro: chegou mensagem em outra conversa direta (a aberta toca pelo próprio chat)
+  const lastSeenAt = useRef<Record<string, string | null> | null>(null)
+  useEffect(() => {
+    if (!dmsLoaded) return
+    const prev = lastSeenAt.current
+    const now: Record<string, string | null> = {}
+    for (const d of dms) now[d.id] = d.last_message_at
+    lastSeenAt.current = now
+    if (!prev) return
+    for (const d of dms) {
+      if (d.id === viewingDm || !d.last_message_at) continue
+      const before = prev[d.id]
+      if (d.id in prev && before && d.last_message_at > before) { playMessageIfAway(true); break }
+    }
+  }, [dms, dmsLoaded, viewingDm])
 
   const unreadDms = useMemo(() => {
     const out = new Set<string>()

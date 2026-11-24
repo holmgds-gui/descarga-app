@@ -24,6 +24,7 @@ import { VoiceStage } from './VoiceStage'
 import { t } from '../lib/i18n'
 import { mentionRegex } from '../lib/username'
 import { copyText, useUserMenu } from './ContextMenu'
+import { playMessageIfAway } from '../lib/voice/sounds'
 import { ForwardModal } from './ForwardModal'
 import { PinsModal } from './PinsModal'
 import { useServerRole } from './ServerSettings'
@@ -160,6 +161,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     const off = backend.subscribeMessages(channel.id, {
       onInsert: (m) => {
         clear(m.author_id)
+        if (m.author_id !== userId) playMessageIfAway()
         setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
       },
       onUpdate: (m) => setMessages((prev) => prev.map((x) => (x.id === m.id ? m : x))),
