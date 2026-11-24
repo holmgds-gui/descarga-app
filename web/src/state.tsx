@@ -16,7 +16,7 @@ export interface Appearance {
   compact: boolean
 }
 
-const DEFAULT_APPEARANCE: Appearance = { theme: 'dark', customBg: '#26303A', accent: '#7B3FE4', fontScale: 1, compact: false }
+const DEFAULT_APPEARANCE: Appearance = { theme: 'tinta', customBg: '#26303A', accent: '#7B3FE4', fontScale: 1, compact: false }
 const APPEARANCE_KEY = 'descarga-aparencia'
 
 interface AppState {

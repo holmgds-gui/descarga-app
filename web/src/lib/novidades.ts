@@ -9,6 +9,14 @@ const n = (tp: string, te: string, xp: string, xe: string) => ({ title: { pt: tp
 
 export const NOVIDADES: Novidade[] = [
   {
+    date: '2026-11-24',
+    items: [
+      n('Design novo', 'New design', 'Painéis flutuantes, ícones arredondados, fontes novas, animações suaves e tema "Tinta". Dá para voltar ao visual antigo em Configurações > Aparência e idioma.', 'Floating panels, rounded icons, new fonts, smooth animations and the "Ink" theme. You can go back to the old look in Settings > Appearance and language.'),
+      n('Barra de abas no celular', 'Mobile tab bar', 'Início, Conversas, Servidores e Você ficam sempre à mão embaixo da tela, como no Discord novo.', 'Home, Chats, Servers and You are always at hand at the bottom of the screen, like the new Discord.'),
+      n('App para Mac', 'Mac app', 'O Descarga agora também tem instalador para Mac (em Configurações > Conta).', 'Descarga now also has a Mac installer (Settings > Account).'),
+    ],
+  },
+  {
     date: '2026-11-19',
     items: [
       n('Regras e direitos autorais', 'Rules and copyright', 'Novos Termos, Diretrizes da Comunidade e Política de Direitos Autorais (em Configurações > Conta > Termos e regras). Será preciso aceitar de novo.', 'New Terms, Community Guidelines and Copyright Policy (Settings > Account > Terms and rules). You will need to accept again.'),

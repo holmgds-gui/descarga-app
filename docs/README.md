@@ -11,6 +11,7 @@ Tudo o que foi combinado, decidido e construído nas conversas com o Claude, exp
 | [04-pendencias.md](04-pendencias.md) | **O que falta fazer e o passo a passo** (inclui as ações do Supabase que esperam você no PC) |
 | [05-proximos-passos.md](05-proximos-passos.md) | O que vem depois: blocos 2 e 3 da etapa 3, app de PC, app de celular |
 | [06-desenvolvimento.md](06-desenvolvimento.md) | Como rodar, testar e publicar o app |
+| [07-design.md](07-design.md) | O design novo e como voltar ao visual antigo |
 
 Se você só vai ler um arquivo, leia o [04-pendencias.md](04-pendencias.md).
 

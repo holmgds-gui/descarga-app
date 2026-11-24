@@ -12,6 +12,7 @@ import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { cleanUsername, isValidUsername } from '../lib/username'
 import { useCropPick } from './ImageCropper'
+import { getDesign, setDesign, type Design } from '../lib/design'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
@@ -259,6 +260,8 @@ function AppearanceEditor() {
   const { appearance, setAppearance } = useApp()
   const lang = useLang()
   const custom = customTheme(appearance.customBg)
+  const [design, setDesignState] = useState<Design>(getDesign)
+  const pickDesign = (d: Design) => { setDesign(d); setDesignState(d) }
   const preview = (t: ThemeDef, on: boolean, onClick: () => void, key: string) => (
     <button key={key} className={`theme-option ${on ? 'on' : ''}`} onClick={onClick} aria-pressed={on}>
       <span className="theme-mini" style={{ background: t.colors.chat }}>
@@ -276,6 +279,14 @@ function AppearanceEditor() {
   return (
     <>
       <h2 className="settings-title">{tr('Aparência e idioma')}</h2>
+      <div className="design-switch" role="group" aria-label={tr('Design do app')}>
+        <button className={design === 'novo' ? 'on' : ''} aria-pressed={design === 'novo'} onClick={() => pickDesign('novo')}>
+          <strong>{tr('Design novo')}</strong><span>{tr('Painéis flutuantes, animações e barra de abas no celular.')}</span>
+        </button>
+        <button className={design === 'classico' ? 'on' : ''} aria-pressed={design === 'classico'} onClick={() => pickDesign('classico')}>
+          <strong>{tr('Design clássico')}</strong><span>{tr('O visual de antes, parecido com o Discord.')}</span>
+        </button>
+      </div>
       <div className="form">
         <label htmlFor="lang-select">
           {tr('Idioma')}

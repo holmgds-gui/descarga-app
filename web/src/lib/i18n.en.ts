@@ -843,4 +843,12 @@ export const EN: Record<string, string> = {
   'Baixar o app para Mac': 'Download the Mac app',
   'No Mac o app é novo: se der problema ao compartilhar a tela, use o Descarga pelo Chrome.': 'The Mac app is new: if screen sharing gives you trouble, use Descarga in Chrome.',
   'Usa Mac? Baixe aqui.': 'On a Mac? Download here.',
+  'Conversas': 'Chats',
+  'Navegação': 'Navigation',
+  'Tinta': 'Ink',
+  'Design do app': 'App design',
+  'Design novo': 'New design',
+  'Design clássico': 'Classic design',
+  'Painéis flutuantes, animações e barra de abas no celular.': 'Floating panels, animations and a tab bar on mobile.',
+  'O visual de antes, parecido com o Discord.': 'The previous look, similar to Discord.',
 }

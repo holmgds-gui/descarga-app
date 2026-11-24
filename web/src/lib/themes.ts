@@ -21,6 +21,7 @@ export interface ThemeDef {
 }
 
 export const THEMES: ThemeDef[] = [
+  { id: 'tinta', label: 'Tinta', tone: 'dark', colors: { rail: '#0D0B14', side: '#15121F', chat: '#1A1626', elev: '#241F35', input: '#211C31', float: '#110E19', text: '#F2EFFB', text2: '#B8B1CE', text3: '#80789A' } },
   { id: 'dark', label: 'Grafite', tone: 'dark', colors: { rail: '#1E1F22', side: '#2B2D31', chat: '#313338', elev: '#383A40', input: '#383A40', float: '#111214' } },
   { id: 'midnight', label: 'Meia-noite', tone: 'dark', colors: { rail: '#000000', side: '#0B0B0D', chat: '#000000', elev: '#141417', input: '#17171A', float: '#0B0B0D' } },
   { id: 'carvao', label: 'Carvão', tone: 'dark', colors: { rail: '#121212', side: '#181818', chat: '#1F1F1F', elev: '#2A2A2A', input: '#2C2C2C', float: '#0E0E0E' } },

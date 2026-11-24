@@ -7,6 +7,7 @@ import { useApp } from '../state'
 import { ChannelSidebar } from './ChannelSidebar'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
+import { MobileTabs } from './MobileTabs'
 import { ResizeHandle } from './ResizeHandle'
 import { useMapaPublisher } from '../lib/mapa'
 import { Modal } from './Modal'
@@ -31,6 +32,9 @@ export function Shell() {
   const channel = channels.find((c) => c.id === activeChannelId)
   const dm = !activeServerId && activeDmId ? dms.find((d) => d.id === activeDmId) : undefined
 
+  // celular: a barra de abas aparece nas telas de lista (Início e lista de conversas/servidores), não dentro de uma conversa
+  const showTabs = mobilePane === 'nav' || (!activeServerId && !dm)
+
   const toggleMembers = () => {
     if (window.innerWidth < 1000) {
       setMobilePane(mobilePane === 'members' ? 'chat' : 'members')
@@ -43,7 +47,7 @@ export function Shell() {
   }
 
   return (
-    <div className="app" data-pane={mobilePane}>
+    <div className={`app ${showTabs ? 'has-tabs' : ''}`} data-pane={mobilePane}>
       <div className="nav-pane">
         <ServerRail />
         <ChannelSidebar />
@@ -76,6 +80,7 @@ export function Shell() {
         </div>
       )}
       {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
+      {showTabs && <MobileTabs />}
       <ProfilePopover />
       <SettingsModal />
       <ContextMenuHost />
