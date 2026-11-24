@@ -3,7 +3,7 @@
 Em 24 de novembro de 2026 o visual do Descarga foi redesenhado, mantendo **todas** as funções.
 
 ## O que mudou
-- **Painéis flutuantes**: barra de canais, conversa e lista de membros viram cartões arredondados sobre um fundo mais escuro.
+- **Painéis flutuantes**: barra de canais, conversa e lista de membros viram cartões (cantos de 14px, linhas de 2px, mais firmes que a primeira versão) sobre um fundo mais escuro.
 - **Ícones de servidor "squircle"** com animação de mola; avatares arredondados; menus, janelas e avisos com entrada suave.
 - **Fontes**: Bricolage Grotesque (títulos, nomes) e Plus Jakarta Sans (texto). Ficam dentro do app (pacotes `@fontsource-variable/*`), funcionam sem internet.
 - **Tema novo "Tinta"** (padrão para quem nunca escolheu fundo). Os outros 11 fundos continuam.
