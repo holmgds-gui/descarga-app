@@ -143,7 +143,7 @@ export function ReportHost() {
 }
 
 // ---------- nota e apelido ----------
-interface NoteOpen { userId: string; focus: 'note' | 'nickname' }
+interface NoteOpen { userId: string; focus: 'note' | 'nickname'; at?: { x: number; y: number } }
 let noteOpen: NoteOpen | null = null
 const noteListeners = new Set<() => void>()
 const noteSubscribe = (cb: () => void) => {
@@ -184,6 +184,31 @@ export function UserNoteHost() {
       setBusy(false)
     }
   }
+  if (open.focus === 'nickname' && open.at) {
+    // só o apelido: um quadradinho junto de onde a pessoa clicou, sem janela grande
+    const W = 260, H = 118
+    const left = Math.max(8, Math.min(open.at.x, window.innerWidth - W - 8))
+    const top = Math.max(8, Math.min(open.at.y, window.innerHeight - H - 8))
+    return (
+      <>
+        <div className="nick-pop-scrim" onMouseDown={() => setNoteOpen(null)} onContextMenu={(e) => { e.preventDefault(); setNoteOpen(null) }} />
+        <form className="nick-pop" style={{ left, top, width: W }} onSubmit={(e) => { e.preventDefault(); void save() }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setNoteOpen(null) }}>
+          <label>
+            <span>{t('Apelido')} · {realName(p)}</span>
+            <input value={nickname} maxLength={32} autoFocus onChange={(e) => setNickname(e.target.value)} placeholder={realName(p)} />
+          </label>
+          <div className="nick-pop-actions">
+            {!!notes[uid]?.nickname && (
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
+                onClick={() => { setNickname(''); void setNote(uid, { nickname: '', note }).then(() => { toast(t('Salvo')); setNoteOpen(null) }) }}>{t('Remover')}</button>
+            )}
+            <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>{t('Salvar')}</button>
+          </div>
+        </form>
+      </>
+    )
+  }
   return (
     <Modal title={t('Nota e apelido')} subtitle={t('Só você vê isto. {nome} não fica sabendo.', { nome: realName(p) })} onClose={() => setNoteOpen(null)}>
       <form className="form" onSubmit={(e) => { e.preventDefault(); void save() }}>
@@ -211,7 +236,7 @@ export function useUserMenu() {
   const { openProfile, openDmWith, userId, toast, notes, ignored, toggleIgnored, friendships, refreshFriends, refreshDms, ask, servers, activeServerId } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const access = useServerRole(server)
-  return (e: ReactMouseEvent, p: Profile | null | undefined, extra: MenuItem[] = [], compact = false) => {
+  return (e: ReactMouseEvent, p: Profile | null | undefined, extra: MenuItem[] = [], _compact = false) => {
     if (!p || p.deleted_at) {
       if (extra.length) showContextMenu(e, extra)
       return
@@ -270,35 +295,37 @@ export function useUserMenu() {
         })
       : [{ label: t('Nenhum cargo criado ainda'), disabled: true }]
 
-    const TAB_ACTIONS = t('Ações'), TAB_PERSON = t('Pessoa'), TAB_MORE = t('Mais')
-    const tag = (list: MenuItem[], tab: string): MenuItem[] => (compact ? list : list.map((it, i) => ({ ...it, tab, separator: i === 0 ? false : it.separator })))
-    const essentials: MenuItem[] = [
+    const TAB_ACTIONS = t('Ações'), TAB_MORE = t('Mais')
+    const lead = extra.filter((it) => !it.tab)          // ações da própria tela (responder, volume…): primeira aba
+    const aside = extra.filter((it) => it.tab)          // itens já marcados com a aba (ex.: moderação → "Mais")
+    const TAB_MAIN = lead.length ? t('Pessoa') : t('Principal')
+    const tag = (list: MenuItem[], tab: string): MenuItem[] => list.map((it, i) => ({ ...it, tab, separator: i === 0 ? false : it.separator }))
+    // primeira aba: o que mais se usa, direto
+    const main: MenuItem[] = [
       { label: t('Ver perfil'), icon: <User size={16} />, onClick: () => openProfile(p.id, at) },
       ...(!mine ? [{ label: t('Mandar mensagem'), icon: <MessageCircle size={16} />, onClick: () => void openDmWith([p.id]).catch((err: Error) => toast(err.message)) }] : []),
       ...(canMention ? [{ label: t('Mencionar'), icon: <AtSign size={16} />, onClick: () => window.dispatchEvent(new CustomEvent('descarga-mention', { detail: p.username })) }] : []),
+      ...(!mine ? [{ label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const, at: { x: e.clientX, y: e.clientY } }) }] : []),
+      ...(showRoles ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, children: roleItems }] : []),
+      { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
+    ]
+    // segunda aba: o resto
+    const more: MenuItem[] = [
       ...(!mine ? [
         ...(servers.length ? [{
-          label: t('Convidar para o servidor'), icon: <Send size={16} />, separator: true,
+          label: t('Convidar para o servidor'), icon: <Send size={16} />,
           children: servers.map((s) => ({ label: s.name, onClick: () => void invite(s) })),
         }] : []),
+        { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
         ...(friend ? [{ label: t('Desfazer amizade'), icon: <UserMinus size={16} />, onClick: () => void unfriend() }] : []),
         { label: ignored.has(p.id) ? t('Parar de ignorar') : t('Ignorar'), icon: ignored.has(p.id) ? <Eye size={16} /> : <EyeOff size={16} />, onClick: () => { toggleIgnored(p.id); toast(ignored.has(p.id) ? t('Você voltou a ver {nome}', { nome: realName(p) }) : t('Mensagens de {nome} escondidas', { nome: realName(p) })) } },
       ] : []),
+      { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, onClick: () => copyText(p.username, toast) },
+      ...(!mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []),
     ]
-    const advanced: MenuItem[] = compact ? [] : [
-      ...(!mine ? [
-        { label: hasNote ? t('Editar nota') : t('Adicionar nota'), icon: <StickyNote size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'note' as const }) },
-        { label: hasNick ? t('Editar apelido') : t('Adicionar apelido'), icon: <Pencil size={16} />, onClick: () => setNoteOpen({ userId: p.id, focus: 'nickname' as const }) },
-      ] : []),
-      ...(showRoles ? [{ label: t('Cargos'), icon: <ShieldCheck size={16} />, separator: true, children: roleItems }] : []),
-      { label: t('Copiar nome de usuário'), icon: <Copy size={16} />, separator: true, onClick: () => copyText(p.username, toast) },
-      { label: t('Copiar ID do usuário'), icon: <Fingerprint size={16} />, onClick: () => copyText(p.id, toast) },
-    ]
-    const report: MenuItem[] = !mine ? [{ label: t('Denunciar…'), muted: true, separator: true, onClick: () => setReportOpen(p.id) }] : []
 
-    showContextMenu(e, compact
-      ? [...extra, ...essentials.map((it, i) => (i === 0 && extra.length ? { ...it, separator: true } : it)), ...report]
-      : [...tag(extra, TAB_ACTIONS), ...tag(essentials, TAB_PERSON), ...tag([...advanced, ...report], TAB_MORE)])
+    const tail = tag(more, TAB_MORE).map((it, i) => (i === 0 && aside.length ? { ...it, separator: true } : it))
+    showContextMenu(e, [...tag(lead, TAB_ACTIONS), ...tag(main, TAB_MAIN), ...aside.map((it) => ({ ...it, tab: TAB_MORE })), ...tail])
   }
 }
 

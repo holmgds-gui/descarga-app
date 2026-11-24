@@ -37,12 +37,12 @@ export function VoiceConnectedPanel() {
       </div>
       <div className="voice-panel-actions">
         <button className={`btn btn-ghost btn-sm ${call.camera ? 'on' : ''}`} onClick={() => void voice.toggleCamera()}>
-          {call.camera ? <VideoOff size={16} /> : <Video size={16} />} {call.camera ? t('Desligar') : t('Câmera')}
+          {call.camera ? <VideoOff size={16} /> : <Video size={16} />} <span className="lbl">{call.camera ? t('Desligar') : t('Câmera')}</span>
         </button>
         {(canShareScreen() || call.screen) && (
           <button className={`btn btn-ghost btn-sm ${call.screen ? 'on' : ''}`}
             onClick={() => (call.screen ? voice.stopScreen() : void voice.startScreen(call.settings.screenQuality))}>
-            {call.screen ? <MonitorOff size={16} /> : <Monitor size={16} />} {call.screen ? t('Parar') : t('Tela')}
+            {call.screen ? <MonitorOff size={16} /> : <Monitor size={16} />} <span className="lbl">{call.screen ? t('Parar') : t('Tela')}</span>
           </button>
         )}
       </div>

@@ -39,11 +39,11 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
     if (!server || !access.canActOn(p.id)) return []
     const name = displayName(p)
     return [
-      ...(access.can('kick') ? [{ label: t('Expulsar {nome}', { nome: name }), icon: <LogOut size={16} />, danger: true, onClick: () => void (async () => {
+      ...(access.can('kick') ? [{ label: t('Expulsar {nome}', { nome: name }), icon: <LogOut size={16} />, danger: true, tab: t('Mais'), onClick: () => void (async () => {
         if (!(await ask({ title: t('Expulsar {nome}', { nome: name }), message: t('A pessoa sai do servidor, mas pode voltar com um convite.'), confirmLabel: t('Expulsar'), danger: true }))) return
         try { await backend.kickMember(server.id, p.id); toast(t('{nome} foi expulso(a)', { nome: name })) } catch (err) { toast((err as Error).message) }
       })() }] : []),
-      ...(access.can('ban') ? [{ label: t('Banir {nome}', { nome: name }), icon: <Ban size={16} />, danger: true, onClick: () => void (async () => {
+      ...(access.can('ban') ? [{ label: t('Banir {nome}', { nome: name }), icon: <Ban size={16} />, danger: true, tab: t('Mais'), onClick: () => void (async () => {
         if (!(await ask({ title: t('Banir {nome}', { nome: name }), message: t('A pessoa sai do servidor e não consegue voltar, nem com convite, até você desbanir.'), confirmLabel: t('Banir'), danger: true }))) return
         try { await backend.banMember(server.id, p.id, ''); toast(t('{nome} foi banido(a)', { nome: name })) } catch (err) { toast((err as Error).message) }
       })() }] : []),

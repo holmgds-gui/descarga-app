@@ -859,6 +859,7 @@ export const EN: Record<string, string> = {
   'Ações': 'Actions',
   'Pessoa': 'Person',
   'Mais': 'More',
+  'Principal': 'Main',
   'Selecionar mensagens': 'Select messages',
   'Mensagens escolhidas': 'Selected messages',
   'Cancelar seleção': 'Cancel selection',

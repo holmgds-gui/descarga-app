@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Pencil, Plus, Settings,
-  Settings as Cog, Smile, UserPlus, Video, Volume2, X,
+  Settings as Cog, Smile, UserPlus, Video, Volume2, X, ChevronLeft,
 } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
@@ -17,7 +17,7 @@ import { HomeSidebar } from './Home'
 import { ResizeHandle } from './ResizeHandle'
 import { t } from '../lib/i18n'
 
-export function ChannelSidebar() {
+export function ChannelSidebar({ onHide }: { onHide?: () => void } = {}) {
   const { servers, activeServerId, channels, activeChannelId, setActiveChannelId, userId, toast, refreshServers, ask } = useApp()
   const server = servers.find((s) => s.id === activeServerId)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -199,6 +199,9 @@ export function ChannelSidebar() {
       )}
       <VoiceConnectedPanel />
       <UserPanel />
+      {onHide && (
+        <button className="pane-hide pane-hide-side" aria-label={t('Esconder canais')} title={t('Esconder canais')} onClick={onHide}><ChevronLeft size={18} /></button>
+      )}
       <ResizeHandle panel="side" />
     </aside>
   )

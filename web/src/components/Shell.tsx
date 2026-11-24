@@ -55,17 +55,17 @@ export function Shell() {
     <div className={`app ${showTabs ? 'has-tabs' : ''} ${sideOpen ? '' : 'side-hidden'}`} data-pane={mobilePane}>
       <div className="nav-pane">
         <ServerRail />
-        <ChannelSidebar />
+        <ChannelSidebar onHide={toggleSide} />
       </div>
       <div className="main-pane" onClick={() => mobilePane === 'nav' && setMobilePane('chat')}>
-        <button className="edge-toggle edge-left" aria-label={sideOpen ? t('Esconder canais') : t('Mostrar canais')} data-tip={sideOpen ? t('Esconder canais') : t('Mostrar canais')}
-          onClick={(e) => { e.stopPropagation(); toggleSide() }}>
-          {sideOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </button>
-        {membersApplicable && (
-          <button className="edge-toggle edge-right" aria-label={membersOpen ? t('Esconder membros') : t('Mostrar membros')} data-tip={membersOpen ? t('Esconder membros') : t('Mostrar membros')}
-            onClick={(e) => { e.stopPropagation(); toggleMembers() }}>
-            {membersOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {!sideOpen && (
+          <button className="pane-show pane-show-side" aria-label={t('Mostrar canais')} title={t('Mostrar canais')} onClick={(e) => { e.stopPropagation(); toggleSide() }}>
+            <ChevronRight size={18} />
+          </button>
+        )}
+        {membersApplicable && !membersOpen && (
+          <button className="pane-show pane-show-members" aria-label={t('Mostrar membros')} title={t('Mostrar membros')} onClick={(e) => { e.stopPropagation(); toggleMembers() }}>
+            <ChevronLeft size={18} />
           </button>
         )}
         {!activeServerId ? (
@@ -85,12 +85,14 @@ export function Shell() {
       {activeServerId && channel?.type === 'text' && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
+          <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
           <MemberList />
         </div>
       )}
       {dm?.is_group && (membersOpen || mobilePane === 'members') && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
+          <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
           <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
         </div>
       )}

@@ -118,8 +118,8 @@ html[data-design='novo'] {
   & .rail-item.active .rail-pill { opacity: 1; height: 34px; }
   & .rail-btn:has(.rail-home), & .rail-btn:has(.rail-home):hover { box-shadow: none; }
   & .rail-item.active .rail-btn:has(.rail-home) { box-shadow: none; }
-  & .rail-btn .rail-home { transform: scale(.9); filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
-  & .rail-btn:hover .rail-home, & .rail-item.active .rail-home { transform: scale(1) rotate(-6deg); }
+  & .rail-btn .rail-home { transform: scale(.64); filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 60%, transparent)); }
+  & .rail-btn:hover .rail-home, & .rail-item.active .rail-home { transform: scale(.8) rotate(-6deg); }
   & .rail-sep { height: 3px; border-radius: 2px; width: 28px; background: var(--border); }
   & .rail-add { background: color-mix(in srgb, var(--success) 14%, var(--bg-elev)); }
   & .rail-add:hover { background: var(--success) !important; }

@@ -4,12 +4,14 @@ import { t } from '../lib/i18n'
 
 type Panel = 'side' | 'members'
 
-const CFG: Record<Panel, { cssVar: string; key: string; def: number; min: number; max: number; edge: 'right' | 'left' }> = {
-  side: { cssVar: '--side-w', key: 'descarga-largura-lateral', def: 240, min: 200, max: 480, edge: 'right' },
-  members: { cssVar: '--members-w', key: 'descarga-largura-membros', def: 240, min: 200, max: 420, edge: 'left' },
+const CFG: Record<Panel, { cssVar: string; key: string; def: number; min: number; max: number; edge: 'right' | 'left'; attr: string }> = {
+  side: { cssVar: '--side-w', key: 'descarga-largura-lateral', def: 240, min: 200, max: 480, edge: 'right', attr: 'data-side-compact' },
+  members: { cssVar: '--members-w', key: 'descarga-largura-membros', def: 240, min: 200, max: 420, edge: 'left', attr: 'data-members-compact' },
 }
 
-const clamp = (n: number, c: { min: number; max: number }) => Math.max(c.min, Math.min(c.max, Math.round(n)))
+/** Largura "só ícones": abaixo de ~150px a aba encolhe de uma vez para este tamanho. */
+export const COMPACT_W = 72
+const clamp = (n: number, c: { min: number; max: number }) => (n < 150 ? COMPACT_W : Math.max(c.min, Math.min(c.max, Math.round(n))))
 
 function stored(panel: Panel) {
   const c = CFG[panel]
@@ -18,7 +20,10 @@ function stored(panel: Panel) {
 }
 
 function apply(panel: Panel, w: number) {
-  document.documentElement.style.setProperty(CFG[panel].cssVar, `${w}px`)
+  const root = document.documentElement
+  root.style.setProperty(CFG[panel].cssVar, `${w}px`)
+  if (w <= COMPACT_W) root.setAttribute(CFG[panel].attr, '')
+  else root.removeAttribute(CFG[panel].attr)
 }
 
 /** Faixa na borda de uma aba: arraste para o lado para aumentar ou diminuir; duplo clique volta ao tamanho padrão. */
@@ -60,7 +65,7 @@ export function ResizeHandle({ panel }: { panel: Panel }) {
       role="separator"
       aria-orientation="vertical"
       aria-label={t('Arraste para mudar a largura')}
-      aria-valuemin={c.min}
+      aria-valuemin={COMPACT_W}
       aria-valuemax={c.max}
       aria-valuenow={width}
       tabIndex={0}
@@ -72,8 +77,9 @@ export function ResizeHandle({ panel }: { panel: Panel }) {
       onKeyDown={(e) => {
         const step = e.shiftKey ? 40 : 10
         const dir = c.edge === 'right' ? 1 : -1
-        if (e.key === 'ArrowRight') { e.preventDefault(); commit(width + step * dir) }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); commit(width - step * dir) }
+        const move = (d: number) => commit(d > 0 && width <= COMPACT_W ? c.min : d < 0 && width <= c.min ? COMPACT_W : width + d)
+        if (e.key === 'ArrowRight') { e.preventDefault(); move(step * dir) }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); move(-step * dir) }
         if (e.key === 'Home') { e.preventDefault(); commit(c.def) }
       }}
     />
