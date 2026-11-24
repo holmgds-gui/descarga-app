@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Plus, Settings,
+  ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Pencil, Plus, Settings,
   Settings as Cog, Smile, UserPlus, Video, Volume2, X,
 } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
@@ -11,7 +11,7 @@ import type { Channel, Status } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
 import { copyText, showContextMenu, useUserMenu } from './ContextMenu'
-import { CreateChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
+import { CreateChannelModal, EditChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
 import { ServerSettingsModal, useServerRole } from './ServerSettings'
 import { HomeSidebar } from './Home'
 import { ResizeHandle } from './ResizeHandle'
@@ -24,6 +24,7 @@ export function ChannelSidebar() {
   const [inviting, setInviting] = useState(false)
   const [creating, setCreating] = useState<{ category: string; type: 'text' | 'voice' } | null>(null)
   const [emojiOpen, setEmojiOpen] = useState(false)
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const access = useServerRole(server)
   const { isOwner, canManage } = access
@@ -113,6 +114,9 @@ export function ChannelSidebar() {
           </div>
           {server.description && <p className="server-desc" title={server.description}>{server.description}</p>}
           <div className="channel-list">
+            {!groups.length && canChannels && (
+              <button className="notice-add" onClick={() => setCreating({ category: 'Canais de texto', type: 'text' })}><Plus size={16} /> {t('Criar canal')}</button>
+            )}
             {groups.map(([category, list]) => (
               <div key={category} className="channel-group">
                 <div className="category">
@@ -138,10 +142,20 @@ export function ChannelSidebar() {
                         { label: c.type === 'voice' ? t('Entrar na call') : t('Abrir canal'), onClick: () => openChannel(c) },
                         { label: t('Convidar pessoas'), onClick: () => setInviting(true) },
                         { label: t('Copiar nome do canal'), onClick: () => copyText(c.name, toast) },
+                        ...(canChannels ? [
+                          { label: t('Renomear ou apagar canal'), separator: true, onClick: () => setEditingChannel(c) },
+                        ] : []),
                       ])}
                     >
                       {c.type === 'text' ? <Hash size={20} /> : <Volume2 size={20} />}
                       <span className="truncate">{c.name}</span>
+                      {canChannels && (
+                        <span className="channel-action channel-edit" role="button" tabIndex={0} aria-label={t('Renomear ou apagar canal')} data-tip={t('Editar canal')}
+                          onClick={(e) => { e.stopPropagation(); setEditingChannel(c) }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setEditingChannel(c) } }}>
+                          <Pencil size={15} />
+                        </span>
+                      )}
                       {c.id === activeChannelId && c.type === 'text' && (
                         <span className="channel-action" role="button" tabIndex={0} aria-label={t('Convidar pessoas')} data-tip={t('Convidar pessoas')}
                           onClick={(e) => { e.stopPropagation(); setInviting(true) }}>
@@ -174,6 +188,7 @@ export function ChannelSidebar() {
           </div>
           {inviting && <InviteModal server={server} onClose={() => setInviting(false)} />}
           {settingsOpen && canManage && <ServerSettingsModal server={server} access={access} onClose={() => setServerSettingsOpen(false)} />}
+          {editingChannel && <EditChannelModal channel={editingChannel} onClose={() => setEditingChannel(null)} />}
           {emojiOpen && <EmojiManagerModal server={server} onClose={() => setEmojiOpen(false)} />}
           {creating && (
             <CreateChannelModal serverId={server.id} defaultType={creating.type} defaultCategory={creating.category} onClose={() => setCreating(null)} />

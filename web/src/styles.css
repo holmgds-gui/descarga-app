@@ -1181,3 +1181,8 @@ body.rail-dragging .rail-tip { display: none; }
 .news-older { margin-top: 6px; }
 .news-older-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border-radius: 8px; background: var(--bg-elev); color: var(--text-2); font-weight: 700; font-size: .9em; margin-bottom: 12px; }
 .news-older-toggle:hover { color: var(--text); background: var(--bg-hover); }
+
+/* editar canal: lápis ao passar o mouse (e sempre no canal aberto, para funcionar no toque) */
+.channel-edit { margin-left: auto; opacity: 0; width: 22px; height: 22px; transition: opacity .15s; }
+.channel-item:hover .channel-edit, .channel-item.active .channel-edit, .channel-edit:focus-visible { opacity: 1; }
+@media (hover: none) { .channel-edit { opacity: .8; } }

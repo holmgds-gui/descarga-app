@@ -410,7 +410,6 @@ export function createDemoBackend(): Backend {
       })
       db.channels.push(
         mk('geral', 'text', 'Canais de texto', 0),
-        mk('memes', 'text', 'Canais de texto', 1),
         mk('Geral', 'voice', 'Canais de voz', 0),
       )
       save(db)

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Camera, Copy, Hash, ImagePlus, Trash2, Volume2 } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { ChannelType, Server, ServerEmoji } from '../lib/types'
+import type { Channel, ChannelType, Server, ServerEmoji } from '../lib/types'
 import { useApp } from '../state'
 import { Modal } from './Modal'
 import { t } from '../lib/i18n'
@@ -208,6 +208,67 @@ export function CreateChannelModal({
         <div className="row-end">
           <button type="button" className="btn btn-ghost" onClick={onClose}>{t('Cancelar')}</button>
           <button className="btn btn-primary">{t('Criar canal')}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/** Editar um canal: mudar o nome ou apagar (vale para qualquer canal, inclusive os que já vêm com o servidor). */
+export function EditChannelModal({ channel, onClose }: { channel: Channel; onClose: () => void }) {
+  const { toast, ask } = useApp()
+  const [name, setName] = useState(channel.name)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    const clean = channel.type === 'text' ? name.trim().toLowerCase().replace(/\s+/g, '-') : name.trim()
+    if (!clean) return
+    if (clean === channel.name) return onClose()
+    setBusy(true)
+    try {
+      await backend.renameChannel(channel.id, clean)
+      toast(t('Canal renomeado'))
+      onClose()
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+
+  const remove = async () => {
+    const ok = await ask({
+      title: t('Apagar canal'),
+      message: t('Apagar {nome}? As mensagens dele serão apagadas e isso não dá para desfazer.', { nome: channel.name }),
+      confirmLabel: t('Apagar'),
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await backend.deleteChannel(channel.id)
+      toast(t('Canal apagado'))
+      onClose()
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal title={t('Editar canal')} onClose={onClose}>
+      <form className="form" onSubmit={save}>
+        <label>
+          {t('Nome do canal')}
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required autoFocus />
+        </label>
+        {error && <p className="form-error">{error}</p>}
+        <div className="row-end">
+          <button type="button" className="btn btn-danger" disabled={busy} onClick={() => void remove()}><Trash2 size={16} /> {t('Apagar canal')}</button>
+          <span className="flex-1" />
+          <button type="button" className="btn btn-ghost" onClick={onClose}>{t('Cancelar')}</button>
+          <button className="btn btn-primary" disabled={busy}>{t('Salvar')}</button>
         </div>
       </form>
     </Modal>

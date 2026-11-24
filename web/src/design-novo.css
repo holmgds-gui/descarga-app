@@ -57,6 +57,8 @@ html[data-design='novo'] {
     transition: border-color .15s, box-shadow .2s, background .15s;
   }
   & .form input:focus, & .form textarea:focus, & .select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--bg-input); }
+  /* campos de busca (ex.: "Digite o nome de um amigo"): sem contorno roxo em volta */
+  & .search-field input, & .search-field input:focus, & .search-field input:focus-visible { border: 0 !important; box-shadow: none !important; outline: none !important; background: none !important; padding: 0 !important; }
   & input[type=checkbox]:not(.toggle) { accent-color: var(--accent); width: 18px; height: 18px; border-radius: 6px; }
   & .form label, & .field-label { font-weight: 750; letter-spacing: .06em; }
   & .toggle { width: 46px; height: 26px; }
