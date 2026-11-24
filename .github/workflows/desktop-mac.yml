@@ -1,0 +1,81 @@
+# Cria o instalador do Descarga para Mac (.dmg) e publica em Releases.
+# Link fixo: https://github.com/holmgds-gui/descarga-app/releases/download/desktop-mac-latest/Descarga-Mac.dmg
+# Fica separado do app do Windows de propósito: um não atrapalha o outro.
+# O app NÃO é assinado pela Apple (isso custa US$ 99/ano): na primeira abertura o Mac avisa; é só
+# clicar com o botão direito no app > Abrir > Abrir.
+name: App para Mac
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'desktop-shell/**'
+      - '.github/workflows/desktop-mac.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Definir a versão
+        shell: bash
+        run: |
+          v="1.0.${{ github.run_number }}"
+          node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.version='$v';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+          echo "VERSAO=$v" >> "$GITHUB_ENV"
+      - name: Gerar os ícones do Mac (.icns)
+        run: npx --yes @tauri-apps/cli@2 icon src-tauri/icons/icon.png
+      - name: Criar o instalador (Apple Silicon + Intel)
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          # "-" = assinatura local (sem conta Apple); sem ela o Mac com chip Apple diz que o app está "danificado"
+          cfg='{"bundle":{"targets":["app","dmg"],"icon":["icons/32x32.png","icons/128x128.png","icons/128x128@2x.png","icons/icon.icns"],"macOS":{"signingIdentity":"-","minimumSystemVersion":"11.0"}},"plugins":{"updater":{"endpoints":["https://github.com/holmgds-gui/descarga-app/releases/download/desktop-mac-latest/latest.json"]}}}'
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            cfg='{"bundle":{"createUpdaterArtifacts":false,"targets":["app","dmg"],"icon":["icons/32x32.png","icons/128x128.png","icons/128x128@2x.png","icons/icon.icns"],"macOS":{"signingIdentity":"-","minimumSystemVersion":"11.0"}}}'
+          fi
+          npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin --config "$cfg"
+      - name: Publicar em Releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dir=src-tauri/target/universal-apple-darwin/release/bundle
+          dmg=$(ls $dir/dmg/*.dmg | head -n 1)
+          cp "$dmg" Descarga-Mac.dmg
+          files="Descarga-Mac.dmg"
+          tgz=$(ls $dir/macos/*.app.tar.gz 2>/dev/null | head -n 1 || true)
+          if [ -n "$tgz" ] && [ -f "$tgz.sig" ]; then
+            cp "$tgz" Descarga-Mac.app.tar.gz
+            VERSAO="$VERSAO" SIGFILE="$tgz.sig" node -e "
+              const fs=require('fs');
+              const sig=fs.readFileSync(process.env.SIGFILE,'utf8').trim();
+              const url='https://github.com/holmgds-gui/descarga-app/releases/download/desktop-mac-latest/Descarga-Mac.app.tar.gz';
+              const p={signature:sig,url};
+              fs.writeFileSync('latest.json',JSON.stringify({version:process.env.VERSAO,notes:'Atualização do Descarga para Mac',pub_date:new Date().toISOString(),platforms:{'darwin-aarch64':p,'darwin-x86_64':p}},null,2));
+            "
+            files="$files Descarga-Mac.app.tar.gz latest.json"
+          else
+            echo "Sem arquivo de assinatura: publicando só o instalador."
+          fi
+          gh release delete desktop-mac-latest --yes --cleanup-tag || true
+          gh release create desktop-mac-latest $files \
+            --title "Descarga para Mac" \
+            --notes "Instalador do Descarga para Mac. Baixe o Descarga-Mac.dmg, arraste para Aplicativos e, na primeira vez, clique com o botão direito > Abrir. O app sempre mostra a versão mais nova do site." \
+            --target "${{ github.sha }}"

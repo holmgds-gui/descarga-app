@@ -354,6 +354,8 @@ function AppearanceEditor() {
 }
 
 const DESKTOP_URL = 'https://github.com/holmgds-gui/descarga-app/releases/download/desktop-latest/Descarga-Setup.exe'
+const MAC_URL = 'https://github.com/holmgds-gui/descarga-app/releases/download/desktop-mac-latest/Descarga-Mac.dmg'
+const onMac = /Mac/i.test(navigator.platform || navigator.userAgent) && !/iPhone|iPad/i.test(navigator.userAgent)
 
 function AccountTab() {
   const { me, ask, toast } = useApp()
@@ -380,9 +382,14 @@ function AccountTab() {
         <p><strong>{tr('Servidor:')}</strong> {backend.mode === 'demo' ? tr('Modo demonstração (dados só neste navegador)') : tr('Supabase (na nuvem)')}</p>
       </div>
       <PrivacySettings />
-      <a className="btn btn-ghost terms-btn" href={DESKTOP_URL} target="_blank" rel="noreferrer">
-        <Download size={16} /> {tr('Baixar o app para Windows')}
+      <a className="btn btn-ghost terms-btn" href={onMac ? MAC_URL : DESKTOP_URL} target="_blank" rel="noreferrer">
+        <Download size={16} /> {onMac ? tr('Baixar o app para Mac') : tr('Baixar o app para Windows')}
       </a>
+      {onMac ? (
+        <p className="muted small">{tr('No Mac o app é novo: se der problema ao compartilhar a tela, use o Descarga pelo Chrome.')}</p>
+      ) : (
+        <a className="muted small" href={MAC_URL} target="_blank" rel="noreferrer">{tr('Usa Mac? Baixe aqui.')}</a>
+      )}
       <button className="btn btn-ghost terms-btn" onClick={() => setTerms(true)}><FileText size={16} /> {tr('Termos e regras')}</button>
       {terms && <TermsModal onClose={() => setTerms(false)} />}
       <button className="btn btn-danger" onClick={() => void backend.signOut()}><LogOut size={16} /> {tr('Sair da conta')}</button>

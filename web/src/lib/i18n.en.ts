@@ -840,4 +840,7 @@ export const EN: Record<string, string> = {
   'Esconder resolvidas': 'Hide resolved',
   'Mostrar resolvidas': 'Show resolved',
   'Direitos autorais': 'Copyright',
+  'Baixar o app para Mac': 'Download the Mac app',
+  'No Mac o app é novo: se der problema ao compartilhar a tela, use o Descarga pelo Chrome.': 'The Mac app is new: if screen sharing gives you trouble, use Descarga in Chrome.',
+  'Usa Mac? Baixe aqui.': 'On a Mac? Download here.',
 }

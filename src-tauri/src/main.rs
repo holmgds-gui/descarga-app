@@ -44,7 +44,7 @@ fn mostrar_janela(app: &AppHandle) {
 }
 
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         // se o app já está na bandeja e a pessoa abre de novo, só traz a janela de volta
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             mostrar_janela(app);
@@ -109,6 +109,14 @@ fn main() {
                 let _ = janela.hide();
             }
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("não foi possível abrir o Descarga");
+
+    app.run(|_app, _evento| {
+        // Mac: clicar no ícone do app no Dock traz a janela de volta (ela só fica escondida ao fechar)
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen { .. } = _evento {
+            mostrar_janela(_app);
+        }
+    });
 }
