@@ -1171,3 +1171,13 @@ button.home-row:hover { background: var(--bg-hover); }
 .rail-item.dragging .rail-pill { opacity: 0; }
 body.rail-dragging, body.rail-dragging * { cursor: grabbing !important; }
 body.rail-dragging .rail-tip { display: none; }
+
+/* avisos: lista dos últimos 7 dias + antigos recolhidos */
+.news-list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; }
+.news-row { display: flex; flex-direction: column; gap: 2px; padding: 10px 4px; border-bottom: 1px solid var(--border, rgba(255,255,255,.06)); }
+.news-row:last-child { border-bottom: 0; }
+.news-row strong { font-size: .95em; }
+.news-row span { color: var(--text-2); font-size: .9em; line-height: 1.4; }
+.news-older { margin-top: 6px; }
+.news-older-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border-radius: 8px; background: var(--bg-elev); color: var(--text-2); font-weight: 700; font-size: .9em; margin-bottom: 12px; }
+.news-older-toggle:hover { color: var(--text); background: var(--bg-hover); }

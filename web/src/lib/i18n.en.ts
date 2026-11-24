@@ -851,4 +851,7 @@ export const EN: Record<string, string> = {
   'Design clássico': 'Classic design',
   'Painéis flutuantes, animações e barra de abas no celular.': 'Floating panels, animations and a tab bar on mobile.',
   'O visual de antes, parecido com o Discord.': 'The previous look, similar to Discord.',
+  'Nada novo nos últimos 7 dias.': 'Nothing new in the last 7 days.',
+  'Ver novidades anteriores ({n})': 'See earlier updates ({n})',
+  'Esconder novidades antigas': 'Hide older updates',
 }

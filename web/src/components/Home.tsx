@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Asterisk, Bell, Check, Globe, House, Pencil, Phone, Pin, Radio, Sparkles, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
+import { Asterisk, Bell, Check, ChevronDown, ChevronUp, Globe, House, Pencil, Phone, Pin, Radio, Sparkles, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
 import type { Friendship, Profile } from '../lib/types'
@@ -307,9 +307,40 @@ function AtivoAgora() {
   )
 }
 
+/** Lista de novidades agrupadas por dia (uma linha por novidade). */
+function NewsDays({ days }: { days: typeof NOVIDADES }) {
+  const lang = getLang()
+  return (
+    <>
+      {days.map((n) => {
+        const d = new Date(`${n.date}T12:00:00`)
+        const long = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
+        return (
+          <section key={n.date} className="news-day-block">
+            <h4 className="news-date"><time dateTime={n.date}>{long}</time></h4>
+            <ul className="news-list">
+              {n.items.map((it, i) => (
+                <li key={i} className="news-row">
+                  <strong>{it.title[lang]}</strong>
+                  <span>{it.text[lang]}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      })}
+    </>
+  )
+}
+
 /** Página inicial: espaço reservado para avisos e novidades do Descarga. */
 export function HomePage() {
   const { me } = useApp()
+  const [showOld, setShowOld] = useState(false)
+  // só os últimos 7 dias ficam à mostra; o resto fica recolhido
+  const limit = Date.now() - 7 * 86_400_000
+  const recent = NOVIDADES.filter((n) => new Date(`${n.date}T23:59:59`).getTime() >= limit)
+  const older = NOVIDADES.filter((n) => new Date(`${n.date}T23:59:59`).getTime() < limit)
   return (
     <section className="chat home-page">
       <ChatHeader icon={<House size={22} />} title={t('Início')} />
@@ -326,24 +357,17 @@ export function HomePage() {
         <div className="news-feed" aria-label={t('Avisos')}>
           <h3 className="news-title"><Bell size={18} /> {t('Avisos')}</h3>
           <h4 className="news-sub"><Asterisk size={14} /> {t('Atualizações')}</h4>
-          {NOVIDADES.map((n) => {
-            const d = new Date(`${n.date}T12:00:00`)
-            const long = d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
-            const lang = getLang()
-            return (
-              <section key={n.date} className="news-day-block">
-                <h4 className="news-date"><time dateTime={n.date}>{long}</time></h4>
-                <div className="news-grid">
-                  {n.items.map((it, i) => (
-                    <article key={i} className="news-card">
-                      <h5>{it.title[lang]}</h5>
-                      <p>{it.text[lang]}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )
-          })}
+          <NewsDays days={recent} />
+          {!recent.length && <p className="muted small pad">{t('Nada novo nos últimos 7 dias.')}</p>}
+          {older.length > 0 && (
+            <div className="news-older">
+              <button className="news-older-toggle" aria-expanded={showOld} onClick={() => setShowOld((v) => !v)}>
+                {showOld ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                <span>{showOld ? t('Esconder novidades antigas') : t('Ver novidades anteriores ({n})', { n: older.reduce((a, d) => a + d.items.length, 0) })}</span>
+              </button>
+              {showOld && <NewsDays days={older} />}
+            </div>
+          )}
         </div>
         <MapaSection />
       </div>
