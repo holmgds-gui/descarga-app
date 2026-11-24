@@ -1199,3 +1199,13 @@ body.rail-dragging .rail-tip { display: none; }
 .sel-box.on { background: var(--accent); border-color: var(--accent); }
 .select-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin: 0 14px 14px; border-radius: 10px; background: var(--bg-elev); border: 1px solid var(--border, rgba(255,255,255,.08)); }
 .select-count { font-size: .92em; }
+
+/* setinhas nas bordas do chat: esconder / mostrar a lista de canais e a de membros */
+.main-pane { position: relative; }
+.edge-toggle { position: absolute; top: 50%; transform: translateY(-50%); z-index: 6; width: 16px; height: 56px; display: grid; place-items: center; padding: 0; background: var(--bg-elev); color: var(--text-3); border: 1px solid var(--border, rgba(255,255,255,.1)); opacity: .3; transition: opacity .15s, color .15s, width .15s; }
+.edge-toggle:hover, .edge-toggle:focus-visible { opacity: 1; color: var(--text); width: 20px; }
+.edge-left { left: 0; border-left: 0; border-radius: 0 8px 8px 0; }
+.edge-right { right: 0; border-right: 0; border-radius: 8px 0 0 8px; }
+@media (max-width: 999px) { .edge-right { display: none; } }
+@media (max-width: 767px) { .edge-left { display: none; } }
+@media (min-width: 768px) { .app.side-hidden .channel-sidebar { display: none; } }

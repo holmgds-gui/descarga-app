@@ -1,5 +1,6 @@
 import { ContextMenuHost, ReportHost, UserNoteHost } from './ContextMenu'
 import { useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { FriendsPage, HomePage } from './Home'
 import { voice } from '../lib/voice/engine'
 import { useVoice } from '../lib/voice/hooks'
@@ -29,11 +30,15 @@ export function Shell() {
     }
   }, [voiceError, toast])
   const [membersOpen, setMembersOpen] = useState(() => local.get('descarga-membros') !== '0')
+  const [sideOpen, setSideOpen] = useState(() => local.get('descarga-lateral') !== '0')
+  const toggleSide = () => setSideOpen((v) => { local.set('descarga-lateral', v ? '0' : '1'); return !v })
   const channel = channels.find((c) => c.id === activeChannelId)
   const dm = !activeServerId && activeDmId ? dms.find((d) => d.id === activeDmId) : undefined
 
   // celular: a barra de abas aparece nas telas de lista (Início e lista de conversas/servidores), não dentro de uma conversa
   const showTabs = mobilePane === 'nav' || (!activeServerId && !dm)
+
+  const membersApplicable = (!!activeServerId && channel?.type === 'text') || !!dm?.is_group
 
   const toggleMembers = () => {
     if (window.innerWidth < 1000) {
@@ -47,12 +52,22 @@ export function Shell() {
   }
 
   return (
-    <div className={`app ${showTabs ? 'has-tabs' : ''}`} data-pane={mobilePane}>
+    <div className={`app ${showTabs ? 'has-tabs' : ''} ${sideOpen ? '' : 'side-hidden'}`} data-pane={mobilePane}>
       <div className="nav-pane">
         <ServerRail />
         <ChannelSidebar />
       </div>
       <div className="main-pane" onClick={() => mobilePane === 'nav' && setMobilePane('chat')}>
+        <button className="edge-toggle edge-left" aria-label={sideOpen ? t('Esconder canais') : t('Mostrar canais')} data-tip={sideOpen ? t('Esconder canais') : t('Mostrar canais')}
+          onClick={(e) => { e.stopPropagation(); toggleSide() }}>
+          {sideOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+        {membersApplicable && (
+          <button className="edge-toggle edge-right" aria-label={membersOpen ? t('Esconder membros') : t('Mostrar membros')} data-tip={membersOpen ? t('Esconder membros') : t('Mostrar membros')}
+            onClick={(e) => { e.stopPropagation(); toggleMembers() }}>
+            {membersOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        )}
         {!activeServerId ? (
           dm ? (
             <ChatView key={dm.id} channel={dm} dm={dm} membersOpen={membersOpen} onToggleMembers={toggleMembers} />
