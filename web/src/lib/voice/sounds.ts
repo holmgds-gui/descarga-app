@@ -135,7 +135,7 @@ function ringOnce() {
     const c = soundContext()
     const dest = out(c)
     const t = c.currentTime + 0.02
-    RING_NOTES.forEach(([f, at]) => drop(c, dest, t + at, f, 0.34, 2.3, true))
+    RING_NOTES.forEach(([f, at]) => drop(c, dest, t + at, f, 0.34, 2.3, false))
   } catch {
     // sem áudio liberado ainda: segue sem som
   }
