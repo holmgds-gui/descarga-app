@@ -37,7 +37,7 @@ export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { pro
       <div className="profile-inner">
         <h2 className="profile-name" style={nameColorOf(profile) ? { color: nameColorOf(profile)! } : undefined}>
           {displayName(profile)}
-          {badge > 0 && <PlusMark level={badge as 1 | 2 | 3} size={18} />}
+          {badge > 0 && <PlusMark level={badge as 1 | 2 | 3} size={27} />}
         </h2>
         {(handle || profile.pronouns) && (
           <p className="profile-handle">

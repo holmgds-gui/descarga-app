@@ -4,7 +4,7 @@ import { PLUS_NAMES } from '../lib/perks'
 const COLORS: Record<1 | 2 | 3, string> = { 1: '#D4537E', 2: '#534AB7', 3: '#185FA5' }
 
 /** símbolo do nível: 1 = +, 2 = estrela de quatro pontas, 3 = estrela central com estrelas em volta */
-export function PlusMark({ level, size = 16 }: { level: 1 | 2 | 3; size?: number }) {
+export function PlusMark({ level, size = 24 }: { level: 1 | 2 | 3; size?: number }) {
   const name = PLUS_NAMES[level]
   return (
     <svg
