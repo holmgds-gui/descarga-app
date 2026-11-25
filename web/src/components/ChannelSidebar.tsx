@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  ChevronDown, ChevronRight, Hash, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Pencil, Plus, Settings,
+  ChevronDown, ChevronRight, Hash, HeadphoneOff, LogOut, MicOff, Pencil, Plus,
   Settings as Cog, Smile, UserPlus, Video, Volume2, X, ChevronLeft,
 } from 'lucide-react'
 import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
 import { VoiceConnectedPanel } from './VoiceConnectedPanel'
 import { backend } from '../lib/backend'
-import type { Channel, Status } from '../lib/types'
+import type { Channel } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
+import { Avatar, displayName } from './Avatar'
 import { copyText, showContextMenu, useUserMenu } from './ContextMenu'
 import { CreateChannelModal, EditChannelModal, EmojiManagerModal, InviteModal } from './ServerModals'
 import { ServerSettingsModal, useServerRole } from './ServerSettings'
@@ -203,77 +203,7 @@ export function ChannelSidebar({ onHide }: { onHide?: () => void } = {}) {
         <HomeSidebar trailing={hideBtn} />
       )}
       <VoiceConnectedPanel />
-      <UserPanel />
       <ResizeHandle panel="side" />
     </aside>
-  )
-}
-
-function UserPanel() {
-  const { me, setSettingsOpen, upsertProfile, toast, adminPending, openAdminPanel } = useApp()
-  const [open, setOpen] = useState(false)
-  const [custom, setCustom] = useState(me?.custom_status ?? '')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => setCustom(me?.custom_status ?? ''), [me?.custom_status])
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [open])
-
-  const setStatus = async (status: Status) => {
-    upsertProfile(await backend.updateProfile({ status }))
-    setOpen(false)
-  }
-  const saveCustom = async () => {
-    upsertProfile(await backend.updateProfile({ custom_status: custom.trim() }))
-    toast(t('Status atualizado'))
-  }
-  const call = useVoice()
-
-  return (
-    <div className="user-panel" ref={ref}>
-      <button className="user-panel-me" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <Avatar profile={me} size={34} showStatus />
-        <span className="user-panel-text">
-          <strong className="truncate">{displayName(me)}</strong>
-          <span className="truncate">{me?.custom_status || (me ? STATUS_LABEL[me.status] : '')}</span>
-        </span>
-      </button>
-      <button className={`icon-btn ${call.muted || call.deafened ? 'danger-on' : ''}`} aria-label={call.muted ? t('Ativar microfone') : t('Silenciar microfone')}
-        data-tip={call.muted ? t('Ativar microfone') : t('Silenciar')} onClick={() => voice.toggleMute()}>
-        {call.muted || call.deafened ? <MicOff size={18} /> : <Mic size={18} />}
-      </button>
-      <button className={`icon-btn ${call.deafened ? 'danger-on' : ''}`} aria-label={call.deafened ? t('Ativar áudio') : t('Desativar áudio')}
-        data-tip={call.deafened ? t('Ativar áudio') : t('Desativar áudio')} onClick={() => voice.toggleDeafen()}>
-        {call.deafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
-      </button>
-      <span className="gear-wrap">
-        <button className="icon-btn" aria-label={adminPending > 0 ? t('Configurações ({n} pedidos para entrar)', { n: adminPending }) : t('Configurações')}
-          data-tip={t('Configurações')} onClick={() => (adminPending > 0 ? openAdminPanel() : setSettingsOpen(true))}><Settings size={18} /></button>
-        {adminPending > 0 && <span className="badge gear-badge" aria-hidden="true">{adminPending}</span>}
-      </span>
-
-      {open && me && (
-        <div className="status-menu">
-          <div className="status-custom">
-            <input value={custom} maxLength={80} placeholder={t('Defina um status personalizado')}
-              onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveCustom()} />
-            <button className="btn btn-primary btn-sm" onClick={() => void saveCustom()}>{t('Salvar')}</button>
-          </div>
-          {(['online', 'idle', 'dnd', 'invisible'] as Status[]).map((s) => (
-            <button key={s} className={`dropdown-item ${me.status === s ? 'selected' : ''}`} onClick={() => void setStatus(s)}>
-              <span className="row-gap"><StatusDot status={s} /> {STATUS_LABEL[s]}</span>
-            </button>
-          ))}
-          <div className="dropdown-sep" />
-          <button className="dropdown-item" onClick={() => { setOpen(false); setSettingsOpen(true) }}>
-            {t('Editar perfil')} <Settings size={16} />
-          </button>
-        </div>
-      )}
-    </div>
   )
 }

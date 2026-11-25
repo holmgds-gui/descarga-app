@@ -77,6 +77,8 @@ interface AppState {
   requestedTab: string | null
   clearRequestedTab: () => void
   openAdminPanel: () => void
+  /** abre as configurações direto numa aba (ex.: 'voz') */
+  openSettingsTab: (tab: string) => void
   /** quantas contas estão esperando aprovação (só o administrador vê) */
   adminPending: number
   mobilePane: 'nav' | 'chat' | 'members'
@@ -561,6 +563,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       requestedTab,
       clearRequestedTab: () => setRequestedTab(null),
       openAdminPanel,
+      openSettingsTab: (tab) => { setRequestedTab(tab); setSettingsOpen(true) },
       adminPending,
       mobilePane,
       setMobilePane,

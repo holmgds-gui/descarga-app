@@ -1,5 +1,7 @@
 /** Traduções para inglês. Chave = texto em português usado no app. */
 export const EN: Record<string, string> = {
+  'Escolher microfone': 'Choose microphone',
+  'Configurações de voz': 'Voice settings',
   'Uso do plano gratuito': 'Free plan usage',
   'Pessoas online agora': 'People online now',
   '{n} na última hora · limite de conexões ao mesmo tempo': '{n} in the last hour · simultaneous connection limit',

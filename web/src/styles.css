@@ -1245,7 +1245,7 @@ body.rail-dragging .rail-tip { display: none; }
   html[data-side-compact] .channel-sidebar .voice-member-icons,
   html[data-side-compact] .channel-sidebar .voice-panel-info,
   html[data-side-compact] .channel-sidebar .voice-panel-actions .lbl,
-  html[data-side-compact] .channel-sidebar .user-panel-text { display: none; }
+  html[data-side-compact] .channel-sidebar .user-panel-text-x { display: none; }
   html[data-side-compact] .channel-sidebar .sidebar-header { width: 100%; }
   html[data-side-compact] .channel-sidebar .channel-list { padding: 6px 6px 12px; }
   html[data-side-compact] .channel-sidebar .channel-group + .channel-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -1260,10 +1260,7 @@ body.rail-dragging .rail-tip { display: none; }
   html[data-side-compact] .channel-sidebar .voice-panel { margin: 0 6px 6px; padding: 6px; }
   html[data-side-compact] .channel-sidebar .voice-panel-top { justify-content: center; }
   html[data-side-compact] .channel-sidebar .voice-panel-actions { grid-template-columns: 1fr; }
-  html[data-side-compact] .channel-sidebar .user-panel { height: auto; flex-direction: column; padding: 8px 0; gap: 2px; }
-  html[data-side-compact] .channel-sidebar .user-panel-me { flex: none; padding: 4px; }
   html[data-side-compact] .channel-sidebar .dropdown { position: fixed; top: 64px; left: 152px; right: auto; width: 240px; }
-  html[data-side-compact] .channel-sidebar .status-menu { position: fixed; top: auto; bottom: 16px; left: 152px; right: auto; width: 260px; }
 }
 @media (min-width: 1000px) {
   html[data-members-compact] .pane-bar { justify-content: center; padding: 0; }
@@ -1298,3 +1295,47 @@ body.rail-dragging .rail-tip { display: none; }
 .usage-fill.hot { background: #e04848; }
 .idle-screen { text-align: center; padding: 24px; gap: 12px; }
 .idle-screen p { max-width: 340px; margin: 0; }
+
+/* ---- painel da pessoa: flutua embaixo e atravessa trilho + canais (como no Discord) ---- */
+.nav-pane { --up-h: 60px; --up-pad: calc(var(--up-h) + 20px); }
+@media (min-width: 768px) { .nav-pane { position: relative; } }
+.nav-pane > .user-panel {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6; height: var(--up-h); margin: 0;
+  border: 1px solid var(--border); border-radius: 12px; padding: 0 6px; gap: 0;
+  background: color-mix(in srgb, var(--bg-elev) 92%, var(--bg-rail)); box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .65);
+}
+.nav-pane > .user-panel .user-panel-me { padding: 4px 6px 4px 4px; border-radius: 8px; }
+.nav-pane > .user-panel .icon-btn { width: 32px; height: 32px; }
+.server-rail { padding-bottom: var(--up-pad); }
+.channel-sidebar { padding-bottom: calc(var(--up-pad) - 4px); }
+.up-pair { display: inline-flex; align-items: center; border-radius: 8px; flex-shrink: 0; }
+.up-pair:hover { background: var(--bg-hover); }
+.up-pair .icon-btn:hover { background: transparent; }
+.up-pair.danger-on .icon-btn { color: var(--danger); }
+.up-pair .up-chev { width: 18px !important; margin-left: -6px; opacity: .75; }
+.up-pair .up-chev:hover { opacity: 1; }
+.nav-pane > .user-panel .status-menu { left: 0; right: auto; width: min(300px, calc(100vw - 16px)); bottom: calc(100% + 8px); }
+.up-menu-title { font-size: .72em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 4px 8px 2px; }
+.up-menu .dropdown-item.selected { color: var(--accent-text); }
+.up-slider { width: calc(100% - 16px); margin: 6px 8px 8px; }
+
+/* barra de canais escondida: o painel vira uma coluna só com ícones */
+@media (min-width: 768px) {
+  .app.side-hidden .nav-pane > .user-panel { left: 6px; right: 6px; height: auto; flex-direction: column; padding: 6px 0; gap: 2px; }
+  .app.side-hidden .nav-pane > .user-panel .user-panel-text,
+  .app.side-hidden .nav-pane > .user-panel .up-chev { display: none; }
+  .app.side-hidden .nav-pane > .user-panel .user-panel-me { flex: none; padding: 4px; }
+  .app.side-hidden .nav-pane { --up-pad: 210px; }
+  /* barra de canais só com ícones: o painel cobre ~136 px e quebra em duas linhas */
+  html[data-side-compact] .nav-pane > .user-panel { height: auto; flex-wrap: wrap; justify-content: center; padding: 6px; row-gap: 2px; }
+  html[data-side-compact] .nav-pane > .user-panel .user-panel-text,
+  html[data-side-compact] .nav-pane > .user-panel .up-chev { display: none; }
+  html[data-side-compact] .nav-pane > .user-panel .user-panel-me { flex: none; }
+  html[data-side-compact] .nav-pane { --up-pad: 136px; }
+}
+
+/* celular: o painel fica logo acima da barra de abas */
+@media (max-width: 767px) {
+  .nav-pane > .user-panel { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .nav-pane { --up-pad: calc(var(--up-h) + 96px + env(safe-area-inset-bottom)); }
+}

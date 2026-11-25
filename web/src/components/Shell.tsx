@@ -14,6 +14,7 @@ import { ResizeHandle } from './ResizeHandle'
 import { useMapaPublisher } from '../lib/mapa'
 import { Modal } from './Modal'
 import { ProfilePopover } from './ProfileCard'
+import { UserPanel } from './UserPanel'
 import { ServerRail } from './ServerRail'
 import { SettingsModal } from './SettingsModal'
 import { VoiceStage } from './VoiceStage'
@@ -57,6 +58,7 @@ export function Shell() {
       <div className="nav-pane">
         <ServerRail />
         <ChannelSidebar onHide={toggleSide} />
+        <UserPanel />
         {!sideOpen && (
           <div className="pane-strip pane-strip-side">
             <button className="pane-show" aria-label={t('Mostrar canais')} title={t('Mostrar canais')} onClick={toggleSide}><ChevronRight size={18} /></button>

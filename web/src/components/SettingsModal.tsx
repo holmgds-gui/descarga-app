@@ -29,6 +29,9 @@ export function SettingsModal() {
     if (settingsOpen && requestedTab === 'admin' && isAdmin) {
       setTab('admin')
       clearRequestedTab()
+    } else if (settingsOpen && requestedTab === 'voz') {
+      setTab('voz')
+      clearRequestedTab()
     }
   }, [settingsOpen, requestedTab, isAdmin, clearRequestedTab])
   const close = () => setSettingsOpen(false)
