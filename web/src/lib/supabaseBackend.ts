@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AdminUser, AppUsage, Report,
+  AdminUser, AppUsage, DiscoverServer, Report,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
   ServerEmoji, Ban, RoleDef, ServerPrefs, Attachment, OnceFile, Pin,
 } from './types'
@@ -138,6 +138,21 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       await sb.rpc('accept_terms', { v: version })
     },
 
+    async adminSetPlus(userId, level, until) {
+      const r = await sb.rpc('admin_set_plus', { target: userId, new_level: level, until: until ?? null })
+      if (r.error) throw new Error(/sem_permissao/.test(r.error.message) ? t('Só o administrador pode fazer isso.') : r.error.message)
+    },
+
+    async setCosmetics(patch) {
+      const r = await sb.rpc('set_cosmetics', { p_name_color: patch.name_color, p_avatar_frame: patch.avatar_frame, p_profile_skin: patch.profile_skin })
+      if (r.error) {
+        if (/precisa_super_plus/.test(r.error.message)) throw new Error(t('Molduras e skins são do Super Plus.'))
+        if (/precisa_plus/.test(r.error.message)) throw new Error(t('Essas opções são do Plus.'))
+        throw new Error(r.error.message)
+      }
+      return r.data as Profile
+    },
+
     async adminSetApproval(userId, status) {
       const r = await sb.rpc('admin_set_approval', { target: userId, new_status: status })
       if (r.error) {
@@ -196,6 +211,17 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     async joinServer(code) {
       const r = await sb.rpc('join_server', { code: code.trim() })
       if (r.error) throw new Error(/banido/.test(r.error.message) ? t('Você foi banido deste servidor.') : t('Convite inválido ou expirado.'))
+      return r.data as Server
+    },
+
+    async discoverServers() {
+      const rows = must(await sb.rpc('discover_servers')) as (Omit<DiscoverServer, 'members'> & { members: number | string })[]
+      return rows.map((r) => ({ ...r, members: Number(r.members) }))
+    },
+
+    async joinDiscoverable(serverId) {
+      const r = await sb.rpc('join_discoverable', { sid: serverId })
+      if (r.error) throw new Error(/banido/.test(r.error.message) ? t('Você foi banido deste servidor.') : t('Este servidor não está mais aberto.'))
       return r.data as Server
     },
 

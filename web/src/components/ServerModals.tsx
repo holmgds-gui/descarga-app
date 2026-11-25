@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Camera, Copy, Hash, ImagePlus, Trash2, Volume2 } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { Channel, ChannelType, Server, ServerEmoji } from '../lib/types'
+import type { Channel, ChannelType, DiscoverServer, Server, ServerEmoji } from '../lib/types'
 import { useApp } from '../state'
 import { Modal } from './Modal'
 import { t } from '../lib/i18n'
@@ -360,6 +360,61 @@ export function EmojiManagerModal({ server, onClose }: { server: Server; onClose
             <span className="truncate">:{em.name}:</span>
             <button className="icon-btn tiny danger" aria-label={t('Apagar :{nome}:', { nome: em.name })} onClick={() => void remove(em)}><Trash2 size={16} /></button>
           </div>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
+/** Descobrir servidores: lista os servidores abertos (o dono liga isso nas configurações) e entra com um clique. */
+export function DiscoverModal({ onClose }: { onClose: () => void }) {
+  const { refreshServers, setActiveServerId, toast } = useApp()
+  const [list, setList] = useState<DiscoverServer[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [q, setQ] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    backend.discoverServers().then((l) => alive && setList(l)).catch((err) => { if (alive) { setList([]); toast((err as Error).message) } })
+    return () => { alive = false }
+  }, [toast])
+
+  const join = async (s: DiscoverServer) => {
+    setBusy(s.id)
+    try {
+      const joined = await backend.joinDiscoverable(s.id)
+      await refreshServers()
+      setActiveServerId(joined.id)
+      onClose()
+    } catch (err) {
+      toast((err as Error).message)
+      setBusy(null)
+    }
+  }
+
+  const shown = (list ?? []).filter((s) => !q.trim() || `${s.name} ${s.description}`.toLowerCase().includes(q.trim().toLowerCase()))
+
+  return (
+    <Modal title={t('Descobrir servidores')} subtitle={t('Servidores abertos para qualquer pessoa entrar.')} onClose={onClose} wide>
+      <div className="form"><input className="discover-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Buscar servidor')} aria-label={t('Buscar servidor')} /></div>
+      {list === null && <p className="muted">{t('Carregando…')}</p>}
+      {list !== null && !shown.length && (
+        <p className="muted discover-empty">{list.length ? t('Nenhum servidor com esse nome.') : t('Ainda não há servidores abertos para você. Quando um dono ligar “Aparecer em Descobrir servidores”, ele aparece aqui.')}</p>
+      )}
+      <div className="discover-grid">
+        {shown.map((s) => (
+          <article key={s.id} className="discover-card">
+            <div className="discover-banner" style={s.banner_url ? { backgroundImage: `url(${s.banner_url})` } : undefined} />
+            <div className="discover-icon">
+              {s.icon_url ? <img src={s.icon_url} alt="" /> : <span>{s.name.trim().slice(0, 2).toUpperCase()}</span>}
+            </div>
+            <div className="discover-body">
+              <strong className="truncate">{s.name}</strong>
+              <p className="muted small discover-desc">{s.description || t('Sem descrição.')}</p>
+              <span className="muted small">{s.members === 1 ? t('1 membro') : t('{n} membros', { n: s.members })}</span>
+            </div>
+            <button className="btn btn-primary btn-sm" disabled={busy === s.id} onClick={() => void join(s)}>{t('Entrar no servidor')}</button>
+          </article>
         ))}
       </div>
     </Modal>

@@ -83,6 +83,7 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
   const { refreshServers, toast } = useApp()
   const [name, setName] = useState(server.name)
   const [description, setDescription] = useState(server.description ?? '')
+  const [discoverable, setDiscoverable] = useState(!!server.discoverable)
   const [icon, setIcon] = useState<string | null>(server.icon_url)
   const [banner, setBanner] = useState<string | null>(server.banner_url)
   const [busy, setBusy] = useState(false)
@@ -103,7 +104,7 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
   const pick = (f: File | undefined, kind: 'server' | 'banner') => cropper.open(f, kind)
 
   const changed =
-    name.trim() !== server.name || description !== (server.description ?? '') || icon !== server.icon_url || banner !== server.banner_url
+    name.trim() !== server.name || description !== (server.description ?? '') || icon !== server.icon_url || banner !== server.banner_url || discoverable !== !!server.discoverable
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
@@ -111,7 +112,7 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
     setBusy(true)
     setError(null)
     try {
-      await backend.updateServer(server.id, { name: name.trim(), description: description.trim(), icon_url: icon, banner_url: banner })
+      await backend.updateServer(server.id, { name: name.trim(), description: description.trim(), icon_url: icon, banner_url: banner, discoverable })
       await refreshServers()
       toast(t('Servidor atualizado'))
       onClose()
@@ -153,6 +154,13 @@ function OverviewTab({ server, isOwner, onClose }: { server: Server; isOwner: bo
         {t('Descrição')}
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} rows={3} placeholder={t('Sobre o que é este servidor?')} />
         <span className="muted small">{description.length}/300</span>
+      </label>
+      <label className="toggle-row">
+        <span>
+          <strong>{t('Aparecer em Descobrir servidores')}</strong>
+          <span className="muted small">{t('Qualquer pessoa com conta aprovada poderá ver o nome, a descrição e entrar. Desligado, só entra quem tem o convite.')}</span>
+        </span>
+        <input type="checkbox" className="toggle" checked={discoverable} onChange={(e) => setDiscoverable(e.target.checked)} />
       </label>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="row-end">

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { Bell, BellOff, Cog, Fingerprint, LogOut, Plus, UserPlus } from 'lucide-react'
+import { Bell, BellOff, Cog, Compass, Fingerprint, LogOut, Plus, UserPlus } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Server, ServerPrefs } from '../lib/types'
 import { useApp } from '../state'
-import { InviteModal, ServerCreateModal } from './ServerModals'
+import { DiscoverModal, InviteModal, ServerCreateModal } from './ServerModals'
 import { t } from '../lib/i18n'
 import { copyText, showContextMenu } from './ContextMenu'
 
@@ -11,6 +11,7 @@ export function ServerRail() {
   const { servers, activeServerId, setActiveServerId, goHome, unreadDms, friendships, userId, toast, ask, refreshServers, serverPrefs, setServerPrefs, reorderServers } = useApp()
   const homeBadge = unreadDms.size + friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const [creating, setCreating] = useState(false)
+  const [discovering, setDiscovering] = useState(false)
   const [inviting, setInviting] = useState<Server | null>(null)
 
   const isMuted = (id: string) => {
@@ -208,6 +209,10 @@ export function ServerRail() {
       <RailItem label={t('Criar ou entrar em um servidor')} onClick={() => setCreating(true)} variant="add">
         <Plus size={24} />
       </RailItem>
+      <RailItem label={t('Descobrir servidores')} onClick={() => setDiscovering(true)} variant="discover">
+        <Compass size={24} />
+      </RailItem>
+      {discovering && <DiscoverModal onClose={() => setDiscovering(false)} />}
       {creating && <ServerCreateModal onClose={() => setCreating(false)} />}
       {inviting && <InviteModal server={inviting} onClose={() => setInviting(null)} />}
     </nav>
@@ -241,7 +246,7 @@ function RailItem({
   active?: boolean
   onClick: () => void
   children: ReactNode
-  variant?: 'add'
+  variant?: 'add' | 'discover'
   badge?: number
   muted?: boolean
   onContextMenu?: (e: React.MouseEvent) => void
@@ -274,7 +279,7 @@ function RailItem({
         onMouseLeave={hideTip}
         onMouseDown={hideTip}
         onFocus={hideTip}
-        className={`rail-btn ${variant === 'add' ? 'rail-add' : ''} ${muted ? 'rail-muted' : ''}`}
+        className={`rail-btn ${variant === 'add' ? 'rail-add' : variant === 'discover' ? 'rail-discover' : ''} ${muted ? 'rail-muted' : ''}`}
         onClick={onClick}
         onContextMenu={(e) => { hideTip(); onContextMenu?.(e) }}
         aria-label={label}

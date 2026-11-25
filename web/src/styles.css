@@ -1252,7 +1252,9 @@ body.rail-dragging .rail-tip { display: none; }
   html[data-side-compact] .channel-sidebar .channel-item,
   html[data-side-compact] .channel-sidebar .home-item { position: relative; justify-content: center; padding: 9px 0; }
   html[data-side-compact] .channel-sidebar .channel-item .badge { position: absolute; top: 2px; right: 4px; }
-  html[data-side-compact] .channel-sidebar .dm-category { display: block; height: 1px; margin: 6px 4px; padding: 0; background: var(--border); }
+  html[data-side-compact] .channel-sidebar .dm-category { display: flex; justify-content: center; align-items: center; height: auto; margin: 6px 4px 2px; padding: 6px 0 0; border-top: 1px solid var(--border); background: none; overflow: hidden; }
+  html[data-side-compact] .channel-sidebar .dm-category .category-toggle { display: none; }
+  html[data-side-compact] .channel-sidebar p.pad { display: none; }
   html[data-side-compact] .channel-sidebar .dm-item-main { justify-content: center; padding: 5px 0; }
   html[data-side-compact] .channel-sidebar .unread-dot { position: absolute; right: 6px; top: 6px; }
   html[data-side-compact] .channel-sidebar .voice-members { padding: 2px 0 4px; align-items: center; }
@@ -1339,3 +1341,21 @@ body.rail-dragging .rail-tip { display: none; }
   .nav-pane > .user-panel { bottom: calc(76px + env(safe-area-inset-bottom)); }
   .nav-pane { --up-pad: calc(var(--up-h) + 96px + env(safe-area-inset-bottom)); }
 }
+
+/* ---- Descobrir servidores ---- */
+.rail-discover { color: var(--accent-text); }
+.rail-discover:hover { background: var(--accent) !important; color: #fff !important; }
+.discover-search { width: 100%; margin-bottom: 12px; }
+.discover-empty { padding: 18px 4px; }
+.discover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; max-height: min(60vh, 520px); overflow-y: auto; padding: 2px; }
+.discover-card { position: relative; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg-elev); }
+.discover-banner { height: 72px; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 40%, #000)) center / cover; }
+.discover-icon { position: absolute; top: 44px; left: 12px; width: 52px; height: 52px; border-radius: 16px; overflow: hidden; border: 3px solid var(--bg-elev); background: var(--accent); display: grid; place-items: center; color: #fff; font-weight: 800; }
+.discover-icon img { width: 100%; height: 100%; object-fit: cover; }
+.discover-body { display: flex; flex-direction: column; gap: 3px; padding: 32px 12px 8px; min-width: 0; flex: 1; }
+.discover-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
+.discover-card .btn { margin: 0 12px 12px; }
+.profile-chip.plus { color: #fff; background: linear-gradient(135deg, #7B3FE4, #a05cf0); }
+.profile-chip.plus-2 { background: linear-gradient(135deg, #7B3FE4, #d14fd1); }
+.profile-chip.plus-3 { background: linear-gradient(135deg, #d14fd1, #ff8a3c, #ffc93c); color: #2a1200; }
+.plus-select { min-width: 150px; }

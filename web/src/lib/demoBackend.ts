@@ -7,6 +7,7 @@ import type {
   AdminUser, Report, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, Ban, RoleDef, ServerPrefs, Permission, RolePatch,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
+import { plusLevel } from './perks'
 import { local, session } from './storage'
 import { t } from './i18n'
 import { cleanUsername } from './username'
@@ -331,6 +332,7 @@ export function createDemoBackend(): Backend {
           id: p.id, email: db.users.find((u) => u.id === p.id)?.email ?? '', username: p.username,
           display_name: p.display_name, avatar_url: p.avatar_url, approval: p.approval ?? 'approved',
           is_admin: !!p.is_admin, created_at: p.created_at, last_sign_in_at: p.created_at,
+          plus_level: p.plus_level ?? 0, plus_until: p.plus_until ?? null,
         }))
         .sort((a, b) => order[a.approval] - order[b.approval] || b.created_at.localeCompare(a.created_at))
     },
@@ -343,6 +345,34 @@ export function createDemoBackend(): Backend {
       emit({ type: 'profile', payload: db.profiles[i] })
     },
 
+    async adminSetPlus(userId, level, until) {
+      const db = load()
+      if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
+      const i = db.profiles.findIndex((p) => p.id === userId)
+      if (i < 0) return
+      const p = db.profiles[i]
+      db.profiles[i] = {
+        ...p, plus_level: level, plus_until: level > 0 ? until ?? null : null,
+        name_color: level < 1 ? null : p.name_color,
+        avatar_frame: level < 2 ? null : p.avatar_frame,
+        profile_skin: level < 2 ? null : p.profile_skin,
+      }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+      emit({ type: 'users' })
+    },
+    async setCosmetics(patch) {
+      const db = load()
+      const i = db.profiles.findIndex((p) => p.id === me())
+      const p = db.profiles[i]
+      const lvl = plusLevel(p)
+      if ((patch.avatar_frame || patch.profile_skin) && lvl < 2) throw new Error(t('Molduras e skins são do Super Plus.'))
+      if (patch.name_color && lvl < 1) throw new Error(t('Essas opções são do Plus.'))
+      db.profiles[i] = { ...p, name_color: patch.name_color || null, avatar_frame: patch.avatar_frame || null, profile_skin: patch.profile_skin || null }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+      return db.profiles[i]
+    },
     async adminSetApproval(userId, status) {
       const db = load()
       if (!db.profiles.find((p) => p.id === me())?.is_admin) throw new Error(t('Só o administrador pode fazer isso.'))
@@ -443,6 +473,30 @@ export function createDemoBackend(): Backend {
       return s
     },
 
+    async discoverServers() {
+      const db = load()
+      const uid = me()
+      return db.servers
+        .filter((s) => s.discoverable && !isMember(db, s.id, uid) && !db.bans.some((b) => b.server_id === s.id && b.user_id === uid))
+        .map((s) => ({
+          id: s.id, name: s.name, icon_url: s.icon_url, banner_url: s.banner_url, description: s.description ?? '',
+          members: db.members.filter((m) => m.server_id === s.id).length,
+        }))
+        .sort((a, b) => b.members - a.members)
+    },
+    async joinDiscoverable(serverId) {
+      const db = load()
+      const uid = me()
+      const s = db.servers.find((x) => x.id === serverId && x.discoverable)
+      if (!s) throw new Error(t('Este servidor não está mais aberto.'))
+      if (db.bans.some((b) => b.server_id === s.id && b.user_id === uid)) throw new Error(t('Você foi banido deste servidor.'))
+      if (!isMember(db, s.id, uid)) db.members.push({ server_id: s.id, user_id: uid, joined_at: now() })
+      save(db)
+      emit({ type: 'servers' })
+      emit({ type: 'channels' })
+      return s
+    },
+
     async leaveServer(serverId) {
       const db = load()
       const uid = me()
@@ -460,6 +514,7 @@ export function createDemoBackend(): Backend {
       if (patch.icon_url !== undefined) s.icon_url = patch.icon_url
       if (patch.banner_url !== undefined) s.banner_url = patch.banner_url
       if (patch.description !== undefined) s.description = patch.description
+      if (patch.discoverable !== undefined) s.discoverable = patch.discoverable
       save(db)
       emit({ type: 'servers' })
       return { ...s }

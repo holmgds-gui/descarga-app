@@ -30,10 +30,24 @@ export interface Profile {
   is_admin?: boolean
   /** conta excluída: o perfil vira uma casca "Usuário excluído" que só assina as mensagens antigas */
   deleted_at?: string | null
+  /** Plus (visual extra do perfil): 0 nenhum, 1 Plus, 2 Super Plus, 3 Ultra Mega Plus. Só o administrador muda. */
+  plus_level?: number
+  plus_until?: string | null
+  /** como os outros veem a pessoa; só valem com Nitro ativo (ver lib/perks.ts) */
+  name_color?: string | null
+  avatar_frame?: string | null
+  profile_skin?: string | null
   created_at: string
 }
 
-export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin'>>
+export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin' | 'plus_level' | 'plus_until' | 'name_color' | 'avatar_frame' | 'profile_skin'>>
+
+/** escolha do visual extra (vazio/null = tirar). Exige o nível Plus correspondente para colocar. */
+export interface CosmeticsPatch {
+  name_color: string | null
+  avatar_frame: string | null
+  profile_skin: string | null
+}
 
 /** linha da lista de contas do painel do administrador */
 export type ReportReason = 'harassment' | 'hate' | 'illegal' | 'copyright' | 'spam' | 'other'
@@ -68,6 +82,8 @@ export interface AdminUser {
   is_admin: boolean
   created_at: string
   last_sign_in_at: string | null
+  plus_level?: number
+  plus_until?: string | null
 }
 
 export interface Server {
@@ -78,7 +94,19 @@ export interface Server {
   description: string
   owner_id: string
   invite_code: string
+  /** aparece em "Descobrir servidores" (o dono liga) */
+  discoverable?: boolean
   created_at: string
+}
+
+/** servidor aberto, como aparece em "Descobrir servidores" */
+export interface DiscoverServer {
+  id: string
+  name: string
+  icon_url: string | null
+  banner_url: string | null
+  description: string
+  members: number
 }
 
 /** o que um cargo permite fazer no servidor (o dono, quem tem owner_id, pode tudo) */
@@ -126,6 +154,7 @@ export interface ServerPatch {
   icon_url?: string | null
   banner_url?: string | null
   description?: string
+  discoverable?: boolean
 }
 
 export type ChannelType = 'text' | 'voice'
@@ -254,6 +283,9 @@ export interface Backend {
   listServers(): Promise<Server[]>
   createServer(name: string, iconUrl: string | null): Promise<Server>
   joinServer(code: string): Promise<Server>
+  /** servidores abertos onde eu ainda não estou */
+  discoverServers(): Promise<DiscoverServer[]>
+  joinDiscoverable(serverId: string): Promise<Server>
   leaveServer(serverId: string): Promise<void>
   updateServer(serverId: string, patch: ServerPatch): Promise<Server>
   listRoles(serverId: string): Promise<RoleDef[]>
@@ -359,6 +391,10 @@ export interface Backend {
   /** avisa que esta pessoa está com o app aberto (alimenta o contador de online do administrador) */
   touchSeen(): Promise<void>
   adminSetApproval(userId: string, status: 'approved' | 'blocked'): Promise<void>
+  /** o administrador define o nível Plus de uma conta, 0 a 3 (until vazio = sem data para acabar) */
+  adminSetPlus(userId: string, level: number, until?: string | null): Promise<void>
+  /** a própria pessoa escolhe nome colorido (Plus), moldura e skin (Super Plus) */
+  setCosmetics(patch: CosmeticsPatch): Promise<Profile>
   /** exclui a conta (sem argumento: a própria). O e-mail fica livre para um novo cadastro; as mensagens ficam. */
   deleteAccount(userId?: string): Promise<void>
   /** Registra que a pessoa aceitou os Termos de Uso desta versão. Não falha se o banco ainda não tiver o recurso. */

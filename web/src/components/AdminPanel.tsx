@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Ban, Check, Crown, RefreshCw, Sparkles, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { AdminUser, AppUsage, Report } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar } from './Avatar'
 import { locale, t } from '../lib/i18n'
+import { PLUS_LEVELS, PLUS_NAMES, type PlusLevel } from '../lib/perks'
 
 const MB = 1024 * 1024
 const fmtSize = (b: number) => (b >= 1024 * MB ? `${(b / 1024 / MB).toFixed(2)} GB` : `${(b / MB).toFixed(b < 10 * MB ? 1 : 0)} MB`)
@@ -66,6 +67,19 @@ export function AdminPanel() {
     try {
       await backend.adminSetApproval(u.id, status)
       toast(done)
+      await load()
+    } catch (err) {
+      toast((err as Error).message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const setPlus = async (u: AdminUser, level: number) => {
+    setBusyId(u.id)
+    try {
+      await backend.adminSetPlus(u.id, level)
+      toast(level ? t('{nivel} liberado', { nivel: PLUS_NAMES[level as PlusLevel] }) : t('Plus removido'))
       await load()
     } catch (err) {
       toast((err as Error).message)
@@ -139,6 +153,7 @@ export function AdminPanel() {
         <span className="admin-row-name">
           <strong className="truncate">{u.display_name || u.username}</strong>
           {u.is_admin && <span className="profile-chip ok"><Crown size={12} /> {t('Administrador')}</span>}
+          {!!u.plus_level && <span className={`profile-chip plus plus-${u.plus_level}`}><Sparkles size={12} /> {PLUS_NAMES[u.plus_level as PlusLevel]}</span>}
         </span>
         <span className="muted small truncate">@{u.username} • {u.email}</span>
         <span className="muted small">{t('Cadastro em {data}', { data: when(u.created_at) })}</span>
@@ -177,7 +192,13 @@ export function AdminPanel() {
       </>))}
 
       <h3 className="field-label admin-h">{t('Contas liberadas')} — {active.length}</h3>
-      {active.map((u) => row(u, u.is_admin || u.id === me?.id
+      {active.map((u) => row(u, <>
+        <select className="select select-sm plus-select" aria-label={t('Nível Plus de {nome}', { nome: u.display_name || u.username })}
+          value={u.plus_level ?? 0} disabled={busyId === u.id} onChange={(e) => void setPlus(u, Number(e.target.value))}>
+          <option value={0}>{t('Sem Plus')}</option>
+          {PLUS_LEVELS.map((l) => <option key={l} value={l}>{l} · {PLUS_NAMES[l]}</option>)}
+        </select>
+        {u.is_admin || u.id === me?.id
         ? <span className="muted small"><ShieldCheck size={14} /> {t('Você')}</span>
         : <>
           <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void block(u)}>
@@ -186,7 +207,8 @@ export function AdminPanel() {
           <button className="btn btn-ghost btn-sm danger-text" disabled={busyId === u.id} onClick={() => void remove(u)}>
             <Trash2 size={16} /> {t('Excluir')}
           </button>
-        </>))}
+        </>}
+      </>))}
 
       <h3 className="field-label admin-h">{t('Denúncias')} — {reports.filter((r) => r.status === 'open').length}</h3>
       {!reports.some((r) => r.status === 'open') && <p className="muted small">{t('Nenhuma denúncia em aberto.')}</p>}
