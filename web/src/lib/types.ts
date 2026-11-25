@@ -47,6 +47,17 @@ export interface Report {
   created_at: string
 }
 
+export interface AppUsage {
+  online_now: number
+  online_hour: number
+  users_total: number
+  users_approved: number
+  db_bytes: number
+  storage_bytes: number
+  storage_files: number
+  messages: number
+}
+
 export interface AdminUser {
   id: string
   email: string
@@ -343,6 +354,10 @@ export interface Backend {
 
   // ---------- administração (só a conta do administrador) ----------
   adminListUsers(): Promise<AdminUser[]>
+  /** números de uso para comparar com os limites do plano gratuito */
+  adminUsage(): Promise<AppUsage>
+  /** avisa que esta pessoa está com o app aberto (alimenta o contador de online do administrador) */
+  touchSeen(): Promise<void>
   adminSetApproval(userId: string, status: 'approved' | 'blocked'): Promise<void>
   /** exclui a conta (sem argumento: a própria). O e-mail fica livre para um novo cadastro; as mensagens ficam. */
   deleteAccount(userId?: string): Promise<void>

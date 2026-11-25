@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AdminUser, Report,
+  AdminUser, AppUsage, Report,
   Backend, Channel, ChannelType, DmChannel, Friendship, Message, PresenceEntry, Profile, ProfilePatch, Reaction, RealtimeRoom, Server,
   ServerEmoji, Ban, RoleDef, ServerPrefs, Attachment, OnceFile, Pin,
 } from './types'
-import { compressImage } from './image'
+import { compressImage, shrinkChatImage } from './image'
 import { getLang, t } from './i18n'
 
 const PAGE = 50
@@ -125,6 +125,12 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     // ---------- administração ----------
     async adminListUsers() {
       return must(await sb.rpc('admin_list_users')) as AdminUser[]
+    },
+    async adminUsage() {
+      return must(await sb.rpc('admin_usage')) as AppUsage
+    },
+    async touchSeen() {
+      await sb.rpc('touch_seen')
     },
 
     async acceptTerms(version) {
@@ -686,6 +692,12 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     async uploadAttachment(channelId, file, meta) {
       const me = await uid()
       if (file.size > 50 * 1024 * 1024) throw new Error(t('O arquivo passa de 50 MB.'))
+      // fotos grandes viram WebP menor (economiza o espaço do plano gratuito)
+      const small = await shrinkChatImage(file)
+      if (small) {
+        file = small
+        meta = { ...meta, type: 'image/webp', name: (meta.name || 'imagem').replace(/\.[A-Za-z0-9]+$/, '') + '.webp' }
+      }
       const safe = (meta.name || 'arquivo').normalize('NFD').replace(/[^\w.-]+/g, '_').slice(-80)
       // visualização única: pasta "once", que só a função de servidor consegue liberar
       const path = `${channelId}/${me}/${meta.once ? 'once/' : ''}${crypto.randomUUID()}-${safe}`

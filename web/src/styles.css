@@ -1288,3 +1288,13 @@ body.rail-dragging .rail-tip { display: none; }
 .incoming-call-text span { font-size: .8em; color: var(--text-2); }
 @keyframes incoming-pulse { 50% { box-shadow: var(--shadow), 0 0 0 7px color-mix(in srgb, var(--accent) 10%, transparent); } }
 @media (max-width: 520px) { .incoming-call { flex-wrap: wrap; justify-content: center; } }
+
+/* ---- painel de uso (administração) e tela de pausa ---- */
+.usage-box { display: grid; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
+.usage-meter-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; margin-bottom: 6px; }
+.usage-bar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--text, #fff) 12%, transparent); overflow: hidden; }
+.usage-fill { display: block; height: 100%; border-radius: 999px; background: #3ba55d; transition: width .3s; }
+.usage-fill.warm { background: #e8a317; }
+.usage-fill.hot { background: #e04848; }
+.idle-screen { text-align: center; padding: 24px; gap: 12px; }
+.idle-screen p { max-width: 340px; margin: 0; }

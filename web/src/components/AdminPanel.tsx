@@ -1,10 +1,28 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
-import type { AdminUser, Report } from '../lib/types'
+import type { AdminUser, AppUsage, Report } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar } from './Avatar'
 import { locale, t } from '../lib/i18n'
+
+const MB = 1024 * 1024
+const fmtSize = (b: number) => (b >= 1024 * MB ? `${(b / 1024 / MB).toFixed(2)} GB` : `${(b / MB).toFixed(b < 10 * MB ? 1 : 0)} MB`)
+
+/** Barra de uso em relação ao limite do plano gratuito. */
+function Meter({ label, value, text, limit, hint }: { label: string; value: number; text: string; limit: number; hint?: string }) {
+  const pct = Math.min(100, Math.round((value / limit) * 100))
+  const level = pct >= 85 ? 'hot' : pct >= 60 ? 'warm' : 'ok'
+  return (
+    <div className="usage-meter">
+      <div className="usage-meter-top"><span>{label}</span><b>{text}</b></div>
+      <div className="usage-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <i className={`usage-fill ${level}`} style={{ width: `${Math.max(pct, value > 0 ? 2 : 0)}%` }} />
+      </div>
+      {hint && <div className="muted small">{hint}</div>}
+    </div>
+  )
+}
 
 const when = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) : '—'
@@ -17,11 +35,13 @@ export function AdminPanel() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [reports, setReports] = useState<Report[]>([])
   const [showDone, setShowDone] = useState(false)
+  const [usage, setUsage] = useState<AppUsage | null>(null)
 
   const load = useCallback(async () => {
     try {
       setUsers(await backend.adminListUsers())
       setReports(await backend.adminListReports().catch(() => []))
+      setUsage(await backend.adminUsage().catch(() => null))
       setError(null)
     } catch (err) {
       setError((err as Error).message)
@@ -131,6 +151,21 @@ export function AdminPanel() {
     <>
       <h2 className="settings-title">{t('Administração')}</h2>
       <p className="muted">{t('Só você vê este painel. Quem se cadastra fica esperando aqui até você aprovar.')}</p>
+
+      {usage && (
+        <>
+          <h3 className="field-label admin-h">{t('Uso do plano gratuito')}</h3>
+          <div className="usage-box">
+            <Meter label={t('Pessoas online agora')} value={usage.online_now} limit={200}
+              text={`${usage.online_now} / 200`} hint={t('{n} na última hora · limite de conexões ao mesmo tempo', { n: usage.online_hour })} />
+            <Meter label={t('Banco de dados')} value={usage.db_bytes} limit={500 * MB}
+              text={`${fmtSize(usage.db_bytes)} / 500 MB`} hint={t('{n} mensagens', { n: usage.messages })} />
+            <Meter label={t('Arquivos e fotos')} value={usage.storage_bytes} limit={1024 * MB}
+              text={`${fmtSize(usage.storage_bytes)} / 1 GB`} hint={t('{n} arquivos', { n: usage.storage_files })} />
+            <p className="muted small">{t('{a} contas aprovadas de {b}. As barras ficam amarelas a partir de 60% e vermelhas a partir de 85% do limite.', { a: usage.users_approved, b: usage.users_total })}</p>
+          </div>
+        </>
+      )}
 
       <h3 className="field-label admin-h">{t('Aguardando aprovação')} — {pending.length}</h3>
       {!pending.length && <p className="muted small">{t('Ninguém esperando. Quando alguém se cadastrar, aparece aqui e você recebe um aviso.')}</p>}

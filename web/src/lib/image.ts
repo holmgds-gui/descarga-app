@@ -28,3 +28,28 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
     r.readAsDataURL(blob)
   })
 }
+
+const CHAT_MIN_BYTES = 400 * 1024
+const CHAT_MAX_SIDE = 2048
+
+/**
+ * Economiza espaço nas imagens enviadas no chat: fotos grandes (jpg/png/webp) são reduzidas para
+ * no máximo 2048 px e salvas em WebP. GIF (animação), SVG e imagens pequenas ficam como estão.
+ * Se o resultado não ficar menor, devolve null (usa o original).
+ */
+export async function shrinkChatImage(file: Blob): Promise<Blob | null> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < CHAT_MIN_BYTES) return null
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, CHAT_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close?.()
+    const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/webp', 0.82))
+    return out && out.size < file.size * 0.9 ? out : null
+  } catch {
+    return null
+  }
+}

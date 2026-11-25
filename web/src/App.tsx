@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AuthScreen, NewPasswordScreen } from './components/AuthScreen'
 import { AccessGate } from './components/AccessGate'
 import { Shell } from './components/Shell'
+import { IdleGuard } from './components/IdleGuard'
 import { backend } from './lib/backend'
 import { AppProvider } from './state'
 import { local, session } from './lib/storage'
@@ -80,10 +81,12 @@ export default function App() {
   if (recovering) return <NewPasswordScreen onDone={() => setRecovering(false)} />
 
   return (
-    <AccessGate key={userId} userId={userId}>
-      <AppProvider userId={userId}>
-        <Shell />
-      </AppProvider>
-    </AccessGate>
+    <IdleGuard>
+      <AccessGate key={userId} userId={userId}>
+        <AppProvider userId={userId}>
+          <Shell />
+        </AppProvider>
+      </AccessGate>
+    </IdleGuard>
   )
 }

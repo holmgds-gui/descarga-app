@@ -1,5 +1,14 @@
 /** Traduções para inglês. Chave = texto em português usado no app. */
 export const EN: Record<string, string> = {
+  'Uso do plano gratuito': 'Free plan usage',
+  'Pessoas online agora': 'People online now',
+  '{n} na última hora · limite de conexões ao mesmo tempo': '{n} in the last hour · simultaneous connection limit',
+  'Arquivos e fotos': 'Files and photos',
+  '{n} arquivos': '{n} files',
+  '{a} contas aprovadas de {b}. As barras ficam amarelas a partir de 60% e vermelhas a partir de 85% do limite.': '{a} approved accounts out of {b}. Bars turn yellow at 60% and red at 85% of the limit.',
+  'Sessão em pausa': 'Session paused',
+  'Você ficou 30 minutos sem usar o Descarga, então a conexão foi pausada para liberar espaço. Suas mensagens estão salvas.': 'You were away for 30 minutes, so the connection was paused to free up room. Your messages are safe.',
+  'Continuar': 'Continue',
   // geral
   'Conectando…': 'Connecting…',
   'Problema de conexão': 'Connection problem',

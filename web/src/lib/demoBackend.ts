@@ -308,6 +308,18 @@ export function createDemoBackend(): Backend {
     },
 
     // ---------- administração ----------
+    async adminUsage() {
+      const db = load()
+      let bytes = 0
+      for (const k of Object.keys(localStorage)) bytes += (localStorage.getItem(k)?.length ?? 0) * 2
+      const n = db.profiles.filter((p) => p.id !== BOT_ID && !p.deleted_at).length
+      return {
+        online_now: 1, online_hour: 1, users_total: n, users_approved: n,
+        db_bytes: bytes, storage_bytes: 0, storage_files: 0,
+        messages: (db.messages ?? []).length,
+      }
+    },
+    async touchSeen() {},
     async adminListUsers() {
       const db = load()
       const mine = db.profiles.find((p) => p.id === me())
