@@ -399,7 +399,8 @@ button.avatar { cursor: pointer; }
 .profile-banner { height: 120px; position: relative; overflow: hidden; }
 .profile-banner img { width: 100%; height: 100%; object-fit: cover; }
 .profile-avatar-row { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 16px; margin-top: -48px; position: relative; }
-.profile-avatar-ring { border-radius: 50%; padding: 6px; background: color-mix(in srgb, var(--card-accent) 14%, var(--bg-float)); }
+/* a foto ocupa o círculo inteiro; só uma borda fina separa dela o banner */
+.profile-avatar-ring { border-radius: 50%; padding: 0; background: none; box-shadow: 0 0 0 4px var(--bg-float); }
 .profile-avatar-ring .status-dot { box-shadow: 0 0 0 5px color-mix(in srgb, var(--card-accent) 14%, var(--bg-float)) !important; }
 .profile-edit { margin-bottom: 6px; }
 .profile-inner { margin: 8px 12px 0; padding: 12px; border-radius: 10px; background: color-mix(in srgb, var(--bg-float) 75%, transparent); display: flex; flex-direction: column; gap: 4px; }
