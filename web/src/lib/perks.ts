@@ -36,8 +36,25 @@ export const AVATAR_FRAMES: PerkItem[] = [
   { id: 'neon', label: 'Neon', level: 2 },
   { id: 'ouro', label: 'Ouro', level: 2 },
   { id: 'gelo', label: 'Gelo', level: 2 },
+  { id: 'rosa', label: 'Rosa', level: 2 },
+  { id: 'esmeralda', label: 'Esmeralda', level: 2 },
+  { id: 'rubi', label: 'Rubi', level: 2 },
+  { id: 'safira', label: 'Safira', level: 2 },
+  { id: 'prata', label: 'Prata', level: 2 },
+  { id: 'bronze', label: 'Bronze', level: 2 },
+  { id: 'ametista', label: 'Ametista', level: 2 },
+  { id: 'turquesa', label: 'Turquesa', level: 2 },
+  { id: 'lima', label: 'Lima', level: 2 },
   { id: 'chamas', label: 'Chamas', level: 3 },
   { id: 'galaxia', label: 'Galáxia', level: 3 },
+  { id: 'arcoiris', label: 'Arco-íris', level: 3 },
+  { id: 'raio', label: 'Raio', level: 3 },
+  { id: 'pulso', label: 'Pulso', level: 3 },
+  { id: 'aurora-boreal', label: 'Aurora boreal', level: 3 },
+  { id: 'lava', label: 'Lava', level: 3 },
+  { id: 'sakura', label: 'Sakura', level: 3 },
+  { id: 'gelo-polar', label: 'Gelo polar', level: 3 },
+  { id: 'veneno', label: 'Veneno', level: 3 },
 ]
 
 /** skins do perfil: o fundo/tema do cartão de perfil */
@@ -45,8 +62,23 @@ export const PROFILE_SKINS: PerkItem[] = [
   { id: 'aurora', label: 'Aurora', level: 2 },
   { id: 'oceano', label: 'Oceano', level: 2 },
   { id: 'noite', label: 'Noite', level: 2 },
+  { id: 'por-do-sol', label: 'Pôr do sol', level: 2 },
+  { id: 'cereja', label: 'Cereja', level: 2 },
+  { id: 'lavanda', label: 'Lavanda', level: 2 },
+  { id: 'menta', label: 'Menta', level: 2 },
+  { id: 'grafite', label: 'Grafite', level: 2 },
+  { id: 'ceu', label: 'Céu', level: 2 },
+  { id: 'petroleo', label: 'Petróleo', level: 2 },
+  { id: 'vinho', label: 'Vinho', level: 2 },
+  { id: 'areia', label: 'Areia', level: 2 },
   { id: 'brasa', label: 'Brasa', level: 3 },
   { id: 'floresta', label: 'Floresta', level: 3 },
+  { id: 'galaxia', label: 'Galáxia', level: 3 },
+  { id: 'cidade-neon', label: 'Cidade neon', level: 3 },
+  { id: 'ouro-negro', label: 'Ouro e preto', level: 3 },
+  { id: 'vulcao', label: 'Vulcão', level: 3 },
+  { id: 'gelo-polar', label: 'Gelo polar', level: 3 },
+  { id: 'arcoiris', label: 'Arco-íris', level: 3 },
 ]
 
 type LevelFields = Pick<Profile, 'plus_level' | 'plus_until'>
@@ -75,11 +107,11 @@ export const LIMITS = {
   /** caracteres da bio */
   bio: [300, 500, 800, 1200],
   /** links no perfil */
-  links: [5, 8, 12, 20],
+  links: [3, 6, 10, 15],
   /** emojis por servidor (vale o nível do dono do servidor) */
   emojis: [50, 100, 150, 250],
   /** servidores que a pessoa pode criar */
-  servers: [5, 8, 12, 25],
+  servers: [5, 12, 24, 40],
 } as const
 
 export const limitFor = (kind: keyof typeof LIMITS, level: PlusLevel): number => LIMITS[kind][level]
