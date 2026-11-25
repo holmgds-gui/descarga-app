@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { limitFor, plusLevel } from '../lib/perks'
 import { Camera, Copy, Hash, ImagePlus, Trash2, Volume2 } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Channel, ChannelType, DiscoverServer, Server, ServerEmoji } from '../lib/types'
@@ -275,11 +276,11 @@ export function EditChannelModal({ channel, onClose }: { channel: Channel; onClo
   )
 }
 
-const MAX_EMOJIS = 50
-
 /** Emojis próprios do servidor (o dono adiciona e apaga). */
 export function EmojiManagerModal({ server, onClose }: { server: Server; onClose: () => void }) {
-  const { toast, ask } = useApp()
+  const { toast, ask, profiles } = useApp()
+  // o limite de emojis vale pelo nível do dono do servidor
+  const MAX_EMOJIS = limitFor('emojis', plusLevel(profiles[server.owner_id]))
   const [list, setList] = useState<ServerEmoji[]>([])
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)

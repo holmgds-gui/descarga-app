@@ -1,10 +1,13 @@
 import { t } from './i18n'
+import { ANIMATED_LEVEL, myPlusLevel } from './perks'
 const MAX: Record<string, number> = { avatar: 512, banner: 1200, server: 256, emoji: 128 }
 
 /** Reduz a imagem para economizar espaço. GIFs ficam como estão (para manter a animação). */
 export async function compressImage(file: File, kind: string): Promise<Blob> {
   if (!file.type.startsWith('image/')) throw new Error(t('Escolha um arquivo de imagem.'))
-  if (file.type === 'image/gif') {
+  // foto e banner animados são do Super Plus; sem ele o GIF vira imagem parada (o 1º quadro)
+  const keepGif = file.type === 'image/gif' && ((kind !== 'avatar' && kind !== 'banner') || myPlusLevel() >= ANIMATED_LEVEL)
+  if (keepGif) {
     if (file.size > 8 * 1024 * 1024) throw new Error(t('O GIF precisa ter no máximo 8 MB.'))
     return file
   }

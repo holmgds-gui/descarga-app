@@ -1394,3 +1394,31 @@ html[data-design='classico'] .rail-discover { color: var(--success); }
 html[data-design='classico'] .rail-discover:hover { background: var(--success) !important; color: #fff !important; }
 html[data-design='classico'] .rail-add { color: var(--success); }
 html[data-design='classico'] .rail-add:hover { background: var(--success) !important; color: #fff !important; }
+
+/* ---- Plus: escolha do visual ---- */
+.perk-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 16px; }
+.perk-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); font-weight: 700; cursor: pointer; }
+.perk-chip:hover:not(:disabled) { background: var(--bg-hover); }
+.perk-chip.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.perk-chip:disabled, .perk-chip.locked { opacity: .5; cursor: not-allowed; }
+.perk-custom input[type=color] { width: 26px; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; }
+.perk-frame { padding: 6px 12px 6px 8px; }
+.skin-swatch { width: 34px; height: 22px; border-radius: 6px; border: 1px solid var(--border); }
+
+/* molduras da foto (o círculo ganha um anel; as do nível 3 são animadas) */
+.av-frame { box-shadow: 0 0 0 2px var(--bg-side), 0 0 0 4px var(--frame-c, #fff); }
+.av-frame-neon { --frame-c: #39ffcf; filter: drop-shadow(0 0 5px #39ffcf99); }
+.av-frame-ouro { --frame-c: #e8b92f; filter: drop-shadow(0 0 4px #e8b92f88); }
+.av-frame-gelo { --frame-c: #9fe3ff; filter: drop-shadow(0 0 5px #9fe3ff88); }
+.av-frame-chamas { --frame-c: #ff7a1a; animation: frame-pulse 1.6s ease-in-out infinite; }
+.av-frame-galaxia { --frame-c: #9b5cff; animation: frame-galaxy 4s ease-in-out infinite; }
+@keyframes frame-pulse { 0%, 100% { filter: drop-shadow(0 0 3px #ff7a1acc); } 50% { filter: drop-shadow(0 0 9px #ffc93c); } }
+@keyframes frame-galaxy { 0%, 100% { box-shadow: 0 0 0 2px var(--bg-side), 0 0 0 4px #9b5cff, 0 0 10px #9b5cffaa; } 33% { box-shadow: 0 0 0 2px var(--bg-side), 0 0 0 4px #4fc3f7, 0 0 10px #4fc3f7aa; } 66% { box-shadow: 0 0 0 2px var(--bg-side), 0 0 0 4px #ff6fb5, 0 0 10px #ff6fb5aa; } }
+@media (prefers-reduced-motion: reduce) { .av-frame-chamas, .av-frame-galaxia { animation: none; } }
+
+/* skins do perfil (fundo do cartão) */
+.profile-card[data-skin='aurora'], .skin-swatch[data-skin='aurora'] { background: linear-gradient(160deg, #1d3b4f, #2d1f4f 55%, #1a4a3a); }
+.profile-card[data-skin='oceano'], .skin-swatch[data-skin='oceano'] { background: linear-gradient(160deg, #0f2f52, #0b4f6c 60%, #0f2f52); }
+.profile-card[data-skin='noite'], .skin-swatch[data-skin='noite'] { background: linear-gradient(160deg, #0a0a18, #1a1440 60%, #0a0a18); }
+.profile-card[data-skin='brasa'], .skin-swatch[data-skin='brasa'] { background: linear-gradient(160deg, #3d0f0f, #7a2a10 55%, #3d1a0a); }
+.profile-card[data-skin='floresta'], .skin-swatch[data-skin='floresta'] { background: linear-gradient(160deg, #0f2a1a, #1f4a2a 55%, #10301e); }

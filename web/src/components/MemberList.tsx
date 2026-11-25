@@ -1,4 +1,5 @@
 import { Ban, Crown, LogOut } from 'lucide-react'
+import { nameColorOf } from '../lib/perks'
 import { backend } from '../lib/backend'
 import { useServerRole } from './ServerSettings'
 import { useApp } from '../state'
@@ -57,7 +58,7 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
       onClick={(e) => userMenu(e, p, moderate(p), true)} onContextMenu={(e) => userMenu(e, p, moderate(p))}>
       <Avatar profile={p} size={34} showStatus />
       <span className="member-text">
-        <span className="member-name truncate" style={{ color: roleColor ?? (p.status === 'invisible' ? undefined : p.accent_color) }}>
+        <span className="member-name truncate" style={{ color: (ids ? nameColorOf(p) : null) ?? roleColor ?? (p.status === 'invisible' ? undefined : p.accent_color) }}>
           {displayName(p)}
           {owner === p.id && <Crown size={14} className="crown" aria-label={ids ? t('Dono do grupo') : t('Dono do servidor')} />}
         </span>

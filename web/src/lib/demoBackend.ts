@@ -7,7 +7,7 @@ import type {
   AdminUser, Report, Attachment, Backend, Channel, DmChannel, Friendship, Message, OnceFile, Pin, PresenceEntry, Profile, Reaction, RealtimeRoom, Server, ServerEmoji, Ban, RoleDef, ServerPrefs, Permission, RolePatch,
 } from './types'
 import { blobToDataUrl, compressImage } from './image'
-import { plusLevel } from './perks'
+import { limitFor, plusLevel } from './perks'
 import { local, session } from './storage'
 import { t } from './i18n'
 import { cleanUsername } from './username'
@@ -452,6 +452,8 @@ export function createDemoBackend(): Backend {
     async createServer(name, iconUrl) {
       const db = load()
       const uid = me()
+      if (db.servers.filter((x) => x.owner_id === uid).length >= limitFor('servers', plusLevel(db.profiles.find((x) => x.id === uid))))
+        throw new Error(t('Você chegou ao limite de servidores do seu nível. Níveis mais altos do Plus liberam mais.'))
       const s: Server = { id: id(), name, icon_url: iconUrl, banner_url: null, description: '', owner_id: uid, invite_code: code(), created_at: now() }
       db.servers.push(s)
       db.members.push({ server_id: s.id, user_id: uid, joined_at: now() })

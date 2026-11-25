@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { nameColorOf } from '../lib/perks'
 import { Asterisk, Bell, Check, ChevronDown, ChevronUp, Globe, House, Pencil, Phone, Pin, Radio, Sparkles, MessageCircle, Plus, Search, UserMinus, Users, X } from 'lucide-react'
 import { useUserMenu } from './ContextMenu'
 import { backend } from '../lib/backend'
@@ -113,7 +114,7 @@ export function HomeSidebar({ trailing }: { trailing?: ReactNode } = {}) {
               <button className="dm-item-main" onClick={() => setActiveDmId(d.id)}>
                 <DmAvatar dm={d} profiles={profiles} me={userId} size={32} showStatus />
                 <span className="dm-item-text">
-                  <span className="truncate dm-item-name">{name}</span>
+                  <span className="truncate dm-item-name" style={nameColorOf(other) ? { color: nameColorOf(other)! } : undefined}>{name}</span>
                   <span className="truncate dm-item-sub">
                     {call.channelId === d.id ? t('Na call') : d.is_group ? t('{n} membros', { n: d.member_ids.length }) : statusLine(other, false)}
                   </span>
@@ -300,7 +301,7 @@ function AtivoAgora() {
         {online.map((p) => (
           <button key={p.id} className="home-row" onClick={() => void openDmWith([p.id])}>
             <Avatar profile={p} size={36} showStatus />
-            <span className="home-row-text"><strong className="truncate">{displayName(p)}</strong><span className="muted small truncate">{statusLine(p)}</span></span>
+            <span className="home-row-text"><strong className="truncate" style={nameColorOf(p) ? { color: nameColorOf(p)! } : undefined}>{displayName(p)}</strong><span className="muted small truncate">{statusLine(p)}</span></span>
           </button>
         ))}
       </div>
@@ -467,7 +468,7 @@ export function FriendsPage() {
                   <Avatar profile={p} size={36} showStatus />
                   <span className="friend-text">
                     <span className="friend-name">
-                      <strong className="truncate">{displayName(p)}</strong>
+                      <strong className="truncate" style={nameColorOf(p) ? { color: nameColorOf(p)! } : undefined}>{displayName(p)}</strong>
                       <span className="muted small friend-handle">{p?.username}</span>
                     </span>
                     <span className="muted small truncate">

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BANNER_IMAGE_LEVEL, plusLevel } from '../lib/perks'
+import { PlusPanel } from './PlusPanel'
+import { ANIMATED_LEVEL, BANNER_IMAGE_LEVEL, limitFor, plusLevel } from '../lib/perks'
 import { activityShared, setActivityShared } from '../lib/activity'
 import { Download, FileText, ImagePlus, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
@@ -20,7 +21,7 @@ import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
 const SWATCHES = ['#7B3FE4', '#5226A8', '#B04FD9', '#E0457B', '#F0643C', '#F5A524', '#2DBE7A', '#1FB5E0', '#3D7BF0', '#6B7280']
 
-type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'conta' | 'admin'
+type Tab = 'perfil' | 'aparencia' | 'voz' | 'notificacoes' | 'plus' | 'conta' | 'admin'
 
 export function SettingsModal() {
   const { settingsOpen, setSettingsOpen, me, adminPending, requestedTab, clearRequestedTab } = useApp()
@@ -56,6 +57,7 @@ export function SettingsModal() {
           <button className={tab === 'aparencia' ? 'active' : ''} onClick={() => setTab('aparencia')}>{tr('Aparência e idioma')}</button>
           <button className={tab === 'voz' ? 'active' : ''} onClick={() => setTab('voz')}>{tr('Voz e vídeo')}</button>
           <button className={tab === 'notificacoes' ? 'active' : ''} onClick={() => setTab('notificacoes')}>{tr('Notificações')}</button>
+          <button className={tab === 'plus' ? 'active' : ''} onClick={() => setTab('plus')}>Plus</button>
           <button className={tab === 'conta' ? 'active' : ''} onClick={() => setTab('conta')}>{tr('Conta')}</button>
           {isAdmin && (
             <button className={`${tab === 'admin' ? 'active' : ''} admin-tab`} onClick={() => setTab('admin')}>
@@ -72,6 +74,7 @@ export function SettingsModal() {
           {tab === 'aparencia' && <AppearanceEditor />}
           {tab === 'voz' && <VoiceSettingsTab />}
           {tab === 'notificacoes' && <NotificationsTab />}
+          {tab === 'plus' && <PlusPanel />}
           {tab === 'conta' && <AccountTab />}
           {tab === 'admin' && isAdmin && <AdminPanel />}
         </div>
@@ -183,6 +186,7 @@ function ProfileEditor() {
               {draft.banner_url && <button type="button" className="btn btn-ghost btn-sm" onClick={() => set('banner_url', null)}>{tr('Remover')}</button>}
             </div>
             {lvl < BANNER_IMAGE_LEVEL && <span className="muted small"><Sparkles size={13} /> {tr('Banner com imagem é do Plus. Sem Plus, o banner é só a cor do perfil.')}</span>}
+            {lvl < ANIMATED_LEVEL && <span className="muted small">{tr('GIF animado na foto e no banner é do Super Plus; sem ele o GIF vira imagem parada.')}</span>}
             <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0], 'banner'); e.target.value = '' }} />
             {cropper.node}
           </div>
@@ -207,8 +211,8 @@ function ProfileEditor() {
           </label>
 
           <label>
-            {tr('Sobre mim')} <span className="counter">{draft.bio.length}/300</span>
-            <textarea rows={4} value={draft.bio} maxLength={300} onChange={(e) => set('bio', e.target.value)} placeholder={tr('Conte um pouco sobre você')} />
+            {tr('Sobre mim')} <span className="counter">{draft.bio.length}/{limitFor('bio', lvl)}</span>
+            <textarea rows={4} value={draft.bio} maxLength={limitFor('bio', lvl)} onChange={(e) => set('bio', e.target.value)} placeholder={tr('Conte um pouco sobre você')} />
           </label>
 
           <div className="two-col">
@@ -233,7 +237,7 @@ function ProfileEditor() {
                 </button>
               </div>
             ))}
-            {draft.links.length < 5 && (
+            {draft.links.length < limitFor('links', lvl) && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => set('links', [...draft.links, { label: '', url: '' }])}>
                 <Plus size={16} /> {tr('Adicionar link')}
               </button>

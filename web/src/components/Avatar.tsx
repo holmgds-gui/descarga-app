@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import type { Profile, Status } from '../lib/types'
 import { t } from '../lib/i18n'
 import { playingNow } from '../lib/activity'
+import { activePerks } from '../lib/perks'
 
 export const STATUS_LABEL: Record<Status, string> = {
   get online() { return t('Disponível') },
@@ -54,9 +55,10 @@ export function Avatar({
     .slice(0, 2)
     .toUpperCase()
   const Tag = onClick ? 'button' : 'span'
+  const frame = profile ? activePerks(profile).frame : null
   return (
     <Tag
-      className="avatar"
+      className={frame ? `avatar av-frame av-frame-${frame}` : 'avatar'}
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       onClick={onClick}
       aria-label={onClick ? t('Ver perfil de {nome}', { nome: name }) : undefined}

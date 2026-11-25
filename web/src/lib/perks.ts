@@ -94,6 +94,12 @@ let mine: PlusLevel = 0
 export const setMyPlusLevel = (l: PlusLevel) => { mine = l }
 export const myPlusLevel = (): PlusLevel => mine
 
+/** cor do nome (como os outros te veem fora dos servidores); null = cor normal */
+export function nameColorOf(p: Parameters<typeof activePerks>[0]): string | null {
+  const c = activePerks(p).nameColor
+  return c && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null
+}
+
 /** o banner que os outros veem: sem Plus, volta a ser só a cor (a imagem fica guardada) */
 export function visibleBanner(p: (LevelFields & { is_admin?: boolean; banner_url?: string | null }) | null | undefined): string | null {
   return plusLevel(p) >= BANNER_IMAGE_LEVEL ? p?.banner_url ?? null : null

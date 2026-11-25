@@ -100,6 +100,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const me = await uid()
       const r = await sb.from('profiles').update(patch).eq('id', me!).select().single()
       if (r.error?.code === '23505') throw new Error(t('Esse nome de usuário já está em uso.'))
+      if (r.error && /precisa_plus_banner/.test(r.error.message)) throw new Error(t('Banner com imagem é do Plus.'))
+      if (r.error && /bio_longa/.test(r.error.message)) throw new Error(t('A bio passou do limite do seu nível.'))
+      if (r.error && /muitos_links/.test(r.error.message)) throw new Error(t('Você passou do limite de links do seu nível.'))
       return must(r) as Profile
     },
 
@@ -207,9 +210,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async createServer(name, iconUrl) {
       const me = await uid()
-      return must(
-        await sb.from('servers').insert({ name, icon_url: iconUrl, owner_id: me }).select().single(),
-      ) as Server
+      const r = await sb.from('servers').insert({ name, icon_url: iconUrl, owner_id: me }).select().single()
+      if (r.error && /limite_servidores/.test(r.error.message)) throw new Error(t('Você chegou ao limite de servidores do seu nível. Níveis mais altos do Plus liberam mais.'))
+      return must(r) as Server
     },
 
     async joinServer(code) {
@@ -701,6 +704,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const url = sb.storage.from('media').getPublicUrl(path).data.publicUrl
       const r = await sb.from('server_emojis').insert({ server_id: serverId, name, url, created_by: me }).select('id, server_id, name, url').single()
       if (r.error?.code === '23505') throw new Error(t('Já existe um emoji com esse nome neste servidor.'))
+      if (r.error && /limite_emojis/.test(r.error.message)) throw new Error(t('Este servidor chegou ao limite de emojis do nível do dono. Níveis mais altos do Plus liberam mais.'))
       return must(r) as ServerEmoji
     },
 

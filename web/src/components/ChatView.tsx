@@ -2,6 +2,7 @@ import {
   Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
   type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode, type RefObject,
 } from 'react'
+import { nameColorOf } from '../lib/perks'
 import {
   Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, ListChecks, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
   Square, Trash2, Upload, UserPlus, Users, Video, X,
@@ -412,7 +413,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   }
 
   /** cor do nome: cargo de maior poder neste servidor; senão, a cor do perfil */
-  const nameColor = (uid: string) => (isDm ? undefined : topRole(role.roleDefs, role.members[uid])?.color) ?? profiles[uid]?.accent_color
+  const nameColor = (uid: string) => (isDm ? nameColorOf(profiles[uid]) ?? undefined : topRole(role.roleDefs, role.members[uid])?.color) ?? profiles[uid]?.accent_color
   const canPin = isDm || role.can('pin_messages')
   const pinned = new Set(pins.map((p) => p.message_id))
   const togglePin = async (m: Message) => {

@@ -7,7 +7,7 @@ import type { Friendship, Profile } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
-import { visibleBanner } from '../lib/perks'
+import { activePerks, nameColorOf, visibleBanner } from '../lib/perks'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
 export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { profile: Profile; onEdit?: () => void; actions?: ReactNode; friendSince?: string | null }) {
@@ -15,7 +15,7 @@ export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { pro
   // sem Plus o banner volta a ser só a cor (a imagem fica guardada)
   const banner = visibleBanner(profile)
   return (
-    <div className="profile-card" style={{ ['--card-accent' as string]: accent }}>
+    <div className="profile-card" data-skin={activePerks(profile).skin ?? undefined} style={{ ['--card-accent' as string]: accent }}>
       <div className="profile-banner" style={{ background: banner ? undefined : accent }}>
         {banner && <img src={banner} alt="" />}
       </div>
@@ -30,7 +30,7 @@ export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { pro
         )}
       </div>
       <div className="profile-inner">
-        <h2 className="profile-name">{displayName(profile)}</h2>
+        <h2 className="profile-name" style={nameColorOf(profile) ? { color: nameColorOf(profile)! } : undefined}>{displayName(profile)}</h2>
         <p className="profile-handle">
           {profile.username}
           {profile.pronouns && <span> • {profile.pronouns}</span>}
