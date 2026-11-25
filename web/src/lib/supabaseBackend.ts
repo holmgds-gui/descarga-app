@@ -845,6 +845,7 @@ function createSupabaseRoom(sb: SupabaseClient, topic: string): RealtimeRoom {
 
 function friendError(msg: string) {
   if (msg.includes('nao_encontrado')) return t('Não achamos ninguém com esse nome de usuário.')
+  if (msg.includes('nick_repetido')) return t('Esse nick é de mais de uma pessoa. Digite nick#0000 com o código dela.')
   if (msg.includes('voce_mesmo')) return t('Você não pode adicionar a si mesmo.')
   if (msg.includes('ja_amigos')) return t('Vocês já são amigos.')
   if (msg.includes('ja_enviado')) return t('Você já mandou um pedido para essa pessoa.')

@@ -5,15 +5,20 @@ import { friendState } from './dm'
 import { formatBirthday, formatLongDate } from '../lib/format'
 import type { Friendship, Profile } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, displayName, statusLine } from './Avatar'
+import { Avatar, displayName, fullHandle, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
-import { activePerks, nameColorOf, visibleBanner } from '../lib/perks'
+import { activePerks, nameColorOf, plusLevel, visibleBanner } from '../lib/perks'
+import { PlusMark } from './PlusMark'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
 export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { profile: Profile; onEdit?: () => void; actions?: ReactNode; friendSince?: string | null }) {
   const accent = profile.accent_color
   // sem Plus o banner volta a ser só a cor (a imagem fica guardada)
   const banner = visibleBanner(profile)
+  // o símbolo do plano aparece só no cartão e no painel; administrador não ganha símbolo sem Plus
+  const badge = plusLevel({ plus_level: profile.plus_level ?? 0, plus_until: profile.plus_until ?? null })
+  // o identificador para adicionar amigo (nick#0000) aparece sempre abaixo do nome
+  const handle = fullHandle(profile)
   return (
     <div className="profile-card" data-skin={activePerks(profile).skin ?? undefined} style={{ ['--card-accent' as string]: accent }}>
       <div className="profile-banner" style={{ background: banner ? undefined : accent }}>
@@ -30,11 +35,16 @@ export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { pro
         )}
       </div>
       <div className="profile-inner">
-        <h2 className="profile-name" style={nameColorOf(profile) ? { color: nameColorOf(profile)! } : undefined}>{displayName(profile)}</h2>
-        <p className="profile-handle">
-          {profile.username}
-          {profile.pronouns && <span> • {profile.pronouns}</span>}
-        </p>
+        <h2 className="profile-name" style={nameColorOf(profile) ? { color: nameColorOf(profile)! } : undefined}>
+          {displayName(profile)}
+          {badge > 0 && <PlusMark level={badge as 1 | 2 | 3} size={18} />}
+        </h2>
+        {(handle || profile.pronouns) && (
+          <p className="profile-handle">
+            {handle}
+            {profile.pronouns && <span>{handle ? ' • ' : ''}{profile.pronouns}</span>}
+          </p>
+        )}
         <p className="profile-status-line">
           {statusLine(profile)}
         </p>

@@ -5,14 +5,14 @@ import { useVoice } from '../lib/voice/hooks'
 import { backend } from '../lib/backend'
 import type { Status } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, STATUS_LABEL, StatusDot, displayName, statusLine } from './Avatar'
+import { Avatar, STATUS_LABEL, StatusDot, displayName, fullHandle, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
 
 type Pop = 'status' | 'mic' | 'out' | null
 
 /** Painel da pessoa (foto, nome, mic, fone, engrenagem): flutua embaixo e atravessa o trilho de servidores e a lista de canais, como nos apps de conversa. */
 export function UserPanel() {
-  const { me, setSettingsOpen, openSettingsTab, upsertProfile, toast, adminPending, openAdminPanel } = useApp()
+  const { me, setSettingsOpen, openSettingsTab, upsertProfile, toast, adminPending, openAdminPanel, openProfile } = useApp()
   const [pop, setPop] = useState<Pop>(null)
   const [custom, setCustom] = useState(me?.custom_status ?? '')
   const [mics, setMics] = useState<MediaDeviceInfo[]>([])
@@ -50,7 +50,8 @@ export function UserPanel() {
 
   return (
     <div className="user-panel" ref={ref}>
-      <button className="user-panel-me" onClick={() => toggle('status')} aria-expanded={pop === 'status'}>
+      <button className="user-panel-me" onClick={() => toggle('status')} aria-expanded={pop === 'status'}
+        data-tip={fullHandle(me)} onContextMenu={(e) => { e.preventDefault(); if (me) openProfile(me.id, e.currentTarget.getBoundingClientRect()) }}>
         <Avatar profile={me} size={34} showStatus />
         <span className="user-panel-text">
           <strong className="truncate">{displayName(me)}</strong>

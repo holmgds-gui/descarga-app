@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Ban, Check, Crown, RefreshCw, Sparkles, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Ban, Check, Crown, RefreshCw, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { AdminUser, AppUsage, Report } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar } from './Avatar'
 import { locale, t } from '../lib/i18n'
 import { PLUS_LEVELS, PLUS_NAMES, type PlusLevel } from '../lib/perks'
+import { PlusMark } from './PlusMark'
 
 const MB = 1024 * 1024
 const fmtSize = (b: number) => (b >= 1024 * MB ? `${(b / 1024 / MB).toFixed(2)} GB` : `${(b / MB).toFixed(b < 10 * MB ? 1 : 0)} MB`)
@@ -153,7 +154,7 @@ export function AdminPanel() {
         <span className="admin-row-name">
           <strong className="truncate">{u.display_name || u.username}</strong>
           {u.is_admin && <span className="profile-chip ok"><Crown size={12} /> {t('Administrador')}</span>}
-          {!!u.plus_level && <span className={`profile-chip plus plus-${u.plus_level}`}><Sparkles size={12} /> {PLUS_NAMES[u.plus_level as PlusLevel]}</span>}
+          {!!u.plus_level && <PlusMark level={u.plus_level as Exclude<PlusLevel, 0>} />}
         </span>
         <span className="muted small truncate">@{u.username} • {u.email}</span>
         <span className="muted small">{t('Cadastro em {data}', { data: when(u.created_at) })}</span>
