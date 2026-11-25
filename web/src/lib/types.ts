@@ -28,6 +28,8 @@ export interface Profile {
   approval?: Approval
   terms_version?: string | null
   is_admin?: boolean
+  /** código de 4 números que acompanha o nick (#0000); o par nick + código identifica a pessoa */
+  tag?: string | null
   /** conta excluída: o perfil vira uma casca "Usuário excluído" que só assina as mensagens antigas */
   deleted_at?: string | null
   /** "Jogando X", enviado pelo app de PC; só vale se activity_at for recente (ver lib/activity.ts) */

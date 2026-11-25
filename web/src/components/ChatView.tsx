@@ -16,7 +16,7 @@ import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
 import type { Attachment, Channel, DmChannel, Message, Pin, Profile, Reaction } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, displayName, statusLine } from './Avatar'
+import { Avatar, displayName, fullHandle, statusLine } from './Avatar'
 import { Attachments } from './Attachments'
 import { DmAvatar, dmName, otherIds } from './dm'
 import { AddToGroupModal, NewDmModal, RenameGroupModal } from './DmModals'
@@ -96,7 +96,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
   membersOpen: boolean
   onToggleMembers: () => void
 }) {
-  const { profiles, ensureProfiles, userId, toast, ask, memberIds, me, servers, ignored } = useApp()
+  const { profiles, ensureProfiles, userId, toast, ask, memberIds, me, servers, ignored, openProfile } = useApp()
   const [revealed, setRevealed] = useState<Set<string>>(new Set())
   const userMenu = useUserMenu()
   const [messages, setMessages] = useState<Message[]>([])
@@ -651,7 +651,13 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
                   {!grouped && (
                     <div className="msg-meta">
                       <button className="msg-author" style={{ color: nameColor(m.author_id) }}
-                        onClick={(e) => userMenu(e, author, [], true)}>
+                        data-tip={m.author_id === userId ? fullHandle(author) : undefined}
+                        onClick={(e) => userMenu(e, author, [], true)}
+                        onContextMenu={(e) => {
+                          if (m.author_id !== userId) return
+                          e.preventDefault()
+                          openProfile(userId, e.currentTarget.getBoundingClientRect())
+                        }}>
                         {displayName(author)}
                       </button>
                       <time>{formatTimestamp(m.created_at)}</time>

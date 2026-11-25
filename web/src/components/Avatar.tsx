@@ -31,6 +31,11 @@ export function realName(p: Profile | null | undefined) {
 export function displayName(p: Profile | null | undefined) {
   return p && !p.deleted_at && nicknames[p.id] ? nicknames[p.id] : realName(p)
 }
+/** o identificador para adicionar amigo: nick#0000 (sem o código se a conta ainda não tiver) */
+export function fullHandle(p: Profile | null | undefined) {
+  if (!p) return ''
+  return p.tag ? `${p.username}#${p.tag}` : p.username
+}
 
 export function StatusDot({ status, size = 12 }: { status: Status; size?: number }) {
   return <span className={`status-dot status-${status}`} style={{ width: size, height: size }} aria-label={STATUS_LABEL[status]} />

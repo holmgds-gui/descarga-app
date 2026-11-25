@@ -802,7 +802,7 @@ export function createDemoBackend(): Backend {
     async sendFriendRequest(username) {
       const db = load()
       const uid = me()
-      const other = db.profiles.find((p) => p.username.toLowerCase() === username.trim().replace(/^@/, '').toLowerCase())
+      const other = db.profiles.find((p) => p.username.toLowerCase() === username.trim().replace(/^@/, '').split('#')[0].toLowerCase())
       if (!other) throw new Error(t('Não achamos ninguém com esse nome de usuário.'))
       if (other.id === uid) throw new Error(t('Você não pode adicionar a si mesmo.'))
       const f = db.friendships.find((x) => (x.requester === uid && x.addressee === other.id) || (x.addressee === uid && x.requester === other.id))
