@@ -70,7 +70,8 @@ export function Avatar({
       type={onClick ? 'button' : undefined}
     >
       {profile?.avatar_url ? (
-        <img src={profile.avatar_url} alt="" draggable={false} />
+        // fundo com a cor da pessoa: fotos antigas com faixa vazia não deixam buraco no círculo
+        <img src={profile.avatar_url} alt="" draggable={false} style={{ background: profile.accent_color ?? undefined }} />
       ) : (
         <span className="avatar-fallback" style={{ background: profile?.accent_color ?? 'var(--accent)' }}>
           {initials}

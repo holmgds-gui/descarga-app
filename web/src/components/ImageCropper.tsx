@@ -60,7 +60,8 @@ export function ImageCropper({
     if (!dim) return null
     const cover = Math.max(fw / dim.w, fh / dim.h)
     const contain = Math.min(fw / dim.w, fh / dim.h)
-    return { cover, contain, min: contain, max: cover * 4 }
+    // foto de perfil e ícone de servidor (redondos) não podem ficar com área vazia: o zoom mínimo é o "preencher"
+    return { cover, contain, min: spec.round ? cover : contain, max: cover * 4 }
   }, [dim, fw, fh])
 
   const clamp = useCallback(
@@ -212,7 +213,7 @@ export function ImageCropper({
         </div>
         <div className="row-gap crop-presets">
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (bounds) { setScale(bounds.cover); setOff({ x: 0, y: 0 }) } }}>{t('Preencher')}</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (bounds) { setScale(bounds.contain); setOff({ x: 0, y: 0 }) } }}>{t('Mostrar inteira')}</button>
+          {!spec.round && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (bounds) { setScale(bounds.contain); setOff({ x: 0, y: 0 }) } }}>{t('Mostrar inteira')}</button>}
         </div>
         {error && <p className="form-error">{error}</p>}
         <div className="row-end">
