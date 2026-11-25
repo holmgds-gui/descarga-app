@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { activityShared, setActivityShared } from '../lib/activity'
 import { Download, FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
@@ -417,6 +418,7 @@ function AccountTab() {
 function PrivacySettings() {
   const { me, upsertProfile, toast } = useApp()
   const [busy, setBusy] = useState(false)
+  const [shareAct, setShareAct] = useState(activityShared())
   if (!me) return null
   const toggle = async (v: boolean, field: 'read_receipts' | 'profile_private' = 'read_receipts') => {
     setBusy(true)
@@ -444,6 +446,13 @@ function PrivacySettings() {
           <span className="muted small">{tr('Só seus amigos veem biografia, banner, pronomes, aniversário, cidade, links e status personalizado. Os outros veem apenas nome e foto.')}</span>
         </span>
         <input type="checkbox" className="toggle" disabled={busy} checked={!!me.profile_private} onChange={(e) => void toggle(e.target.checked, 'profile_private')} />
+      </label>
+      <label className="toggle-row">
+        <span>
+          <strong>{tr('Mostrar o que estou jogando')}</strong>
+          <span className="muted small">{tr('No app de PC, os outros veem "Jogando ..." embaixo do seu nome quando você abre um jogo conhecido. O app só confere o nome dos programas abertos. No navegador e no celular isso não funciona.')}</span>
+        </span>
+        <input type="checkbox" className="toggle" checked={shareAct} onChange={(e) => { setShareAct(e.target.checked); setActivityShared(e.target.checked) }} />
       </label>
       <ReceiptPeople disabled={me.read_receipts === false} />
     </div>

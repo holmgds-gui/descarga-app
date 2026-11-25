@@ -16,6 +16,8 @@ use tauri::{
 };
 use tauri_plugin_updater::UpdaterExt;
 
+mod jogos;
+
 /// Confere se há versão nova da casca. Com `instalar`, baixa e instala (o app reabre sozinho);
 /// sem ele, só avisa no ícone da bandeja (para não derrubar uma call em andamento).
 /// Devolve true se há atualização.
@@ -33,6 +35,26 @@ async fn atualizar(app: &AppHandle, instalar: bool) -> bool {
         let _ = nova.download_and_install(|_, _| {}, || {}).await;
     }
     true
+}
+
+/// De 20 em 20 segundos olha os programas abertos e conta ao site (window.__descargaJogo) qual jogo está rodando.
+/// O site decide se mostra no perfil (a pessoa pode desligar em Configurações > Privacidade).
+async fn vigiar_jogos(app: AppHandle) {
+    use sysinfo::{ProcessesToUpdate, System};
+    let mut sistema = System::new();
+    loop {
+        sistema.refresh_processes(ProcessesToUpdate::All, true);
+        let jogo = jogos::detectar(sistema.processes().values().map(|p| p.name().to_string_lossy().into_owned()));
+        // o nome vem de uma lista fixa (sem aspas), então é seguro colocar direto no script
+        let valor = match jogo {
+            Some(nome) => format!("\"{nome}\""),
+            None => "null".to_string(),
+        };
+        if let Some(janela) = app.get_webview_window("main") {
+            let _ = janela.eval(format!("window.__descargaJogo = {valor};"));
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+    }
 }
 
 fn mostrar_janela(app: &AppHandle) {
@@ -90,6 +112,8 @@ fn main() {
                 tray = tray.icon(icone.clone());
             }
             tray.build(app)?;
+
+            tauri::async_runtime::spawn(vigiar_jogos(app.handle().clone()));
 
             // ao abrir: instala sozinho. Depois, de 6 em 6 horas (o app pode ficar dias na bandeja) só avisa no ícone.
             let handle = app.handle().clone();

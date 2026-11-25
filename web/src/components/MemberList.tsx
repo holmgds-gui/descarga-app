@@ -2,7 +2,7 @@ import { Ban, Crown, LogOut } from 'lucide-react'
 import { backend } from '../lib/backend'
 import { useServerRole } from './ServerSettings'
 import { useApp } from '../state'
-import { Avatar, displayName } from './Avatar'
+import { Avatar, displayName, statusLine } from './Avatar'
 import type { Profile } from '../lib/types'
 import { locale, t } from '../lib/i18n'
 import { useUserMenu } from './ContextMenu'
@@ -61,7 +61,7 @@ export function MemberList({ ids, ownerId }: { ids?: string[]; ownerId?: string 
           {displayName(p)}
           {owner === p.id && <Crown size={14} className="crown" aria-label={ids ? t('Dono do grupo') : t('Dono do servidor')} />}
         </span>
-        {p.custom_status && <span className="member-status truncate">{p.custom_status}</span>}
+        {statusLine(p, false) && <span className="member-status truncate">{statusLine(p, false)}</span>}
       </span>
     </button>
     )

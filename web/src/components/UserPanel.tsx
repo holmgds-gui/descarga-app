@@ -5,7 +5,7 @@ import { useVoice } from '../lib/voice/hooks'
 import { backend } from '../lib/backend'
 import type { Status } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, STATUS_LABEL, StatusDot, displayName } from './Avatar'
+import { Avatar, STATUS_LABEL, StatusDot, displayName, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
 
 type Pop = 'status' | 'mic' | 'out' | null
@@ -54,7 +54,7 @@ export function UserPanel() {
         <Avatar profile={me} size={34} showStatus />
         <span className="user-panel-text">
           <strong className="truncate">{displayName(me)}</strong>
-          <span className="truncate">{me?.custom_status || (me ? STATUS_LABEL[me.status] : '')}</span>
+          <span className="truncate">{statusLine(me)}</span>
         </span>
       </button>
 

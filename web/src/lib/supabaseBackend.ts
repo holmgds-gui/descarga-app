@@ -143,6 +143,10 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       if (r.error) throw new Error(/sem_permissao/.test(r.error.message) ? t('Só o administrador pode fazer isso.') : r.error.message)
     },
 
+    async setActivity(text) {
+      await sb.rpc('set_activity', { p_activity: text })
+    },
+
     async setCosmetics(patch) {
       const r = await sb.rpc('set_cosmetics', { p_name_color: patch.name_color, p_avatar_frame: patch.avatar_frame, p_profile_skin: patch.profile_skin })
       if (r.error) {

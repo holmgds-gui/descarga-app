@@ -1,4 +1,5 @@
 import { playMessageIfAway } from './lib/voice/sounds'
+import { startActivityReporter } from './lib/activity'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
 import type { Channel, DmChannel, Friendship, Profile, Server, ServerEmoji, ServerPrefs, UserNote } from './lib/types'
@@ -170,6 +171,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [emojis, setEmojis] = useState<ServerEmoji[]>([])
   const [notes, setNotes] = useState<Record<string, UserNote>>({})
   const [serverPrefs, setServerPrefsState] = useState<Record<string, ServerPrefs>>({})
+  // app de PC: conta aos outros qual jogo está aberto (some ao sair/pausar)
+  useEffect(() => startActivityReporter(), [userId])
   useEffect(() => {
     void backend.listServerPrefs().then(setServerPrefsState).catch(() => undefined)
   }, [userId])

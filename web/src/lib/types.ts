@@ -30,6 +30,9 @@ export interface Profile {
   is_admin?: boolean
   /** conta excluída: o perfil vira uma casca "Usuário excluído" que só assina as mensagens antigas */
   deleted_at?: string | null
+  /** "Jogando X", enviado pelo app de PC; só vale se activity_at for recente (ver lib/activity.ts) */
+  activity?: string
+  activity_at?: string | null
   /** Plus (visual extra do perfil): 0 nenhum, 1 Plus, 2 Super Plus, 3 Ultra Mega Plus. Só o administrador muda. */
   plus_level?: number
   plus_until?: string | null
@@ -40,7 +43,7 @@ export interface Profile {
   created_at: string
 }
 
-export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin' | 'plus_level' | 'plus_until' | 'name_color' | 'avatar_frame' | 'profile_skin'>>
+export type ProfilePatch = Partial<Omit<Profile, 'id' | 'created_at' | 'approval' | 'is_admin' | 'activity' | 'activity_at' | 'plus_level' | 'plus_until' | 'name_color' | 'avatar_frame' | 'profile_skin'>>
 
 /** escolha do visual extra (vazio/null = tirar). Exige o nível Plus correspondente para colocar. */
 export interface CosmeticsPatch {
@@ -395,6 +398,8 @@ export interface Backend {
   adminSetPlus(userId: string, level: number, until?: string | null): Promise<void>
   /** a própria pessoa escolhe nome colorido (Plus), moldura e skin (Super Plus) */
   setCosmetics(patch: CosmeticsPatch): Promise<Profile>
+  /** publica (ou, com texto vazio, limpa) o que a pessoa está fazendo agora, ex.: o jogo aberto */
+  setActivity(text: string): Promise<void>
   /** exclui a conta (sem argumento: a própria). O e-mail fica livre para um novo cadastro; as mensagens ficam. */
   deleteAccount(userId?: string): Promise<void>
   /** Registra que a pessoa aceitou os Termos de Uso desta versão. Não falha se o banco ainda não tiver o recurso. */

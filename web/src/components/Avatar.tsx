@@ -1,12 +1,21 @@
 import type { MouseEvent } from 'react'
 import type { Profile, Status } from '../lib/types'
 import { t } from '../lib/i18n'
+import { playingNow } from '../lib/activity'
 
 export const STATUS_LABEL: Record<Status, string> = {
   get online() { return t('Disponível') },
   get idle() { return t('Ausente') },
   get dnd() { return t('Não perturbe') },
   get invisible() { return t('Invisível') },
+}
+
+/** a linha embaixo do nome: o jogo aberto, ou o status personalizado, ou a disponibilidade */
+export function statusLine(p: Profile | null | undefined, fallback = true): string {
+  if (!p) return ''
+  const game = playingNow(p)
+  if (game) return t('Jogando {jogo}', { jogo: game })
+  return p.custom_status || (fallback ? STATUS_LABEL[p.status] : '')
 }
 
 /** apelidos que EU dei às pessoas (só eu vejo); o AppProvider atualiza antes de desenhar a tela */

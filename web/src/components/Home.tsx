@@ -7,7 +7,7 @@ import { lastChannelKey, useApp } from '../state'
 import { local } from '../lib/storage'
 import { useActiveCalls } from '../lib/voice/hooks'
 import { useVoice } from '../lib/voice/hooks'
-import { Avatar, STATUS_LABEL, displayName } from './Avatar'
+import { Avatar, displayName, statusLine } from './Avatar'
 import { ChatHeader } from './ChatView'
 import { DmAvatar, dmName } from './dm'
 import { NewDmModal } from './DmModals'
@@ -115,7 +115,7 @@ export function HomeSidebar({ trailing }: { trailing?: ReactNode } = {}) {
                 <span className="dm-item-text">
                   <span className="truncate dm-item-name">{name}</span>
                   <span className="truncate dm-item-sub">
-                    {call.channelId === d.id ? t('Na call') : d.is_group ? t('{n} membros', { n: d.member_ids.length }) : other?.custom_status || ''}
+                    {call.channelId === d.id ? t('Na call') : d.is_group ? t('{n} membros', { n: d.member_ids.length }) : statusLine(other, false)}
                   </span>
                 </span>
                 {unread && <span className="unread-dot" aria-label={t('Mensagens novas')} />}
@@ -300,7 +300,7 @@ function AtivoAgora() {
         {online.map((p) => (
           <button key={p.id} className="home-row" onClick={() => void openDmWith([p.id])}>
             <Avatar profile={p} size={36} showStatus />
-            <span className="home-row-text"><strong className="truncate">{displayName(p)}</strong><span className="muted small truncate">{p.custom_status || STATUS_LABEL[p.status]}</span></span>
+            <span className="home-row-text"><strong className="truncate">{displayName(p)}</strong><span className="muted small truncate">{statusLine(p)}</span></span>
           </button>
         ))}
       </div>
@@ -472,7 +472,7 @@ export function FriendsPage() {
                     </span>
                     <span className="muted small truncate">
                       {f.status === 'pending' ? (isIncoming ? t('Pedido de amizade recebido') : t('Pedido de amizade enviado'))
-                        : p?.custom_status || (p ? STATUS_LABEL[p.status] : '')}
+                        : statusLine(p)}
                     </span>
                   </span>
                   <span className="friend-actions" onClick={(e) => e.stopPropagation()}>

@@ -5,7 +5,7 @@ import { friendState } from './dm'
 import { formatBirthday, formatLongDate } from '../lib/format'
 import type { Profile } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, STATUS_LABEL, displayName } from './Avatar'
+import { Avatar, displayName, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
@@ -33,7 +33,7 @@ export function ProfileCardBody({ profile, onEdit, actions }: { profile: Profile
           {profile.pronouns && <span> • {profile.pronouns}</span>}
         </p>
         <p className="profile-status-line">
-          {profile.custom_status || STATUS_LABEL[profile.status]}
+          {statusLine(profile)}
         </p>
         {actions}
 

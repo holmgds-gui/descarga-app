@@ -361,6 +361,14 @@ export function createDemoBackend(): Backend {
       emit({ type: 'profile', payload: db.profiles[i] })
       emit({ type: 'users' })
     },
+    async setActivity(text) {
+      const db = load()
+      const i = db.profiles.findIndex((p) => p.id === me())
+      if (i < 0) return
+      db.profiles[i] = { ...db.profiles[i], activity: text.slice(0, 80), activity_at: text ? now() : null }
+      save(db)
+      emit({ type: 'profile', payload: db.profiles[i] })
+    },
     async setCosmetics(patch) {
       const db = load()
       const i = db.profiles.findIndex((p) => p.id === me())

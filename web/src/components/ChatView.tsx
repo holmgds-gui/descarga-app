@@ -15,7 +15,7 @@ import { voice } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
 import type { Attachment, Channel, DmChannel, Message, Pin, Profile, Reaction } from '../lib/types'
 import { useApp } from '../state'
-import { Avatar, displayName } from './Avatar'
+import { Avatar, displayName, statusLine } from './Avatar'
 import { Attachments } from './Attachments'
 import { DmAvatar, dmName, otherIds } from './dm'
 import { AddToGroupModal, NewDmModal, RenameGroupModal } from './DmModals'
@@ -528,7 +528,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
     <ChatHeader
       icon={<DmAvatar dm={dm} profiles={profiles} me={userId} size={24} />}
       title={title}
-      topic={other ? (other.custom_status || undefined) : t('{n} membros', { n: dm.member_ids.length })}
+      topic={other ? (statusLine(other, false) || undefined) : t('{n} membros', { n: dm.member_ids.length })}
       onTitleClick={dm.is_group ? () => setDialog('rename') : undefined}
       showMembersToggle={dm.is_group}
       membersOpen={membersOpen}

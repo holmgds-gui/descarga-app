@@ -2,6 +2,9 @@
 export const EN: Record<string, string> = {
   'Descobrir servidores': 'Discover servers',
   'Entrar no servidor': 'Join',
+  'Jogando {jogo}': 'Playing {jogo}',
+  'Mostrar o que estou jogando': 'Show what I am playing',
+  'No app de PC, os outros veem "Jogando ..." embaixo do seu nome quando você abre um jogo conhecido. O app só confere o nome dos programas abertos. No navegador e no celular isso não funciona.': 'In the PC app, others see "Playing ..." under your name when you open a known game. The app only checks the names of running programs. This does not work in the browser or on phones.',
   'Sem Plus': 'No Plus',
   'Nível Plus de {nome}': 'Plus level for {nome}',
   '{nivel} liberado': '{nivel} granted',
