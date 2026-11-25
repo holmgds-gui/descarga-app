@@ -3,18 +3,21 @@ import { Cake, Check, Clock, ExternalLink, MapPin, MessageCircle, Pencil, UserPl
 import { backend } from '../lib/backend'
 import { friendState } from './dm'
 import { formatBirthday, formatLongDate } from '../lib/format'
-import type { Profile } from '../lib/types'
+import type { Friendship, Profile } from '../lib/types'
 import { useApp } from '../state'
 import { Avatar, displayName, statusLine } from './Avatar'
 import { t } from '../lib/i18n'
+import { visibleBanner } from '../lib/perks'
 
 /** O cartão de perfil em si — usado no popover e na pré-visualização das configurações. */
-export function ProfileCardBody({ profile, onEdit, actions }: { profile: Profile; onEdit?: () => void; actions?: ReactNode }) {
+export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { profile: Profile; onEdit?: () => void; actions?: ReactNode; friendSince?: string | null }) {
   const accent = profile.accent_color
+  // sem Plus o banner volta a ser só a cor (a imagem fica guardada)
+  const banner = visibleBanner(profile)
   return (
     <div className="profile-card" style={{ ['--card-accent' as string]: accent }}>
-      <div className="profile-banner" style={{ background: profile.banner_url ? undefined : accent }}>
-        {profile.banner_url && <img src={profile.banner_url} alt="" />}
+      <div className="profile-banner" style={{ background: banner ? undefined : accent }}>
+        {banner && <img src={banner} alt="" />}
       </div>
       <div className="profile-avatar-row">
         <div className="profile-avatar-ring">
@@ -65,16 +68,22 @@ export function ProfileCardBody({ profile, onEdit, actions }: { profile: Profile
         )}
 
         <section>
-          <h3>{t('Membro do Descarga desde')}</h3>
+          <h3>{t('Dando descarga desde')}</h3>
           <p className="small">{formatLongDate(profile.created_at)}</p>
         </section>
+        {friendSince && (
+          <section>
+            <h3>{t('Amigos desde')}</h3>
+            <p className="small">{formatLongDate(friendSince)}</p>
+          </section>
+        )}
       </div>
     </div>
   )
 }
 
 export function ProfilePopover() {
-  const { profileView, profiles, closeProfile, ensureProfiles, userId, setSettingsOpen } = useApp()
+  const { profileView, profiles, closeProfile, ensureProfiles, userId, setSettingsOpen, friendships } = useApp()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const profile = profileView ? profiles[profileView.userId] : null
@@ -121,6 +130,7 @@ export function ProfilePopover() {
           profile={profile}
           onEdit={profile.id === userId ? () => { closeProfile(); setSettingsOpen(true) } : undefined}
           actions={profile.id !== userId ? <ProfileActions profile={profile} /> : undefined}
+          friendSince={friendSinceOf(friendships, userId, profile.id)}
         />
       </div>
     </div>
@@ -168,6 +178,25 @@ function ProfileActions({ profile }: { profile: Profile }) {
       {state.kind === 'friends' && (
         <span className="profile-chip ok"><Check size={14} /> {t('Amigos')}</span>
       )}
+    </div>
+  )
+}
+
+/** desde quando somos amigos (null se não somos) */
+export function friendSinceOf(friendships: Friendship[], me: string, other: string): string | null {
+  const f = friendships.find((x) => x.status === 'accepted' && ((x.requester === me && x.addressee === other) || (x.addressee === me && x.requester === other)))
+  return f?.created_at ?? null
+}
+
+/** Painel de perfil que fica ao lado de uma conversa 1 a 1 (como no app de conversa que todo mundo conhece): dá para esconder pela setinha. */
+export function DmProfilePanel({ otherId }: { otherId: string }) {
+  const { profiles, ensureProfiles, friendships, userId } = useApp()
+  useEffect(() => { ensureProfiles([otherId]) }, [otherId, ensureProfiles])
+  const profile = profiles[otherId]
+  if (!profile) return <div className="loading-dots"><span /><span /><span /></div>
+  return (
+    <div className="dm-profile-panel">
+      <ProfileCardBody profile={profile} friendSince={friendSinceOf(friendships, userId, otherId)} />
     </div>
   )
 }

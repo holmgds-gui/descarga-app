@@ -14,7 +14,7 @@ export function micErrorMessage(err: unknown, action: 'call' | 'gravar' = 'call'
       return t('Nenhum microfone foi encontrado. Conecte um microfone e tente de novo.')
     case 'NotReadableError':
     case 'AbortError':
-      return t('Não deu para abrir o microfone: outro programa pode estar usando ele (Discord, jogo, outra aba). Feche e tente de novo.')
+      return t('Não deu para abrir o microfone: outro programa pode estar usando ele (outro app de conversa, jogo, outra aba). Feche e tente de novo.')
     default:
       return t('Não deu para abrir o microfone. Tente de novo.')
   }

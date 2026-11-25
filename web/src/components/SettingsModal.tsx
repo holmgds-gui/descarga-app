@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BANNER_IMAGE_LEVEL, plusLevel } from '../lib/perks'
 import { activityShared, setActivityShared } from '../lib/activity'
-import { Download, FileText, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react'
+import { Download, FileText, ImagePlus, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
@@ -88,6 +89,7 @@ function ProfileEditor() {
   const [draft, setDraft] = useState<Profile | null>(me)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const lvl = plusLevel(me)
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
   const cropper = useCropPick(async (f, kind) => {
@@ -177,9 +179,10 @@ function ProfileEditor() {
           <div className="field">
             <span className="field-label">{tr('Banner (imagem ou GIF animado)')}</span>
             <div className="row-gap">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => bannerRef.current?.click()}><ImagePlus size={16} /> {tr('Trocar banner')}</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={lvl < BANNER_IMAGE_LEVEL} onClick={() => bannerRef.current?.click()}><ImagePlus size={16} /> {tr('Trocar banner')}</button>
               {draft.banner_url && <button type="button" className="btn btn-ghost btn-sm" onClick={() => set('banner_url', null)}>{tr('Remover')}</button>}
             </div>
+            {lvl < BANNER_IMAGE_LEVEL && <span className="muted small"><Sparkles size={13} /> {tr('Banner com imagem é do Plus. Sem Plus, o banner é só a cor do perfil.')}</span>}
             <input ref={bannerRef} type="file" accept="image/*" hidden onChange={(e) => { upload(e.target.files?.[0], 'banner'); e.target.value = '' }} />
             {cropper.node}
           </div>
@@ -288,7 +291,7 @@ function AppearanceEditor() {
           <strong>{tr('Design novo')}</strong><span>{tr('Painéis flutuantes, animações e barra de abas no celular.')}</span>
         </button>
         <button className={design === 'classico' ? 'on' : ''} aria-pressed={design === 'classico'} onClick={() => pickDesign('classico')}>
-          <strong>{tr('Design clássico')}</strong><span>{tr('O visual de antes, parecido com o Discord.')}</span>
+          <strong>{tr('Design clássico')}</strong><span>{tr('O visual de antes, parecido com aquele outro app de conversa.')}</span>
         </button>
       </div>
       <div className="form">

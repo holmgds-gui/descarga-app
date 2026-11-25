@@ -3,7 +3,7 @@
    Só vale quando <html data-design="novo"> (padrão). O visual antigo continua em styles.css e
    volta em Configurações > Aparência > Design clássico (ou: git branch layout-antigo).
    Ideias: painéis flutuantes arredondados, ícones "squircle", títulos expressivos,
-   movimento com mola, barra de abas no celular (como o Discord novo).
+   movimento com mola, barra de abas no celular (como os apps modernos).
    ========================================================= */
 
 html[data-design='novo'] {

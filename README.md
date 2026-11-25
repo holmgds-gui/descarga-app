@@ -2,7 +2,7 @@
 
 **No ar:** https://holmgds-gui.github.io/descarga-app/
 
-App de conversa inspirado no Discord: servidores, canais, chat em tempo real, perfil 100% grátis e personalizável — e, nas próximas etapas, voz, vídeo e tela com som.
+App de conversa inspirado nos apps de conversa por servidor e canal: servidores, canais, chat em tempo real, perfil 100% grátis e personalizável — e, nas próximas etapas, voz, vídeo e tela com som.
 
 ## O que já funciona (etapa 1)
 

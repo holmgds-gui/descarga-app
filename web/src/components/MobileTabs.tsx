@@ -2,7 +2,7 @@ import { House, MessageCircle, Server, UserRound } from 'lucide-react'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
 
-/** Barra de abas do celular (como no Discord novo): Início, Conversas, Servidores e Você. Só aparece nas telas de lista. */
+/** Barra de abas do celular (como nos apps modernos): Início, Conversas, Servidores e Você. Só aparece nas telas de lista. */
 export function MobileTabs() {
   const { servers, activeServerId, setActiveServerId, goHome, mobilePane, setMobilePane, setSettingsOpen, unreadDms, friendships, userId, activeDmId } = useApp()
   const pending = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length

@@ -530,7 +530,7 @@ export function ChatView({ channel, dm, membersOpen, onToggleMembers }: {
       title={title}
       topic={other ? (statusLine(other, false) || undefined) : t('{n} membros', { n: dm.member_ids.length })}
       onTitleClick={dm.is_group ? () => setDialog('rename') : undefined}
-      showMembersToggle={dm.is_group}
+      showMembersToggle
       membersOpen={membersOpen}
       onToggleMembers={onToggleMembers}
       actions={<>

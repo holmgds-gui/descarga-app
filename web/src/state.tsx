@@ -1,4 +1,5 @@
 import { playMessageIfAway } from './lib/voice/sounds'
+import { plusLevel, setMyPlusLevel } from './lib/perks'
 import { startActivityReporter } from './lib/activity'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { backend } from './lib/backend'
@@ -173,6 +174,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [serverPrefs, setServerPrefsState] = useState<Record<string, ServerPrefs>>({})
   // app de PC: conta aos outros qual jogo está aberto (some ao sair/pausar)
   useEffect(() => startActivityReporter(), [userId])
+  const myProfile = profiles[userId]
+  useEffect(() => setMyPlusLevel(plusLevel(myProfile)), [myProfile])
   useEffect(() => {
     void backend.listServerPrefs().then(setServerPrefsState).catch(() => undefined)
   }, [userId])

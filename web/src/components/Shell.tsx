@@ -9,6 +9,7 @@ import { ChannelSidebar } from './ChannelSidebar'
 import { IncomingCall } from './IncomingCall'
 import { ChatHeader, ChatView } from './ChatView'
 import { MemberList } from './MemberList'
+import { DmProfilePanel } from './ProfileCard'
 import { MobileTabs } from './MobileTabs'
 import { ResizeHandle } from './ResizeHandle'
 import { useMapaPublisher } from '../lib/mapa'
@@ -23,7 +24,7 @@ import { t } from '../lib/i18n'
 
 export function Shell() {
   useMapaPublisher()
-  const { homeSection, channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId } = useApp()
+  const { homeSection, channels, activeChannelId, activeServerId, mobilePane, setMobilePane, toastMsg, question, toast, dms, activeDmId, userId } = useApp()
   const { error: voiceError } = useVoice()
   useEffect(() => {
     if (voiceError) {
@@ -40,7 +41,8 @@ export function Shell() {
   // celular: a barra de abas aparece nas telas de lista (Início e lista de conversas/servidores), não dentro de uma conversa
   const showTabs = mobilePane === 'nav' || (!activeServerId && !dm)
 
-  const membersApplicable = (!!activeServerId && channel?.type === 'text') || !!dm?.is_group
+  const dmOther = dm && !dm.is_group ? dm.member_ids.find((id) => id !== userId) : undefined
+  const membersApplicable = (!!activeServerId && channel?.type === 'text') || !!dm?.is_group || !!dmOther
 
   const toggleMembers = () => {
     if (window.innerWidth < 1000) {
@@ -96,6 +98,15 @@ export function Shell() {
             <button className="pane-hide pane-hide-members" aria-label={t('Esconder membros')} title={t('Esconder membros')} onClick={toggleMembers}><ChevronRight size={18} /></button>
           </div>
           <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
+        </div>
+      )}
+      {dmOther && (membersOpen || mobilePane === 'members') && (
+        <div className="members-pane dm-profile-pane">
+          <ResizeHandle panel="members" />
+          <div className="pane-bar">
+            <button className="pane-hide pane-hide-members" aria-label={t('Esconder perfil')} title={t('Esconder perfil')} onClick={toggleMembers}><ChevronRight size={18} /></button>
+          </div>
+          <DmProfilePanel otherId={dmOther} />
         </div>
       )}
       {membersApplicable && !membersOpen && (

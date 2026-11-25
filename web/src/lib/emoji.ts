@@ -60,7 +60,7 @@ export function pushRecent(emoji: string) {
 export const CUSTOM_EMOJI = /<:([a-z0-9_]{2,32}):([0-9a-f-]{8,36})>/
 export const customToken = (e: Pick<ServerEmoji, 'name' | 'id'>) => `<:${e.name}:${e.id}>`
 
-/** a mensagem só tem emojis (fica grande, como no Discord) */
+/** a mensagem só tem emojis (fica grande, como nos apps de conversa) */
 export function onlyEmojis(text: string) {
   const trimmed = text.trim()
   if (!trimmed || trimmed.length > 120) return false

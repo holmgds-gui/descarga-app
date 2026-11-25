@@ -10,7 +10,7 @@ import { t } from '../lib/i18n'
 
 type Pop = 'status' | 'mic' | 'out' | null
 
-/** Painel da pessoa (foto, nome, mic, fone, engrenagem): flutua embaixo e atravessa o trilho de servidores e a lista de canais, como no Discord. */
+/** Painel da pessoa (foto, nome, mic, fone, engrenagem): flutua embaixo e atravessa o trilho de servidores e a lista de canais, como nos apps de conversa. */
 export function UserPanel() {
   const { me, setSettingsOpen, openSettingsTab, upsertProfile, toast, adminPending, openAdminPanel } = useApp()
   const [pop, setPop] = useState<Pop>(null)
