@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusPanel } from './PlusPanel'
-import { ANIMATED_LEVEL, BANNER_IMAGE_LEVEL, limitFor, plusLevel } from '../lib/perks'
+import { ANIMATED_LEVEL, BANNER_IMAGE_LEVEL, PLUS_NAMES, limitFor, plusLevel } from '../lib/perks'
 import { activityShared, setActivityShared } from '../lib/activity'
-import { Download, FileText, ImagePlus, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Download, FileText, ImagePlus, Lock, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
@@ -15,7 +15,7 @@ import { TermsModal } from './TermsModal'
 import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { cleanUsername, isValidUsername } from '../lib/username'
 import { useCropPick } from './ImageCropper'
-import { getDesign, setDesign, type Design } from '../lib/design'
+import { DESIGNS, getDesign, setDesign, type Design } from '../lib/design'
 import { haptic, hapticsOn, setHaptics } from '../lib/haptics'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
@@ -269,11 +269,18 @@ function ProfileEditor() {
 }
 
 function AppearanceEditor() {
-  const { appearance, setAppearance } = useApp()
+  const { appearance, setAppearance, me, toast } = useApp()
+  const myLevel = plusLevel(me)
   const lang = useLang()
   const custom = customTheme(appearance.customBg)
   const [design, setDesignState] = useState<Design>(getDesign)
-  const pickDesign = (d: Design) => { setDesign(d); setDesignState(d) }
+  const pickDesign = (d: Design) => {
+    const def = DESIGNS.find((x) => x.id === d)
+    if (def && def.level > myLevel) { toast(tr('Esse design é do {nivel}.', { nivel: PLUS_NAMES[def.level] })); return }
+    setDesign(d); setDesignState(d)
+    // o clássico fica igual ao original com o fundo Grafite (o roxo "Tinta" é do design novo)
+    if (d === 'classico' && appearance.theme === 'tinta') setAppearance({ theme: 'dark' })
+  }
   const preview = (t: ThemeDef, on: boolean, onClick: () => void, key: string) => (
     <button key={key} className={`theme-option ${on ? 'on' : ''}`} onClick={onClick} aria-pressed={on}>
       <span className="theme-mini" style={{ background: t.colors.chat }}>
@@ -292,12 +299,19 @@ function AppearanceEditor() {
     <>
       <h2 className="settings-title">{tr('Aparência e idioma')}</h2>
       <div className="design-switch" role="group" aria-label={tr('Design do app')}>
-        <button className={design === 'novo' ? 'on' : ''} aria-pressed={design === 'novo'} onClick={() => pickDesign('novo')}>
-          <strong>{tr('Design novo')}</strong><span>{tr('Painéis flutuantes, animações e barra de abas no celular.')}</span>
-        </button>
-        <button className={design === 'classico' ? 'on' : ''} aria-pressed={design === 'classico'} onClick={() => pickDesign('classico')}>
-          <strong>{tr('Design clássico')}</strong><span>{tr('O visual de antes, parecido com aquele outro app de conversa.')}</span>
-        </button>
+        {DESIGNS.map((d) => {
+          const locked = d.level > myLevel
+          return (
+            <button key={d.id} className={`${design === d.id ? 'on' : ''} ${locked ? 'locked' : ''}`} aria-pressed={design === d.id} onClick={() => pickDesign(d.id)}>
+              <span className="design-mini" aria-hidden="true" style={{ background: d.swatch[0] }}>
+                <i style={{ background: d.swatch[1] }} /><b style={{ background: d.swatch[2] }} />
+              </span>
+              <strong>{tr(d.label)}{locked && <Lock size={13} aria-label={tr('Precisa de {nivel}', { nivel: PLUS_NAMES[d.level] })} />}</strong>
+              <span>{tr(d.desc)}</span>
+              {locked && <em className="design-lock-tag">{PLUS_NAMES[d.level]}</em>}
+            </button>
+          )
+        })}
       </div>
       <div className="form">
         <label htmlFor="lang-select">

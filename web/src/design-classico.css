@@ -1,0 +1,147 @@
+/* =========================================================
+   Descarga — design clássico, o mais parecido possível com aquele outro app de conversa.
+   Só vale com <html data-design="classico">. O design novo não é afetado.
+   (medidas: barras de 48px, canais de 34px, mensagens com avatar de 40px e texto de 16px/22px)
+   ========================================================= */
+
+html[data-design='classico'] {
+  --font: 'gg sans', 'Noto Sans Variable', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --header-h: 48px;
+  --side-w: 240px;
+  --radius: 8px;
+  --header-shadow: 0 1px 0 rgba(0, 0, 0, .2), 0 1.5px 0 rgba(6, 6, 7, .05), 0 2px 0 rgba(4, 4, 5, .05);
+}
+html[data-design='classico'] body { font-weight: 400; letter-spacing: 0; }
+html[data-design='classico'] strong, html[data-design='classico'] b { font-weight: 600; }
+
+/* ---------- barra de servidores ---------- */
+html[data-design='classico'] .server-rail { padding: 12px 0; gap: 8px; }
+html[data-design='classico'] .rail-btn { width: 48px; height: 48px; background: var(--bg-chat); transition: border-radius .15s ease-out, background-color .15s ease-out, color .15s ease-out; }
+html[data-design='classico'] .rail-btn:hover, html[data-design='classico'] .rail-item.active .rail-btn { border-radius: 16px; }
+html[data-design='classico'] .rail-pill { width: 8px; border-radius: 0 4px 4px 0; left: -4px; background: #fff; transition: height .2s ease-out, transform .2s; }
+html[data-design='classico'] .rail-item:hover .rail-pill { height: 20px; }
+html[data-design='classico'] .rail-item.active .rail-pill { height: 40px; }
+html[data-design='classico'] .rail-sep { width: 32px; height: 2px; background: color-mix(in srgb, var(--text) 12%, transparent); }
+html[data-design='classico'] .rail-initials { font-weight: 500; font-size: 18px; }
+
+/* ---------- barra de canais ---------- */
+html[data-design='classico'] .sidebar-header { height: 48px; padding: 0 16px; font-weight: 600; font-size: 16px; border-bottom: 0; box-shadow: var(--header-shadow); transition: background-color .1s; }
+html[data-design='classico'] .channel-list { padding: 0 8px 16px; }
+html[data-design='classico'] .category { padding: 16px 2px 4px 0; }
+html[data-design='classico'] .category-toggle { font-size: 12px; font-weight: 600; letter-spacing: .02em; line-height: 16px; color: var(--text-3); }
+html[data-design='classico'] .channel-item {
+  height: 34px; padding: 0 8px; margin: 1px 0 0; gap: 6px; border-radius: 4px; font-size: 16px; font-weight: 500; line-height: 20px;
+  color: var(--text-3); transition: none;
+}
+html[data-design='classico'] .channel-item svg { opacity: 1; width: 20px; height: 20px; color: inherit; }
+html[data-design='classico'] .channel-item:hover { background: var(--bg-hover); color: var(--text-2); }
+html[data-design='classico'] .channel-item.active { background: var(--bg-active); color: var(--text); }
+html[data-design='classico'] .home-item { height: 42px; padding: 0 8px; font-size: 16px; gap: 12px; }
+html[data-design='classico'] .home-item svg { width: 24px; height: 24px; }
+html[data-design='classico'] .dm-item { margin-top: 2px; border-radius: 4px; }
+html[data-design='classico'] .dm-item-main { height: 42px; padding: 0 8px; gap: 12px; }
+html[data-design='classico'] .dm-item-name { font-size: 16px; font-weight: 500; line-height: 20px; }
+html[data-design='classico'] .dm-item-sub { font-size: 12px; line-height: 16px; }
+html[data-design='classico'] .unread-dot { width: 8px; height: 8px; }
+
+/* ---------- painel do usuário ---------- */
+html[data-design='classico'] .user-panel { border-radius: 8px; }
+html[data-design='classico'] .user-panel-text strong { font-size: 14px; font-weight: 600; line-height: 18px; }
+html[data-design='classico'] .user-panel-text span { font-size: 12px; line-height: 13px; color: var(--text-2); }
+
+/* ---------- cabeçalho da conversa ---------- */
+html[data-design='classico'] .chat-header { height: 48px; padding: 0 8px 0 16px; border-bottom: 0; box-shadow: var(--header-shadow); gap: 8px; }
+html[data-design='classico'] .chat-header h1 { font-size: 16px; font-weight: 600; line-height: 20px; }
+html[data-design='classico'] .chat-header-icon { color: var(--text-3); }
+html[data-design='classico'] .chat-topic { font-size: 14px; font-weight: 400; margin-left: 8px; padding-left: 16px; }
+html[data-design='classico'] .chat-header .icon-btn { width: 32px; height: 32px; color: var(--text-2); border-radius: 4px; }
+html[data-design='classico'] .chat-header .icon-btn:hover { color: var(--text); background: transparent; }
+html[data-design='classico'] .chat-header .icon-btn.on { color: var(--text); background: transparent; }
+
+/* ---------- mensagens ---------- */
+html[data-design='classico'] .messages { padding: 16px 0 8px; }
+html[data-design='classico'] .channel-welcome h2 { font-size: 32px; font-weight: 700; line-height: 40px; }
+html[data-design='classico'] .channel-welcome-icon { width: 68px; height: 68px; }
+html[data-design='classico'] .day-sep { margin: 24px 16px 8px; font-size: 12px; font-weight: 600; line-height: 13px; color: var(--text-3); }
+html[data-design='classico'] .day-sep::before, html[data-design='classico'] .day-sep::after { background: color-mix(in srgb, var(--text) 12%, transparent); }
+html[data-design='classico'] .msg { margin-top: 17px; padding: 2px 48px 2px 0; grid-template-columns: 72px 1fr; transition: none; }
+html[data-design='classico'] .msg.grouped { margin-top: 0; }
+html[data-design='classico'] .msg:hover { background: rgba(2, 2, 2, .06); }
+html[data-design='classico'] :root[data-tone='light'] .msg:hover, html[data-design='classico'][data-tone='light'] .msg:hover { background: rgba(6, 6, 7, .03); }
+html[data-design='classico'] .msg-meta { gap: 0; line-height: 22px; }
+html[data-design='classico'] .msg-author { font-size: 16px; font-weight: 500; }
+html[data-design='classico'] .msg-meta time { font-size: 12px; font-weight: 400; margin-left: 8px; color: var(--text-3); }
+html[data-design='classico'] .msg-content { font-size: 16px; line-height: 22px; font-weight: 400; }
+html[data-design='classico']:not([data-tone='light']) .msg-content { color: color-mix(in srgb, var(--text) 92%, var(--bg-chat)); }
+html[data-design='classico'] .msg-hover-time { font-size: 11px; padding-top: 5px; }
+html[data-design='classico'] .msg-actions { top: -16px; right: 16px; border-radius: 4px; background: var(--bg-side); border: 1px solid var(--border); box-shadow: 0 0 0 1px rgba(0, 0, 0, .05), 0 2px 10px rgba(0, 0, 0, .1); }
+html[data-design='classico'] .msg-reply-ref { padding-left: 72px; font-size: 14px; }
+html[data-design='classico'] .msg-tag { font-size: 11px; }
+
+/* ---------- caixa de texto ---------- */
+html[data-design='classico'] .composer-wrap { padding: 0 16px 24px; }
+html[data-design='classico'] .composer { border-radius: 8px; padding: 0 10px; min-height: 44px; background: var(--bg-input); }
+html[data-design='classico'] .composer-row { align-items: center; }
+html[data-design='classico'] .composer textarea { padding: 11px 10px; font-size: 16px; line-height: 22px; }
+html[data-design='classico'] .composer .icon-btn { width: 32px; height: 32px; color: var(--text-2); }
+html[data-design='classico'] .composer .icon-btn:hover { color: var(--text); background: transparent; }
+
+/* ---------- lista de membros ---------- */
+html[data-design='classico'] .member-list { padding: 8px 8px 8px 8px; }
+html[data-design='classico'] .member-group { font-size: 12px; font-weight: 600; letter-spacing: .02em; padding: 24px 8px 4px 8px; line-height: 16px; }
+html[data-design='classico'] .member { height: 42px; padding: 1px 8px; border-radius: 4px; gap: 12px; }
+html[data-design='classico'] .member-name { font-size: 16px; font-weight: 500; line-height: 20px; }
+html[data-design='classico'] .member-status { font-size: 12px; line-height: 16px; }
+html[data-design='classico'] .member.offline { opacity: .3; }
+
+/* ---------- botões, campos, janelas e menus ---------- */
+html[data-design='classico'] .btn { height: 38px; padding: 2px 16px; border-radius: 3px; font-size: 14px; font-weight: 500; transition: background-color .17s ease, color .17s ease; }
+html[data-design='classico'] .btn:active { transform: none; }
+html[data-design='classico'] .btn-sm { height: 32px; min-width: 60px; padding: 2px 16px; }
+html[data-design='classico'] .btn-lg { height: 44px; font-size: 16px; }
+html[data-design='classico'] .btn-ghost { background: color-mix(in srgb, var(--text) 10%, transparent); }
+html[data-design='classico'] .btn-ghost:hover { outline: 0; background: color-mix(in srgb, var(--text) 16%, transparent); }
+html[data-design='classico'] .form input:not([type=checkbox]):not([type=range]):not([type=color]), html[data-design='classico'] .form textarea, html[data-design='classico'] .select {
+  border-radius: 3px; font-size: 16px; background: var(--bg-rail); border: 1px solid transparent;
+}
+html[data-design='classico'] .form input:focus, html[data-design='classico'] .form textarea:focus, html[data-design='classico'] .select:focus { border-color: var(--accent); outline: 0; }
+html[data-design='classico'] .form label, html[data-design='classico'] .field-label { font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--text-2); }
+
+html[data-design='classico'] .modal-backdrop { background: rgba(0, 0, 0, .7); }
+html[data-design='classico'] .modal { border-radius: 4px; background: var(--bg-chat); max-width: 440px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .1), 0 2px 10px rgba(0, 0, 0, .3); animation: pop .12s ease-out; }
+html[data-design='classico'] .modal-wide { max-width: 720px; }
+html[data-design='classico'] .modal-header { padding: 24px 16px 8px; }
+html[data-design='classico'] .modal-header h2 { font-size: 24px; font-weight: 700; line-height: 30px; }
+html[data-design='classico'] .modal-header p { font-size: 16px; }
+html[data-design='classico'] .modal-body { padding: 16px; }
+html[data-design='classico'] .modal-footer { padding: 16px; background: var(--bg-side); border-radius: 0 0 4px 4px; }
+
+html[data-design='classico'] .ctx-menu, html[data-design='classico'] .dropdown { border-radius: 4px; background: var(--bg-float); padding: 6px 8px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .08), 0 8px 16px rgba(0, 0, 0, .24); }
+html[data-design='classico'] .dropdown-item, html[data-design='classico'] .ctx-item { border-radius: 2px; padding: 6px 8px; font-size: 14px; font-weight: 500; line-height: 18px; }
+html[data-design='classico'] .dropdown-sep { margin: 4px; }
+html[data-design='classico'] [data-tip]:hover::after { border-radius: 5px; font-size: 14px; font-weight: 600; background: var(--bg-float); box-shadow: 0 8px 16px rgba(0, 0, 0, .24); }
+
+/* ---------- cartão de perfil (como o de lá: faixa colorida, foto de 80px e caixa interna escura) ---------- */
+html[data-design='classico'] .popover { width: 340px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15), 0 8px 24px rgba(0, 0, 0, .4); }
+html[data-design='classico'] .profile-card { border-radius: 8px; }
+html[data-design='classico'] .profile-banner { height: 60px; }
+html[data-design='classico'] .profile-avatar-row { margin-top: -40px; padding: 0 16px; }
+html[data-design='classico'] .profile-avatar-ring { box-shadow: 0 0 0 6px var(--bg-float); }
+html[data-design='classico'] .profile-inner { margin: 8px 16px 16px; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--bg-float) 85%, var(--bg-side)); gap: 2px; }
+html[data-design='classico'] .profile-name { font-size: 20px; font-weight: 700; line-height: 24px; }
+html[data-design='classico'] .profile-handle { font-size: 14px; }
+html[data-design='classico'] .profile-inner h3 { font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+html[data-design='classico'] .profile-bio { font-size: 14px; line-height: 18px; }
+
+/* ---------- configurações ---------- */
+html[data-design='classico'] .settings-title { font-size: 20px; font-weight: 600; line-height: 24px; margin-bottom: 20px; }
+html[data-design='classico'] .settings-nav button { border-radius: 4px; font-size: 16px; font-weight: 500; padding: 6px 10px; }
+html[data-design='classico'] .toggle-row strong { font-weight: 500; }
+
+/* ---------- celular: as medidas do app de lá também ---------- */
+@media (max-width: 767px) {
+  html[data-design='classico'] .msg { grid-template-columns: 56px 1fr; padding-right: 12px; }
+  html[data-design='classico'] .msg-reply-ref { padding-left: 56px; }
+  html[data-design='classico'] .channel-item { height: 38px; }
+  html[data-design='classico'] .modal { border-radius: 16px 16px 0 0 !important; }
+}
