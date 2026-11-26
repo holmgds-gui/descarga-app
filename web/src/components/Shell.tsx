@@ -21,6 +21,7 @@ import { SettingsModal } from './SettingsModal'
 import { VoiceStage } from './VoiceStage'
 import { local } from '../lib/storage'
 import { MobileGestures } from './MobileGestures'
+import { NavHistory } from './NavHistory'
 import { t } from '../lib/i18n'
 
 export function Shell() {
@@ -126,6 +127,7 @@ export function Shell() {
       )}
       {narrow && membersApplicable && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
       <MobileGestures membersApplicable={membersApplicable} />
+      <NavHistory />
       {showTabs && <MobileTabs />}
       <IncomingCall />
       <ProfilePopover />

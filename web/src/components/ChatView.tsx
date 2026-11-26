@@ -4,7 +4,7 @@ import {
 } from 'react'
 import { nameColorOf } from '../lib/perks'
 import {
-  Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, ListChecks, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
+  ArrowLeft, Check, Copy, CornerUpLeft, Eye, EyeOff, Flame, Forward, Hash, ListChecks, Menu, Mic, Pencil, Phone, Pin as PinIcon, PinOff, PlusCircle, Send, Smile, SmilePlus,
   Square, Trash2, Upload, UserPlus, Users, Video, X,
 } from 'lucide-react'
 import { backend } from '../lib/backend'
@@ -31,6 +31,7 @@ import { PinsModal } from './PinsModal'
 import { useServerRole } from './ServerSettings'
 import { topRole } from '../lib/roles'
 import { swipeHandlers } from '../lib/swipe'
+import { goBack, useCanBack } from '../lib/nav'
 import { useTyping } from '../lib/typing'
 import { useReceiptOff } from '../lib/receipts'
 
@@ -56,8 +57,14 @@ export function ChatHeader({
   onTitleClick?: () => void
 }) {
   const { setMobilePane } = useApp()
+  const canBack = useCanBack()
   return (
     <header className="chat-header">
+      {canBack && (
+        <button className="icon-btn chat-back" aria-label={t('Voltar')} data-tip={t('Voltar')} onClick={goBack}>
+          <ArrowLeft size={22} />
+        </button>
+      )}
       <button className="icon-btn mobile-only" aria-label={t('Abrir canais')} onClick={() => setMobilePane('nav')}>
         <Menu size={22} />
       </button>
