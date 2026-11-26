@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: 'corpo inválido' }, 400)
   }
-  const appUrl = typeof body.appUrl === 'string' && /^https:\/\//.test(body.appUrl) ? body.appUrl : ''
+  // o endereço do app só vale se for o do próprio Descarga (senão alguém poderia mandar um aviso que abre outro site)
+  const appUrl = typeof body.appUrl === 'string' && /^https:\/\/holmgds-gui\.github\.io\/[A-Za-z0-9._~\/-]*$/.test(body.appUrl) ? body.appUrl : ''
 
   const { data: me } = await admin.from('profiles').select('username, display_name, avatar_url, approval').eq('id', user.id).single()
   const myName = me?.display_name || me?.username || 'Descarga'

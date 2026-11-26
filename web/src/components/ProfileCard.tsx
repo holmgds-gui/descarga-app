@@ -69,7 +69,7 @@ export function ProfileCardBody({ profile, onEdit, actions, friendSince }: { pro
             <h3>{t('Links')}</h3>
             <div className="profile-links">
               {profile.links.map((l, i) => (
-                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer nofollow">
+                <a key={i} href={/^https?:\/\//i.test(l.url) ? l.url : undefined} target="_blank" rel="noopener noreferrer nofollow">
                   <ExternalLink size={14} /> {l.label || l.url.replace(/^https?:\/\//, '')}
                 </a>
               ))}
