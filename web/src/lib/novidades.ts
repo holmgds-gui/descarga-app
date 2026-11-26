@@ -9,6 +9,28 @@ const n = (tp: string, te: string, xp: string, xe: string) => ({ title: { pt: tp
 
 export const NOVIDADES: Novidade[] = [
   {
+    date: '2026-11-26',
+    items: [
+      n('Mais 7 designs (Plus)', '7 more designs (Plus)', 'Em Configurações > Aparência e idioma dá para trocar o visual do app. No Super Plus: Futurista, Rústico, Papel e Vidro. No Ultra Mega Plus: Retrô anos 90, Pixel 8-bit e Terminal. O clássico ficou bem mais parecido com o app original.', 'In Settings > Appearance and language you can change the look of the app. Super Plus: Futuristic, Rustic, Paper and Glass. Ultra Mega Plus: 90s Retro, 8-bit Pixel and Terminal. The classic design is now much closer to the original app.'),
+      n('Gestos no celular', 'Phone gestures', 'Arraste para o lado para abrir a lista e os membros, ou voltar para a última conversa; deslize nas abas de baixo; arraste uma mensagem para responder; puxe a tela para baixo para atualizar; arraste uma janela para fechar. Com vibração leve (dá para desligar em Configurações).', 'Swipe sideways to open the list and members, or jump back to your last chat; slide across the bottom tabs; drag a message to reply; pull the screen down to refresh; drag a window down to close it. With light vibration (can be turned off in Settings).'),
+      n('Botão Voltar', 'Back button', 'Um botão de voltar no topo (e o botão do navegador ou do Android) leva para a tela anterior, no celular e no computador.', 'A back button at the top (and the browser or Android back button) takes you to the previous screen, on phone and computer.'),
+      n('Menus inteligentes', 'Smart menus', 'Quando você toca perto da borda da tela, o menu abre para o lado contrário e não fica mais cortado.', 'When you tap near the edge of the screen, the menu opens the other way and is no longer cut off.'),
+      n('Celular abre no Início', 'Phone opens on Home', 'Ao abrir o app no celular você cai direto na página de Início.', 'When you open the app on a phone you land straight on the Home page.'),
+      n('Símbolos do Plus nítidos', 'Crisp Plus badges', 'Os símbolos de Plus, Super Plus e Ultra Mega Plus ficaram maiores, redondos e sem borrar.', 'The Plus, Super Plus and Ultra Mega Plus badges are bigger, round and no longer blurry.'),
+    ],
+  },
+  {
+    date: '2026-11-25',
+    items: [
+      n('Descarga Plus', 'Descarga Plus', 'Novos níveis (Plus, Super Plus e Ultra Mega Plus) com mais caracteres na bio, mais links no perfil, mais emojis por servidor e mais servidores criados. Tem também banner com imagem, foto de perfil em GIF, cor do nome, 22 molduras e 20 skins para o perfil, na aba Plus.', 'New tiers (Plus, Super Plus and Ultra Mega Plus) with a longer bio, more profile links, more emojis per server and more servers you can create. Also image banners, GIF profile pictures, name color, 22 frames and 20 skins for your profile, in the Plus tab.'),
+      n('Descobrir servidores', 'Discover servers', 'Um lugar para achar servidores novos e entrar neles.', 'A place to find new servers and join them.'),
+      n('Jogando agora', 'Playing now', 'O app de PC detecta o jogo aberto e o seu perfil mostra "Jogando X". Dá para desligar nas configurações.', 'The PC app detects the game you have open and your profile shows "Playing X". You can turn it off in settings.'),
+      n('Perfil mais completo', 'Fuller profile', 'O perfil abre ao lado da conversa 1 a 1 e mostra "Dando descarga desde" e "Amigos desde". A foto agora preenche o círculo inteiro.', 'The profile opens next to a 1-on-1 chat and shows "Flushing since" and "Friends since". The picture now fills the whole circle.'),
+      n('Painel da pessoa flutuante', 'Floating user panel', 'O painel com seu nome, microfone e fone agora flutua por cima do trilho de servidores e dos canais.', 'The panel with your name, microphone and headphones now floats over the server rail and channels.'),
+      n('Sons de chamada e mensagem', 'Call and message sounds', 'Toque de chamada para quem recebe, aviso de Atender/Recusar e som de mensagem nova com o app em segundo plano. Dá para ligar e desligar em Notificações.', 'Ringtone for whoever receives a call, Answer/Decline prompt and a new-message sound while the app is in the background. Can be turned on and off in Notifications.'),
+    ],
+  },
+  {
     date: '2026-11-24',
     items: [
       n('Design novo', 'New design', 'Painéis flutuantes, ícones arredondados, fontes novas, animações suaves e tema "Tinta". Dá para voltar ao visual antigo em Configurações > Aparência e idioma.', 'Floating panels, rounded icons, new fonts, smooth animations and the "Ink" theme. You can go back to the old look in Settings > Appearance and language.'),
