@@ -156,16 +156,19 @@ function readJson<T>(key: string, fallback: T): T {
 export function AppProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({})
   const [servers, setServers] = useState<Server[]>([])
+  // celular: ao abrir o app, sempre começa na página de Início (no PC volta para onde você estava)
+  const startHome = useRef(window.matchMedia('(max-width: 767px)').matches).current
   const [activeServerId, setActiveServerIdRaw] = useState<string | null>(() => {
+    if (startHome) return null
     const v = local.get(SERVER_KEY)
     return v === HOME ? null : v
   })
-  // na primeira vez (nada guardado) abre o primeiro servidor, se tiver
-  const firstLoad = useRef(local.get(SERVER_KEY) === null)
+  // na primeira vez (nada guardado) abre o primeiro servidor, se tiver (no celular abre o Início)
+  const firstLoad = useRef(!startHome && local.get(SERVER_KEY) === null)
   const [friendships, setFriendships] = useState<Friendship[]>([])
   const [dms, setDms] = useState<DmChannel[]>([])
   const [dmsLoaded, setDmsLoaded] = useState(false)
-  const [activeDmId, setActiveDmIdRaw] = useState<string | null>(() => local.get(DM_KEY))
+  const [activeDmId, setActiveDmIdRaw] = useState<string | null>(() => (startHome ? null : local.get(DM_KEY)))
   const [homeSection, setHomeSection] = useState<'inicio' | 'amigos'>('inicio')
   const [seen, setSeen] = useState<Record<string, string>>(() => readJson(SEEN_KEY, {}))
   const [hiddenDms, setHidden] = useState<Record<string, string>>(() => readJson(HIDDEN_KEY, {}))
