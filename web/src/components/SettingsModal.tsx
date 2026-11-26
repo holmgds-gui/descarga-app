@@ -16,6 +16,7 @@ import { NotificationsTab, VoiceSettingsTab } from './SettingsVoice'
 import { cleanUsername, isValidUsername } from '../lib/username'
 import { useCropPick } from './ImageCropper'
 import { getDesign, setDesign, type Design } from '../lib/design'
+import { haptic, hapticsOn, setHaptics } from '../lib/haptics'
 import { LANGS, setLang, t as tr, useLang, type Lang } from '../lib/i18n'
 
 const BG_SWATCHES = ['#26303A', '#1F2937', '#0F3D3E', '#3B2A1E', '#3A1F2B', '#2E2A3B', '#1E3A5F', '#F5F0E8', '#E8F1EC', '#EAF0F8']
@@ -369,6 +370,14 @@ function AppearanceEditor() {
             <span className="muted small">{tr('Mostra mais mensagens na tela')}</span>
           </span>
           <input type="checkbox" className="toggle" checked={appearance.compact} onChange={(e) => setAppearance({ compact: e.target.checked })} />
+        </label>
+
+        <label className="toggle-row mobile-only-row">
+          <span>
+            <strong>{tr('Vibração nos gestos')}</strong>
+            <span className="muted small">{tr('No celular, vibra de leve ao arrastar painéis e atualizar (só em aparelhos que permitem)')}</span>
+          </span>
+          <input type="checkbox" className="toggle" defaultChecked={hapticsOn()} onChange={(e) => { setHaptics(e.target.checked); if (e.target.checked) haptic(15) }} />
         </label>
       </div>
     </>

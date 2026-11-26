@@ -20,6 +20,7 @@ import { ServerRail } from './ServerRail'
 import { SettingsModal } from './SettingsModal'
 import { VoiceStage } from './VoiceStage'
 import { local } from '../lib/storage'
+import { MobileGestures } from './MobileGestures'
 import { t } from '../lib/i18n'
 
 export function Shell() {
@@ -43,6 +44,15 @@ export function Shell() {
 
   const dmOther = dm && !dm.is_group ? dm.member_ids.find((id) => id !== userId) : undefined
   const membersApplicable = (!!activeServerId && channel?.type === 'text') || !!dm?.is_group || !!dmOther
+
+  // telas estreitas: a lista de membros/perfil é uma gaveta que fica sempre montada, para acompanhar o dedo
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 1000)
+  useEffect(() => {
+    const on = () => setNarrow(window.innerWidth < 1000)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  const showMembers = membersOpen || mobilePane === 'members' || narrow
 
   const toggleMembers = () => {
     if (window.innerWidth < 1000) {
@@ -82,7 +92,7 @@ export function Shell() {
           <ChatView channel={channel} membersOpen={membersOpen} onToggleMembers={toggleMembers} />
         )}
       </div>
-      {activeServerId && channel?.type === 'text' && (membersOpen || mobilePane === 'members') && (
+      {activeServerId && channel?.type === 'text' && showMembers && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
           <div className="pane-bar">
@@ -91,7 +101,7 @@ export function Shell() {
           <MemberList />
         </div>
       )}
-      {dm?.is_group && (membersOpen || mobilePane === 'members') && (
+      {dm?.is_group && showMembers && (
         <div className="members-pane">
           <ResizeHandle panel="members" />
           <div className="pane-bar">
@@ -100,7 +110,7 @@ export function Shell() {
           <MemberList ids={dm.member_ids} ownerId={dm.owner_id} />
         </div>
       )}
-      {dmOther && (membersOpen || mobilePane === 'members') && (
+      {dmOther && showMembers && (
         <div className="members-pane dm-profile-pane">
           <ResizeHandle panel="members" />
           <div className="pane-bar">
@@ -114,7 +124,8 @@ export function Shell() {
           <button className="pane-show" aria-label={t('Mostrar membros')} title={t('Mostrar membros')} onClick={toggleMembers}><ChevronLeft size={18} /></button>
         </div>
       )}
-      {mobilePane === 'members' && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
+      {narrow && membersApplicable && <div className="mobile-scrim" onClick={() => setMobilePane('chat')} />}
+      <MobileGestures membersApplicable={membersApplicable} />
       {showTabs && <MobileTabs />}
       <IncomingCall />
       <ProfilePopover />

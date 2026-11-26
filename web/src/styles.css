@@ -460,20 +460,28 @@ button.avatar { cursor: pointer; }
   font-weight: 700; font-size: .9em; animation: slideup .2s ease-out; border-left: 4px solid var(--accent);
 }
 
-/* ---------- telas médias: lista de membros vira gaveta ---------- */
+/* ---------- telas médias: lista de membros vira gaveta (sempre montada, acompanha o dedo) ---------- */
 @media (max-width: 999px) {
-  .members-pane { position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; box-shadow: var(--shadow); display: none; }
-  .app[data-pane='members'] .members-pane { display: block; animation: slidein .2s ease-out; }
-  .mobile-scrim { position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,.5); }
-  @keyframes slidein { from { transform: translateX(30px); opacity: 0; } }
+  .members-pane {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; display: block; box-shadow: none; will-change: transform;
+    transform: translate3d(100%, 0, 0); visibility: hidden;
+    transition: transform .34s cubic-bezier(.32, .72, 0, 1), box-shadow .34s, visibility 0s linear .34s;
+  }
+  .app[data-pane='members'] .members-pane { transform: none; visibility: visible; box-shadow: var(--shadow); transition: transform .34s cubic-bezier(.32, .72, 0, 1), box-shadow .34s, visibility 0s; }
+  .app.gesturing .members-pane { visibility: visible; transition: none; transform: translate3d(calc(100% - var(--mem-x, 0px)), 0, 0); box-shadow: var(--shadow); }
+  .app.gesturing[data-pane='members'] .members-pane { transform: translate3d(calc(100% - var(--mem-x, 0px)), 0, 0); }
+  .mobile-scrim { position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .34s; }
+  .app[data-pane='members'] .mobile-scrim { opacity: 1; pointer-events: auto; }
+  .app.gesturing .mobile-scrim { opacity: var(--mem-p, 0); transition: none; }
 }
 
 /* ---------- celular ---------- */
 @media (max-width: 767px) {
   .mobile-only { display: inline-grid !important; }
-  .nav-pane { position: fixed; inset: 0; z-index: 20; width: 100%; transform: translateX(-100%); transition: transform .22s ease-out; }
+  .nav-pane { position: fixed; inset: 0; z-index: 20; width: 100%; transform: translate3d(-100%, 0, 0); transition: transform .34s cubic-bezier(.32, .72, 0, 1), visibility 0s linear .34s; will-change: transform; visibility: hidden; }
   .channel-sidebar { flex: 1; }
-  .app[data-pane='nav'] .nav-pane { transform: none; }
+  .app[data-pane='nav'] .nav-pane { transform: none; visibility: visible; transition: transform .34s cubic-bezier(.32, .72, 0, 1), visibility 0s; }
+  .app.gesturing .nav-pane { visibility: visible; transition: none; transform: translate3d(calc(-100% + var(--nav-x, 0px)), 0, 0); }
   .chat-topic { display: none; }
   .msg { grid-template-columns: 60px 1fr; padding-right: 12px; }
   .msg-reply-ref { padding-left: 60px; }
@@ -1474,3 +1482,55 @@ html[data-design='classico'] .rail-add:hover { background: var(--success) !impor
 .profile-card[data-skin='galaxia'] { background-size: 100% 200%; animation: skin-flow 12s ease-in-out infinite; }
 @keyframes skin-flow { 0%, 100% { background-position: 0 0; } 50% { background-position: 0 100%; } }
 @media (prefers-reduced-motion: reduce) { .profile-card[data-skin] { animation: none !important; } }
+
+
+/* =========================================================
+   Celular: toque mais fluido (arrastar, animações, gaveta)
+   ========================================================= */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  html { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  html, body { overscroll-behavior: none; }
+  button, a, [role='button'], input[type='checkbox'], select, summary, .dm-item-main, .channel-item, .home-row { touch-action: manipulation; }
+  .app { touch-action: pan-y pinch-zoom; }
+  .messages, .channel-list, .home-body, .friends-body, .member-list, .settings-content, .modal, .dm-profile-panel { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  /* toque que "afunda" um pouquinho em vez de só trocar de cor */
+  .channel-item, .dm-item-main, .home-row, .mtab, .rail-item, .btn, .icon-btn { transition: transform .16s cubic-bezier(.34, 1.56, .64, 1), background .15s, color .15s; }
+  .channel-item:active, .dm-item-main:active, .home-row:active, .rail-item:active, .btn:active, .icon-btn:active { transform: scale(.96); }
+  .dm-item:active, .channel-item:active, .home-row:active { background: var(--bg-active); }
+  .main-pane { will-change: transform, opacity; }
+  .main-pane.slide-in { animation: pane-in .34s cubic-bezier(.32, .72, 0, 1); }
+  .mobile-tabs { touch-action: none; }
+  .mtab.scrub { color: var(--accent-text); background: var(--accent-soft); transform: scale(1.12); }
+}
+@keyframes pane-in { from { transform: translate3d(36px, 0, 0); opacity: .2; } }
+
+/* gaveta de baixo: as janelas viram "sheets" que se arrastam para baixo */
+.sheet-grip { display: none; }
+@media (max-width: 767px) {
+  .modal-backdrop { align-items: end; padding: 0; transition: background .2s; }
+  .modal-backdrop > .modal {
+    max-width: 100%; border-radius: 18px 18px 0 0 !important; max-height: 92dvh; padding-bottom: env(safe-area-inset-bottom);
+    animation: sheet-up .36s cubic-bezier(.32, .72, 0, 1); will-change: transform;
+  }
+  .sheet-grip { display: block; width: 38px; height: 4px; border-radius: 99px; background: var(--text-3); opacity: .55; margin: 8px auto 0; }
+  .modal-close { top: 10px; }
+}
+@keyframes sheet-up { from { transform: translate3d(0, 100%, 0); } }
+
+/* puxar para atualizar */
+.ptr-indicator {
+  position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 50%; z-index: 80; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--bg-float); box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+  transform: translate(-50%, -44px);
+}
+.ptr-indicator span { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--accent); border-right-color: transparent; }
+.ptr-indicator.spin span { animation: ptr-spin .7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+.mobile-only-row { display: none; }
+@media (hover: none) and (pointer: coarse) { .mobile-only-row { display: flex; } }
+@media (min-width: 768px) { .ptr-indicator { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .nav-pane, .members-pane, .main-pane.slide-in, .modal-backdrop > .modal { animation: none !important; transition-duration: .01s !important; }
+}
+/* com uma janela (gaveta) aberta, a barra de abas sai de baixo dela */
+.app:has(.modal-backdrop) .mobile-tabs { transform: translateY(130%); opacity: 0; pointer-events: none; transition: transform .3s, opacity .2s; }

@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react'
 import { House, MessageCircle, Server, UserRound } from 'lucide-react'
 import { useApp } from '../state'
 import { t } from '../lib/i18n'
+import { haptic } from '../lib/haptics'
 
 /** Barra de abas do celular (como nos apps modernos): Início, Conversas, Servidores e Você. Só aparece nas telas de lista. */
 export function MobileTabs() {
@@ -26,10 +28,33 @@ export function MobileTabs() {
       badge: 0, onClick: () => setSettingsOpen(true),
     },
   ]
+  // arrastar o dedo pelas abas: a aba sob o dedo acende e, ao soltar, abre
+  const [scrub, setScrub] = useState<string | null>(null)
+  const down = useRef<{ id: string | null; moved: boolean } | null>(null)
+  const tabAt = (x: number, y: number) => (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('.mtab')?.dataset.tab ?? null
+  const onDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return
+    down.current = { id: tabAt(e.clientX, e.clientY), moved: false }
+  }
+  const onMove = (e: React.PointerEvent) => {
+    const d = down.current
+    if (!d) return
+    const id = tabAt(e.clientX, e.clientY)
+    if (id !== d.id) d.moved = true
+    if (d.moved && id !== scrub) { setScrub(id); haptic(5) }
+  }
+  const onUp = (e: React.PointerEvent) => {
+    const d = down.current
+    down.current = null
+    if (!d?.moved) { setScrub(null); return }
+    const id = tabAt(e.clientX, e.clientY)
+    setScrub(null)
+    if (id && id !== d.id) { haptic(10); tabs.find((x) => x.id === id)?.onClick() }
+  }
   return (
-    <nav className="mobile-tabs" aria-label={t('Navegação')}>
+    <nav className="mobile-tabs" aria-label={t('Navegação')} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { down.current = null; setScrub(null) }}>
       {tabs.map((x) => (
-        <button key={x.id} className={`mtab ${x.active ? 'on' : ''}`} onClick={x.onClick} aria-current={x.active ? 'page' : undefined}>
+        <button key={x.id} data-tab={x.id} className={`mtab ${x.active ? 'on' : ''} ${scrub === x.id ? 'scrub' : ''}`} onClick={x.onClick} aria-current={x.active ? 'page' : undefined}>
           <span className="mtab-icon">{x.icon}{x.badge > 0 && <span className="mtab-badge">{x.badge > 9 ? '9+' : x.badge}</span>}</span>
           <span className="mtab-label">{x.label}</span>
         </button>

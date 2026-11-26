@@ -1,5 +1,7 @@
 /** Traduções para inglês. Chave = texto em português usado no app. */
 export const EN: Record<string, string> = {
+  'Vibração nos gestos': 'Vibration on gestures',
+  'No celular, vibra de leve ao arrastar painéis e atualizar (só em aparelhos que permitem)': 'On phones, vibrates lightly when dragging panels and refreshing (only on devices that allow it)',
   'Esmeralda': 'Emerald',
   'Rubi': 'Ruby',
   'Safira': 'Sapphire',

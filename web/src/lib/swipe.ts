@@ -25,6 +25,7 @@ export function swipeHandlers(onReply: () => void, enabled = true) {
       if (e.button !== 0 && e.pointerType === 'mouse') return
       const el = e.currentTarget
       const touch = e.pointerType !== 'mouse'
+      if (touch && e.clientX <= 30) return // borda esquerda: arrastar abre a lista de conversas
       if (!touch && (e.target as HTMLElement).closest(SKIP)) return
       states.set(el, { x: e.clientX, y: e.clientY, id: e.pointerId, active: false, touch })
     },
