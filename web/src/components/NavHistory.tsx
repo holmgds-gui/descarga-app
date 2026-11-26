@@ -85,6 +85,12 @@ export function NavHistory() {
     })
     const onPop = (e: PopStateEvent) => {
       const st = stack.current
+      if (live.current.settingsOpen) {
+        // voltar com as configurações abertas só fecha as configurações
+        history.pushState({ dn: st.length - 1 }, '')
+        live.current.setSettingsOpen(false)
+        return
+      }
       if (live.current.mobilePane !== 'chat') {
         // voltar com a gaveta aberta só fecha a gaveta; recoloca a entrada do histórico
         history.pushState({ dn: st.length - 1 }, '')

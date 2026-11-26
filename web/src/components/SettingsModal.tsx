@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlusPanel } from './PlusPanel'
 import { ANIMATED_LEVEL, BANNER_IMAGE_LEVEL, PLUS_NAMES, limitFor, plusLevel } from '../lib/perks'
 import { activityShared, setActivityShared } from '../lib/activity'
-import { Download, FileText, ImagePlus, Lock, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Download, FileText, ImagePlus, Lock, LogOut, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { backend } from '../lib/backend'
 import type { Profile, ProfileLink } from '../lib/types'
 import { useApp } from '../state'
@@ -53,6 +53,7 @@ export function SettingsModal() {
     <div className="settings">
       <nav className="settings-nav">
         <div className="settings-nav-inner">
+          <button className="settings-back" onClick={close} aria-label={tr('Voltar')}><ArrowLeft size={18} /> {tr('Voltar')}</button>
           <h4>{tr('Configurações de usuário')}</h4>
           <button className={tab === 'perfil' ? 'active' : ''} onClick={() => setTab('perfil')}>{tr('Meu perfil')}</button>
           <button className={tab === 'aparencia' ? 'active' : ''} onClick={() => setTab('aparencia')}>{tr('Aparência e idioma')}</button>

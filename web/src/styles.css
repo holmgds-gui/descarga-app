@@ -430,6 +430,7 @@ button.avatar { cursor: pointer; }
 .settings-content-inner { max-width: 760px; padding: 60px 40px 120px; }
 .settings-title { font-size: 1.3em; font-weight: 800; margin-bottom: 6px; }
 .settings-content-inner > .muted { margin: 0 0 24px; }
+.settings-nav button.settings-back { justify-content: flex-start; gap: 8px; color: var(--text); font-weight: 700; margin-bottom: 4px; }
 .settings-close { position: absolute; top: 56px; right: 40px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-2); font-size: .7em; font-weight: 800; }
 .settings-close svg { width: 36px; height: 36px; padding: 7px; border: 2px solid currentColor; border-radius: 50%; }
 .settings-close:hover { color: var(--text); }
@@ -494,8 +495,10 @@ button.avatar { cursor: pointer; }
   .settings-nav-inner { width: 100%; flex-direction: row; overflow-x: auto; padding: 12px 56px 12px 12px; }
   .settings-nav h4, .settings-nav .dropdown-sep { display: none; }
   .settings-nav button { white-space: nowrap; }
+  .settings-nav button.settings-back { position: sticky; left: 0; z-index: 1; flex: 0 0 auto; margin: 0 4px 0 0; background: var(--bg-active); padding: 10px 14px; }
   .settings-content-inner { padding: 20px 16px 120px; }
   .settings-close { top: -50px; right: 8px; position: fixed; top: 10px; z-index: 2; }
+  .settings-close { display: none; }
   .settings-close span { display: none; }
   .settings-close svg { width: 32px; height: 32px; }
   .profile-editor { grid-template-columns: 1fr; }
