@@ -281,6 +281,11 @@ export const EN: Record<string, string> = {
   // call
   'Ninguém está na call ainda.': 'Nobody is in the call yet.',
   'Call cheia': 'Call full',
+  'Já tem {n} câmeras ligadas e a call está cheia. Espere alguém desligar a câmera.': 'There are already {n} cameras on and the call is crowded. Wait for someone to turn theirs off.',
+  'Já tem {n} telas sendo compartilhadas nesta call (o máximo). Espere alguém parar.': 'There are already {n} screens being shared in this call (the maximum). Wait for someone to stop.',
+  'Call cheia de gente: a qualidade da câmera e da tela foi reduzida automaticamente.': 'Crowded call: camera and screen quality were lowered automatically.',
+  'Câmeras no limite': 'Camera limit reached',
+  'Telas no limite': 'Screen limit reached',
   'Entrar na call': 'Join call',
   'Chamadas direto entre os aparelhos • até {n} pessoas • grátis': 'Direct device-to-device calls • up to {n} people • free',
   'Você está compartilhando sua tela': "You're sharing your screen",
@@ -407,7 +412,7 @@ export const EN: Record<string, string> = {
   'Salvar senha': 'Save password',
 
   // voz e vídeo
-  'As calls são direto entre os aparelhos: grátis, até 6 pessoas.': 'Calls go directly between devices: free, up to 6 people.',
+  'As calls são direto entre os aparelhos: grátis, até 10 pessoas.': 'Calls go directly between devices: free, up to 10 people.',
   'Padrão do sistema': 'System default',
   'Microfone {n}': 'Microphone {n}',
   'Teste de microfone': 'Mic test',

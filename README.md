@@ -18,7 +18,7 @@ App de conversa inspirado nos apps de conversa por servidor e canal: servidores,
 
 ## O que já funciona (etapa 2)
 
-- Calls de voz direto entre os aparelhos (grátis, até 6 pessoas), sem servidor de mídia
+- Calls de voz direto entre os aparelhos (grátis, até 10 pessoas), sem servidor de mídia
 - Câmera e compartilhamento de tela com som, em 720p, 1080p ou 1080p/60fps
 - Redução de ruído, "apertar para falar" (tecla configurável) e volume separado para cada pessoa
 - Indicador de quem está falando, lista de quem está em cada call na barra lateral

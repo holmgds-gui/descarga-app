@@ -91,7 +91,7 @@ export function VoiceSettingsTab() {
   return (
     <>
       <h2 className="settings-title">{t('Voz e vídeo')}</h2>
-      <p className="muted">{t('As calls são direto entre os aparelhos: grátis, até 6 pessoas.')}</p>
+      <p className="muted">{t('As calls são direto entre os aparelhos: grátis, até 10 pessoas.')}</p>
       <div className="form">
         <label htmlFor="mic-select">
           {t('Microfone')}

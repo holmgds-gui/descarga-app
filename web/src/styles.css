@@ -1541,3 +1541,6 @@ html[data-design='classico'] .rail-add:hover { background: var(--success) !impor
 }
 /* com uma janela (gaveta) aberta, a barra de abas sai de baixo dela */
 .app:has(.modal-backdrop) .mobile-tabs { transform: translateY(130%); opacity: 0; pointer-events: none; transition: transform .3s, opacity .2s; }
+
+.call-crowded { text-align: center; padding: 4px 12px; flex: none; }
+.round-btn.limited { opacity: .55; }

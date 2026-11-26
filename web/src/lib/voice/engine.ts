@@ -1,7 +1,7 @@
 /**
  * Motor de chamadas do Descarga — direto entre os aparelhos (WebRTC em malha).
  * Cada pessoa conecta com cada outra; a sinalização passa pelo tempo real do Supabase.
- * Sem servidor de mídia: grátis, ideal para até 6 pessoas.
+ * Sem servidor de mídia: grátis. Até 10 pessoas; quanto mais gente, mais o app reduz a qualidade e limita câmeras e telas ao vivo.
  */
 import { backend } from '../backend'
 import type { PresenceEntry, RealtimeRoom } from '../types'
@@ -13,7 +13,38 @@ import { playJoin, playLeave, playMute, playUnmute, setSoundVolume, soundContext
 import { t } from '../i18n'
 import { micErrorMessage } from './micError'
 
-export const MAX_IN_CALL = 6
+export const MAX_IN_CALL = 10
+/** no máximo 6 telas compartilhadas ao mesmo tempo (a qualidade cai conforme entra gente) */
+export const MAX_SCREENS = 6
+/** até 6 pessoas na call: todo mundo pode ligar a câmera; com mais gente, só {MAX_CAMERAS_BIG} câmeras ao mesmo tempo */
+export const CAMERA_FREE_UP_TO = 6
+export const MAX_CAMERAS_BIG = 4
+
+/** O que ainda dá para fazer nesta call, conforme quem está nela agora. */
+export function callLimits(members: { camera: boolean; screen: boolean }[]) {
+  const n = members.length
+  const screens = members.filter((m) => m.screen).length
+  const cameras = members.filter((m) => m.camera).length
+  const cameraMax = n > CAMERA_FREE_UP_TO ? MAX_CAMERAS_BIG : MAX_IN_CALL
+  return { n, screens, cameras, screenMax: MAX_SCREENS, cameraMax, crowded: n > CAMERA_FREE_UP_TO }
+}
+
+/** Qualidade da tela para quem está assistindo: o envio é dividido entre todos, então cai com mais gente. */
+function screenQuality(viewers: number, presetBitrate: number, presetFps: number) {
+  const v = Math.max(1, viewers)
+  return {
+    bitrate: Math.round(Math.min(presetBitrate, Math.max(300_000, 6_000_000 / v))),
+    fps: v >= 8 ? Math.min(presetFps, 15) : v >= 5 ? Math.min(presetFps, 20) : presetFps,
+    scale: v >= 8 ? 1.5 : v >= 5 ? 1.25 : 1,
+  }
+}
+function cameraQuality(viewers: number) {
+  return {
+    bitrate: viewers <= 3 ? 1_500_000 : viewers <= 5 ? 900_000 : viewers <= 7 ? 500_000 : 300_000,
+    fps: viewers >= 8 ? 20 : 30,
+    scale: viewers <= 5 ? 1 : viewers <= 7 ? 1.5 : 2,
+  }
+}
 /** versão do protocolo das calls: 2 = sabe recriar uma conexão a pedido da outra ponta */
 const PROTOCOL = 2
 
@@ -157,6 +188,9 @@ class VoiceEngine {
     return () => this.listeners.delete(cb)
   }
   getSnapshot = () => this.snap
+  /** quantas conexões havia quando a qualidade foi ajustada pela última vez */
+  private lastTuned = 0
+
   private set(patch: Partial<VoiceSnapshot>) {
     this.snap = { ...this.snap, ...patch }
     for (const cb of this.listeners) cb()
@@ -300,9 +334,14 @@ class VoiceEngine {
     }
     this.knownMembers = new Set([...ids].filter((id) => id !== me))
     this.firstSync = false
+    const count = this.peers.size
     this.set({ members })
     this.applyViewers()
     this.applyVolumes()
+    if (count !== this.lastTuned) {
+      this.lastTuned = count
+      this.peers.forEach((p) => this.tuneSenders(p))
+    }
   }
 
   // ---------- conexões entre aparelhos ----------
@@ -579,18 +618,23 @@ class VoiceEngine {
     }
   }
 
-  /** Ajusta qualidade da tela (resolução, fps e taxa de bits) em cada conexão. */
+  /** Ajusta a qualidade da tela e da câmera (resolução, fps e taxa de bits) em cada conexão, conforme quanta gente está assistindo. */
   private tuneSenders(peer: Peer) {
-    const screenTrack = this.snap.screen?.getVideoTracks()[0]
-    if (!screenTrack) return
-    const sender = peer.senders.get(screenTrack.id)
-    if (!sender) return
+    const viewers = this.peers.size
+    const apply = (stream: MediaStream | null, q: { bitrate: number; fps: number; scale: number }) => {
+      const track = stream?.getVideoTracks()[0]
+      const sender = track ? peer.senders.get(track.id) : null
+      if (!sender) return
+      const params = sender.getParameters()
+      if (!params.encodings?.length) return
+      params.encodings[0].maxBitrate = q.bitrate
+      params.encodings[0].maxFramerate = q.fps
+      params.encodings[0].scaleResolutionDownBy = q.scale
+      void sender.setParameters(params).catch(() => undefined)
+    }
     const preset = SCREEN_PRESETS[this.snap.screenQuality]
-    const params = sender.getParameters()
-    if (!params.encodings?.length) return
-    params.encodings[0].maxBitrate = preset.bitrate
-    params.encodings[0].maxFramerate = preset.fps
-    void sender.setParameters(params).catch(() => undefined)
+    apply(this.snap.screen, screenQuality(viewers, preset.bitrate, preset.fps))
+    apply(this.snap.camera, cameraQuality(viewers))
   }
 
   // ---------- microfone ----------
@@ -739,12 +783,18 @@ class VoiceEngine {
       this.removeStream(this.snap.camera)
       this.set({ camera: null })
     } else {
+      const lim = callLimits(this.snap.members)
+      if (lim.cameras >= lim.cameraMax) {
+        this.set({ error: t('Já tem {n} câmeras ligadas e a call está cheia. Espere alguém desligar a câmera.', { n: lim.cameraMax }) })
+        return
+      }
       try {
         const cam = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
         })
         this.addStream(cam)
         this.set({ camera: cam })
+        window.setTimeout(() => this.peers.forEach((p) => this.tuneSenders(p)), 1500)
       } catch {
         this.set({ error: t('Não deu para abrir a câmera. Verifique a permissão.') })
         return
@@ -757,6 +807,13 @@ class VoiceEngine {
     if (!canShareScreen()) {
       this.set({ error: t('Este aparelho não permite compartilhar a tela pelo navegador. Use um computador.') })
       return
+    }
+    if (!this.snap.screen) {
+      const lim = callLimits(this.snap.members)
+      if (lim.screens >= lim.screenMax) {
+        this.set({ error: t('Já tem {n} telas sendo compartilhadas nesta call (o máximo). Espere alguém parar.', { n: lim.screenMax }) })
+        return
+      }
     }
     const preset = SCREEN_PRESETS[quality] ?? SCREEN_PRESETS['1080p30']
     // do pedido mais completo ao mais simples: cada navegador aceita opções diferentes

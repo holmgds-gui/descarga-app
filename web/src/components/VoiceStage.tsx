@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, HeadphoneOff, Headphones, LayoutGrid, Maximize2, Mic, MicOff, Monitor, MonitorOff, PhoneCall, PhoneOff, Video, VideoOff,
   RefreshCw, Server, Volume2, VolumeX, Wifi, WifiOff,
 } from 'lucide-react'
-import { MAX_IN_CALL, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
+import { MAX_IN_CALL, callLimits, canShareScreen, voice, type CallMember } from '../lib/voice/engine'
 import { useVoice, useVoicePresence } from '../lib/voice/hooks'
 import { SCREEN_PRESETS, keyLabel, type ScreenQuality } from '../lib/voice/settings'
 import type { Channel } from '../lib/types'
@@ -226,6 +226,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
   }
 
   const ptt = call.settings.inputMode === 'ptt'
+  const limits = callLimits(call.members)
 
   return (
     <section className={`chat voice-stage ${embedded ? 'embedded' : ''}`}>
@@ -233,6 +234,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
         <ChatHeader icon={<Volume2 size={22} />} title={channel.name}
           topic={tr('{n} de {max} na call', { n: call.members.length, max: MAX_IN_CALL })} />
       )}
+      {limits.crowded && <div className="call-crowded muted small">{tr('Call cheia de gente: a qualidade da câmera e da tela foi reduzida automaticamente.')}</div>}
       <div className={`stage ${focusTile ? 'has-focus' : ''} ${gallery ? 'is-gallery' : ''}`}>
         {focusTile && <div className="stage-focus">{renderTile(focusTile, true)}</div>}
         <div className={`stage-grid ${focusTile ? 'strip' : ''} ${gallery ? `gallery g${Math.min(tiles.length, 12)}` : ''} n${Math.min(rest.length, 6)}`}>
@@ -266,8 +268,8 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
           data-tip={call.deafened ? tr('Ativar áudio') : tr('Desativar áudio')} onClick={() => voice.toggleDeafen()}>
           {call.deafened ? <HeadphoneOff size={22} /> : <Headphones size={22} />}
         </button>
-        <button className={`round-btn ${call.camera ? 'on' : ''}`} aria-label={tr('Câmera')}
-          data-tip={call.camera ? tr('Desligar câmera') : tr('Ligar câmera')} onClick={() => void voice.toggleCamera()}>
+        <button className={`round-btn ${call.camera ? 'on' : ''} ${!call.camera && limits.cameras >= limits.cameraMax ? 'limited' : ''}`} aria-label={tr('Câmera')}
+          data-tip={call.camera ? tr('Desligar câmera') : !call.camera && limits.cameras >= limits.cameraMax ? tr('Câmeras no limite') : tr('Ligar câmera')} onClick={() => void voice.toggleCamera()}>
           {call.camera ? <Video size={22} /> : <VideoOff size={22} />}
         </button>
         <button className={`round-btn ${gallery ? 'on' : ''}`} aria-label={gallery ? tr('Voltar para o foco') : tr('Ver todos em galeria')}
@@ -276,7 +278,7 @@ export function VoiceStage({ channel, embedded = false }: { channel: Channel; em
         </button>
         {(canShareScreen() || call.screen) && <div className="quality-wrap">
           <button className={`round-btn ${call.screen ? 'on' : ''}`} aria-label={call.screen ? tr('Parar de compartilhar') : tr('Compartilhar tela')}
-            data-tip={call.screen ? tr('Parar de compartilhar') : tr('Compartilhar tela')}
+            data-tip={call.screen ? tr('Parar de compartilhar') : !call.screen && limits.screens >= limits.screenMax ? tr('Telas no limite') : tr('Compartilhar tela')}
             onClick={() => (call.screen ? voice.stopScreen() : setQualityOpen((v) => !v))}>
             {call.screen ? <MonitorOff size={22} /> : <Monitor size={22} />}
           </button>

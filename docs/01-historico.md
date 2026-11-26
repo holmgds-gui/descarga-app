@@ -29,7 +29,7 @@ Login por e-mail e senha, servidores com convite por link ou código, canais de 
 
 ## Etapa 2 — Calls e notificações (pronta e no ar)
 
-- Calls de voz **direto entre os aparelhos** (até 6 pessoas), sem servidor de mídia — por isso é grátis.
+- Calls de voz **direto entre os aparelhos** (até 10 pessoas), sem servidor de mídia — por isso é grátis.
 - Câmera e compartilhamento de tela com som (720p, 1080p, 1080p/60fps).
 - Redução de ruído, apertar-para-falar, volume por pessoa, indicador de quem fala.
 - Menções com `@usuario` e notificações com o app fechado (menções, respostas, alguém entrou na call).
