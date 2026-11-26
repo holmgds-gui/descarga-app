@@ -934,7 +934,7 @@ button.avatar { cursor: pointer; }
 .terms-doc p { margin: 0 0 8px; line-height: 1.5; font-size: .92em; }
 
 /* menu do botão direito */
-.ctx-menu { position: fixed; right: auto; bottom: auto; width: max-content; z-index: 3000; min-width: 200px; max-width: 280px; max-height: calc(100dvh - 12px); display: flex; flex-direction: column; }
+.ctx-menu { position: fixed; right: auto; bottom: auto; width: max-content; z-index: 3000; min-width: 200px; max-width: min(280px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); display: flex; flex-direction: column; }
 .ctx-body { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
 .ctx-tabs { display: flex; gap: 2px; padding: 0 0 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .ctx-tabs button { flex: 1; padding: 6px 8px; border-radius: 6px; font-size: .8em; font-weight: 750; color: var(--text-3); white-space: nowrap; }

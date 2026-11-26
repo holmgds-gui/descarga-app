@@ -56,6 +56,15 @@ const subscribe = (cb: () => void) => {
   return () => listeners.delete(cb)
 }
 
+/** posição inteligente: abre para o lado do clique que tiver espaço (se não cabe à direita, abre para a esquerda; se não cabe embaixo, para cima) */
+export function placeNear(x: number, y: number, w: number, h: number, m = 8) {
+  const vw = window.innerWidth, vh = window.innerHeight
+  const left = x + w <= vw - m ? x : x - w >= m ? x - w : Math.max(m, vw - w - m)
+  const below = vh - y - m, above = y - m
+  const top = h <= below ? y : h <= above ? y - h : Math.max(m, vh - h - m)
+  return { left, top }
+}
+
 export function closeContextMenu() {
   if (!current) return
   current = null
@@ -187,8 +196,7 @@ export function UserNoteHost() {
   if (open.focus === 'nickname' && open.at) {
     // só o apelido: um quadradinho junto de onde a pessoa clicou, sem janela grande
     const W = 260, H = 118
-    const left = Math.max(8, Math.min(open.at.x, window.innerWidth - W - 8))
-    const top = Math.max(8, Math.min(open.at.y, window.innerHeight - H - 8))
+    const { left, top } = placeNear(open.at.x, open.at.y, W, H)
     return (
       <>
         <div className="nick-pop-scrim" onMouseDown={() => setNoteOpen(null)} onContextMenu={(e) => { e.preventDefault(); setNoteOpen(null) }} />
@@ -409,11 +417,10 @@ export function ContextMenuHost() {
   // mantém o menu dentro da tela
   useLayoutEffect(() => {
     if (!open || !ref.current) return
-    const r = ref.current.getBoundingClientRect()
-    const left = Math.max(6, Math.min(open.x, window.innerWidth - r.width - 6))
-    // cabe embaixo do clique? senão abre para cima; se não cabe em nenhum, encosta na borda (e o menu rola)
-    const below = window.innerHeight - open.y - 6
-    const top = r.height <= below ? open.y : r.height <= open.y - 6 ? open.y - r.height : Math.max(6, window.innerHeight - r.height - 6)
+    ref.current.style.left = '0px' // mede o tamanho real (perto da borda o navegador espremeria o menu)
+    const r = { width: ref.current.offsetWidth, height: ref.current.offsetHeight } // offset*: não é afetado pela animação de "pop"
+    // cabe à direita/embaixo do clique? senão abre do outro lado; se não cabe em nenhum, encosta na borda (e o menu rola)
+    const { left, top } = placeNear(open.x, open.y, r.width, r.height, 8)
     setSub(null)
     setPos({ left, top, flip: left + r.width + 230 > window.innerWidth })
   }, [open, tab])
@@ -456,8 +463,9 @@ function SubMenu({ rect, items }: { rect: DOMRect; items: MenuItem[] }) {
   const ref = useRef<HTMLDivElement>(null)
   const [at, setAt] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
-    const r = ref.current?.getBoundingClientRect()
-    if (!r) return
+    const el = ref.current
+    if (!el) return
+    const r = { width: el.offsetWidth, height: el.offsetHeight }
     let left = rect.right - 2
     if (left + r.width > window.innerWidth - 6) left = Math.max(6, rect.left - r.width + 2)
     const top = Math.max(6, Math.min(rect.top - 6, window.innerHeight - r.height - 6))
